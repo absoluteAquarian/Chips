@@ -8,4 +8,10 @@
     <LangVersion>preview</LangVersion>
   </PropertyGroup>
 
+  <ItemGroup>
+    <Reference Include="Chips.Core">
+      <HintPath>Chips.Core.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
 </Project>
