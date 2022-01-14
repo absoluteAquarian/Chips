@@ -1,6 +1,5 @@
-﻿namespace Chips.Compilation{
+﻿namespace Chips.IO{
 	internal enum CPDBClassification{
-		GlobalVariable,
 		LocalVariable,
 		Label
 	}

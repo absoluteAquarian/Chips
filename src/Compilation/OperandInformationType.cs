@@ -1,11 +1,12 @@
 ﻿namespace Chips.Compilation{
 	internal enum OperandInformationType{
 		Constant = 1,
-		LocalVariable,
-		GlobalVariable,
-		Register,
-		Flag,
+		Variable,
 		Label,
-		TypeString
+		TypeString,
+		TypeCode,
+		FunctionCall,
+		CollectionAccessIndexByX,
+		CollectionAccessIndexByY
 	}
 }

@@ -2,6 +2,7 @@
 	internal enum BytecodeFileMember{
 		AssemblyInfo = 1,
 		GlobalVariable = 2,
-		Function = 3
+		GlobalFunction = 3,
+		ImportedFile = 4
 	}
 }

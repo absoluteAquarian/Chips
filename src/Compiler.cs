@@ -1,4 +1,5 @@
-﻿using Chips.Core.Specifications;
+﻿using Chips.Core.Meta;
+using Chips.Core.Specifications;
 using System.Text;
 
 namespace Chips{
@@ -17,7 +18,16 @@ namespace Chips{
 	}
 
 	public static class Compiler{
-		public static Dictionary<string, bool> BytecodeOptions = new(){
+		/// <summary>
+		/// The compiler flags
+		/// <list type="bullet">
+		/// <item>inline: Short-length opcodes (e.g. <seealso cref="Opcodes.Clo"/>) are inserted directly into the compiled method</item>
+		/// <item>no-source: <seealso cref="Opcode.FunctionContext"/> instances are not passed to opcode calls</item>
+		/// <item>unsafe: Type checking is not performed, most opcodes are inlined and no function context is provided (overrides "inline" and "no-source")</item>
+		/// <item>allow-stack-overflow: <seealso cref="Metadata.Registers.SP"/> can overflow to the other end of the <seealso cref="Metadata.stack"/></item>
+		/// </list>
+		/// </summary>
+		public static readonly Dictionary<string, bool> BytecodeOptions = new(){
 			["inline"] = false,
 			["no-source"] = false,
 			["unsafe"] = false,
@@ -25,6 +35,8 @@ namespace Chips{
 		};
 
 		public static readonly string[] opcodeNames;
+
+		public static readonly List<CompilationException> exceptions = new();
 
 		static Compiler(){
 			int index;

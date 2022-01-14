@@ -45,7 +45,7 @@ namespace Chips.Parsing{
 			select num + token;
 
 		public static readonly Parser<string> NumberAnyInteger =
-			from num in IntegerWithSign.XOr(IntegerWithType).XOr(BinaryNumber).XOr(HexadecimalNumber)
+			from num in IntegerWithSign.Or(IntegerWithType).Or(BinaryNumber).Or(HexadecimalNumber)
 			select num;
 
 		public static readonly Parser<string> NumberFloat =
@@ -69,13 +69,27 @@ namespace Chips.Parsing{
 			select num + token;
 
 		public static readonly Parser<string> NumberAnyFloatingPoint =
-			from num in NumberFloat.XOr(NumberDouble).XOr(NumberDecimal).XOr(NumberHalf)
+			from num in NumberFloat.Or(NumberDouble).Or(NumberDecimal).Or(NumberHalf)
 			select num;
 
-		public static readonly Parser<string> NumberComplexImaginary =
+		private static readonly Parser<string> NumberComplexImaginary =
 			from num in Parse.DecimalInvariant
 			from i in Parse.Char('i')
 			select num + i;
+
+		public static readonly Parser<string> NumberComplex =
+			from a in Parse.DecimalInvariant
+			from sign in Parse.Chars('+', '-').Token()
+			from b in NumberComplexImaginary
+			select a + sign + b;
+
+		public static readonly Parser<string> AnyComplexNumber =
+			from num in NumberComplex.Or(NumberComplexImaginary).Or(Parse.Chars('+', '-').Optional().Then(_ => NumberComplexImaginary))
+			select num;
+
+		public static readonly Parser<string> AnyNumber =
+			from num in NumberAnyInteger.Or(NumberAnyFloatingPoint).Or(AnyComplexNumber)
+			select num;
 
 		public static readonly Parser<string> AssemblyName =
 			from token in Parse.String(".asm_name")
@@ -105,7 +119,7 @@ namespace Chips.Parsing{
 			select CombineStringWithOptions(name, strFirst: false, prefix);
 
 		public static readonly Parser<string> VariableType =
-			from name in VariableUserDefined.XOr(VariableArray).XOr(IdentifierString).XOr(ChipsType)
+			from name in VariableUserDefined.Or(VariableArray).Or(IdentifierString).Or(ChipsType)
 			select name;
 
 		public static readonly Parser<string> FunctionArgument =
@@ -116,51 +130,48 @@ namespace Chips.Parsing{
 			from type in VariableType
 			select name + whitespace + separator + whitespace2 + type;
 
-		private static readonly Parser<string> FunctionArguments =
+		public static readonly Parser<string> FunctionArguments =
 			from open in Parse.Char('(')
 			from args in FunctionArgument.Once().Then(_ => ManyWhitespace.Then(_ => Parse.Char(',')).Then(_ => ManyWhitespace).Then(_ => FunctionArgument).Many().Optional()).Optional()
 			from close in Parse.Char(')')
 			select !args.IsDefined ? "()" : "(" + string.Join(", ", args.Get().Get()) + ")";
 
-		private static readonly Parser<string> FunctionAccessiblity =
-			from type in Parse.String("pub").XOr(Parse.String("asm")).XOr(Parse.String("hide")).Text()
+		public static readonly Parser<string> FunctionAccessiblity =
+			from type in Parse.String("pub").Or(Parse.String("asm")).Or(Parse.String("hide")).Text()
 			from ws in ManyWhitespace
 			from loc in Parse.String("loc").Then(_ => ManyWhitespace).Text().Optional()
 			from stat in Parse.String("stat").Text().Optional()
 			select type + ws + (loc.IsDefined ? loc.Get() : "") + (stat.IsDefined ? stat.Get() : "");
 
-		private static readonly Parser<string> LocalDefinition =
-			from token in Parse.String(".local").Text()
+		public static readonly Parser<string> GlobalDefinition =
+			from token in Parse.String(".global").Text()
 			from ws in ManyWhitespace
+			from constant in Parse.String(".const").Then(_ => ManyWhitespace).Text().Optional()
 			from name in IdentifierString
 			from ws2 in ManyWhitespace
 			from colon in Parse.Char(':')
 			from ws3 in ManyWhitespace
 			from type in VariableType
-			select token + ws + name + ws2 + colon + ws3 + type;
+			from equ in Parse.Char('=').Token().Then(_ => AnyNumber).Optional()
+			select token + CombineStringWithOptions(ws, strFirst: true, constant) + name + ws2 + colon + ws3 + CombineStringWithOptions(type, strFirst: true, equ);
 
-		private static readonly Parser<string> OpcodeAndOperand =
+		public static readonly Parser<string> LocalDefinition =
+			from token in Parse.String(".local").Text()
+			from ws in ManyWhitespace
+			from constant in Parse.String(".const").Then(_ => ManyWhitespace).Text().Optional()
+			from name in IdentifierString
+			from ws2 in ManyWhitespace
+			from colon in Parse.Char(':')
+			from ws3 in ManyWhitespace
+			from type in VariableType
+			from equ in Parse.Char('=').Token().Then(_ => AnyNumber).Optional()
+			select token + CombineStringWithOptions(ws, strFirst: true, constant) + name + ws2 + colon + ws3 + CombineStringWithOptions(type, strFirst: true, equ);
+
+		public static readonly Parser<string> OpcodeAndOperand =
 			from code in IdentifierString.Where(s => Compiler.OpcodeIsDefined(s))
 			from ws in ManyWhitespace.Optional()
 			from operands in Parse.AnyChar.Until(Parse.LineTerminator).Text().Optional()
 			select CombineStringWithOptions(code, strFirst: true, ws, operands);
-
-		public static readonly Parser<string> GlobalFunction =
-			from token in Parse.String(".func")
-			from ws in ManyWhitespace
-			from name in IdentifierString.Token()
-			from ws2 in ManyWhitespace
-			from args in FunctionArguments
-			from ws3 in ManyWhitespace
-			from colon in Parse.Char(':')
-			from ws4 in ManyWhitespace
-			from access in FunctionAccessiblity
-			from ws5 in ManyWhitespace
-			from nl in Parse.LineEnd
-			from contents in LocalDefinition.Or(OpcodeAndOperand).Or(Parse.LineEnd).Until(Parse.String("end").Text()).Many()
-			select token + ws + name + ws2 + args + ws3 + colon + ws4 + access + ws5 + nl
-				+ string.Concat(contents.SelectMany(e => string.Join('\n', e)))
-				+ "\nend";
 
 		private static string CombineStringWithOptions(string str, bool strFirst, params IOption<char>[] options){
 			StringBuilder sb = new();
