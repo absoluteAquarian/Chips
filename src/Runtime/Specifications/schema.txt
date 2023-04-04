@@ -1,0 +1,600 @@
+﻿DEFINITIONS
+======================
+Flags:
+   C - Carry
+   N - Conversion
+   O - Comparison
+   P - Property Access, used by "conw" and other instructions to toggle whether the value is assigned or retrieved
+   R - Successful Regex
+   Z - Zero
+
+Registers:
+   A - Arithmetic
+   E - Exception, used by "try" to get the current exception in the catch-clause
+   X - Indexer
+   Y - Counter
+  SP - Stack Pointer, can be used like "[&SP-4]" when used as an operand
+   S - String, used when performing string-related operations
+
+Stack:  a static array of objects; stack size is determined via the ".stack" token
+
+NOTES
+======================
+- register usage is prefixed with "&" and flag usage is prefixed with "$"
+- hexadecimal numbers are postfixed with "h"
+- <obj> operands are stored as:
+  - offset 0: 1 byte
+    - type ID
+  - offset 1: N bytes
+    - byte representation of <obj>
+- <var> operands are stored as:
+  - offset 0: 1-4 bytes
+    - bit 0-1 of low byte: local variable (00), global variable (01), register (10) or flag (11)
+    - rest of integer: variable/register/flag index * 4
+      - value is an encoded integer, up to 30 bits
+- <arr> operands indicate variables of type <array>
+- <label> operands are stored as:
+  - offset 0: instruction offset
+    - 7-bit encoded integer
+- <type> operands are stored as type IDs:
+  - 1 byte (unless it's not a Chips alias), listed below:
+  - 00h: int
+    - 32-bit integer
+  - 01h: sbyte
+    - 8-bit integer
+  - 02h: short
+    - 16-bit integer
+  - 03h: long
+    - 64-bit integer
+  - 04h: uint
+    - 32-bit unsigned integer
+  - 05h: u8
+    - 8-bit unsigned integer
+  - 06h: u16
+    - 16-bit unsigned integer
+  - 07h: u64
+    - 64-bit unsigned integer
+  - 08h: bigint
+    - BigInteger
+  - 09h: float
+    - 32-bit float
+  - 0Ah: f64
+    - 64-bit float
+  - 0Bh: decimal
+    - 128-bit float
+  - 0Ch: object
+    - System.Object
+  - 0Dh: char
+    - 2-byte character
+  - 0Eh: string
+    - string
+  - 0Fh: index
+    - indexer
+  - 10h: array
+    - arrays
+  - 11h: range
+    - a range of integers
+  - 12h: list
+    - a dynamic-sized collection of objects
+  - 13h: time
+    - System.TimeSpan
+  - 14h: set
+    - arithmetic set of integers
+  - 15h: date
+    - System.DateTime
+  - 16h: regex
+    - a regular expression object
+  - 17h: bool
+    - boolean
+  - 18h: rand
+    - System.Random
+  - 19h: complex
+    - System.Complex
+  - 1Ah: unknown
+    - any type that isn't a Chips alias
+    - offset 1: N bytes
+      - a string representing the type name
+  - 1Bh: half
+    - 16-bit float
+- "sys" IDs
+  - 00: Language Version
+    - places "Chips vX" in the S register, where "X" is the current version (e.g. "1.0")
+  - 01: Press Any Key
+    - prompts the user with "Press Any Key to Exit...", waits for the user to press a key, then stops the program
+  - 02: Press Any Key + Clear Console
+    - clears the console, then does what "sys 1" would do
+
+OPCODES
+======================
+       _________________________________________________________________________________________________________________
+_______|__x0__|__x1__|__x2__|__x3__|__x4__|__x5__|__x6__|__x7__|__x8__|__x9__|__xA__|__xB__|__xC__|__xD__|__xE__|__xF__|
+|  0x  |  and |   or |  not |  xor |  ret |  ceq |  cgt |  clt |  cge |  cle |  psa |  psx |  psy |  asl |  asr |  clc |
+|  1x  |  btc |  bfc |  btn |  bfn |  bto |  bfo |  btr |  bfr |  btz |  bfz |   br | call |  pop |  rol |  ror |  cln |
+|  2x  |  and |   or |  len |  xor | <ex> |  ceq |  cgt |  clt |  cge |  cle |  poa |  pox |  poy | swap | <ex> |  clo |
+|  3x  |  add |  sub |  mul |  div |  pow |  art |   ln |  log |  blg |  abs |  neg |  psh |  pop |  pss |  pos |  clr |
+|  4x  |  add |  sub |  mul |  div |  pow |  art |  mov |  inl |  inc | incb | prnt |  psh | pntl |  dup | <ex> |  clz |
+|  5x  |  tax |  tay |  txa |  txy |  tya |  tyx |  mov | intp |  tas |  tsa |  inv | ldrg |  rem | dupd | <ex> |  stc |
+|  6x  |   is |  err |  isa | cast | prse |      |  mov |  bin | binz |  bit | bits | size |  rem | lsct | lscp |  clp |
+|  7x  |  sbs |  err | type | lens |  btp |  idx |  mov | sqrt |  exp |  bit |  brt |  brt |  brf |  brf |  lda |  stp |
+|  8x  |  inx |  dex |  iny |  dey |  bfp |  idx |  mov | idxv | psev |  rgs |  rge | stun | stin | stdj | stco | stdf |
+|  9x  | tryc | flor |  sin |  cos |  tan | asnh |  mov | rgxf | poev |  rgs |  rge | stun | stin | stdj | stco | stdf |
+|  Ax  | tryf | ceil | asin | acos | atan | acsh |  mov | rgxf | rgxm |  rgs |  rge | shas | aems |      |      |      |
+|  Bx  | rgxs | rgxm | sinh | cosh | tanh | atnh |  mov |      | poed |      |      | shas |      |      |      |      |
+|  Cx  |  sjn | sdiv | srmv | srep | atnt |  mov |  mov |      |      |      |      |      |      |      |      |      |
+|  Dx  |  sjn | sdiv | srmv | tryn | atnt |  mov |  mov |      |      |      |      |      |      |      |      |  sys |
+|  Ex  |  cpz | cpro | cpco |  cpo | cpcj | cprv | cpnr |  cpr |  cpi |      |      |      |      | csrv | wait |  sys |
+|  Fx  | conw | conh | cont | csrx | csry | cclb | cclf | caps | cnww | cnwh | conr | cnrf | cnrb |  cls | wait | halt |
+------------------------------------------------------------------------------------------------------------------------
+
+EXTENDED OPCODES
+======================
+[24] = TimeSpan Manipulation
+ 24 00 | tmad <obj>
+ 24 01 | tmad <var>
+ 24 02 | tmah <obj>
+ 24 03 | tmah <var>
+ 24 04 | tmai <obj>
+ 24 05 | tmai <var>
+ 24 06 | tmam <obj>
+ 24 07 | tmam <var>
+ 24 08 | tmat <obj>
+ 24 09 | tmat <var>
+ 24 0A | tmas <obj>
+ 24 0B | tmas <var>
+ 24 10 | tmcd
+ 24 11 | tmch
+ 24 12 | tmci
+ 24 13 | tmcm
+ 24 14 | tmt
+ 24 15 | tmcs
+ 24 16 | tmtd
+ 24 16 | tmth
+ 24 17 | tmti
+ 24 18 | tmtm
+ 24 19 | tmts
+ 24 20 | tmfm
+[2E] = New Objects
+ 2E 00 | new index
+ 2E 10 | new <type>[]
+ 2E 20 | new range
+ 2E 30 | new list, &Y
+ 2E 40 | new time
+ 2E 41 | new time, <obj>
+ 2E 42 | new time, <var>
+ 2E 50 | new set
+ 2E 51 | new set, <obj>
+ 2E 52 | new set, <var>
+ 2E 60 | new date
+ 2E 61 | new date, <obj>
+ 2E 62 | new date, <var>
+ 2E 70 | new regex
+ 2E 80 | new rand
+ 2E 81 | new rand, <obj>
+ 2E 82 | new rand, <var>
+ 2E 90 | new <constructor>
+[4E] = Random Manipulation
+ 4E 00 | rndi
+ 4E 01 | rndi <obj>
+ 4E 02 | rndi <var>
+ 4E 03 | rndi <obj>, <obj2>
+ 4E 04 | rndi <obj>, <var>
+ 4E 05 | rndi <var>, <obj>
+ 4E 06 | rndi <var>, <var2>
+ 4E 10 | rndf
+ 4E 11 | rndf <obj>
+ 4E 12 | rndf <var>
+ 4E 13 | rndf <obj>, <obj2>
+ 4E 14 | rndf <obj>, <var>
+ 4E 15 | rndf <var>, <obj>
+ 4E 16 | rndf <var>, <var2>
+ 4E 20 | rndd
+ 4E 21 | rndd <obj>
+ 4E 22 | rndd <var>
+ 4E 23 | rndd <obj>, <obj2>
+ 4E 24 | rndd <obj>, <var>
+ 4E 25 | rndd <var>, <obj>
+ 4E 26 | rndd <var>, <var2>
+ 4E 30 | rndl
+ 4E 31 | rndl <obj>
+ 4E 32 | rndl <var>
+ 4E 33 | rndl <obj>, <obj2>
+ 4E 34 | rndl <obj>, <var>
+ 4E 35 | rndl <var>, <obj>
+ 4E 36 | rndl <var>, <var2>
+ 4E 40 | rndb <arr>
+[5E] = DateTime Manipulation
+ 5E 00 | dtad <obj>
+ 5E 01 | dtah <obj>
+ 5E 02 | dtai <obj>
+ 5E 03 | dtam <obj>
+ 5E 04 | dtao <obj>
+ 5E 05 | dtat <obj>
+ 5E 06 | dtas <obj>
+ 5E 07 | dtay <obj>
+ 5E 08 | dtad <var>
+ 5E 09 | dtah <var>
+ 5E 0A | dtai <var>
+ 5E 0B | dtam <var>
+ 5E 0C | dtao <var>
+ 5E 0D | dtat <var>
+ 5E 0E | dtas <var>
+ 5E 0F | dtay <var>
+ 5E 10 | dtd
+ 5E 11 | dth
+ 5E 12 | dti
+ 5E 13 | dtm
+ 5E 14 | dto
+ 5E 15 | dtt
+ 5E 16 | dts
+ 5E 17 | dty
+ 5E 20 | dtfm
+ 5E 21 | dtn
+ 5E 22 | dte
+
+BYTECODE | OPCODE
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ 39      | abs ............................ performs A = Math.Abs(A)
+ A3      | acos ........................... performs A = Math.Acos(A)
+ A5      | acsh ........................... performs A = Math.Acosh(A)
+ 30      | add <obj> ...................... performs A = A + <obj>
+ 40      | add <var> ...................... performs A = A + <var>
+ AC      | aems ........................... sets A to the empty arithmetic set
+ 00      | and <obj> ...................... performs A = A & <obj>
+ 20      | and <var> ...................... performs A = A & <var>
+ 35      | art <obj> ...................... performs A = Math.Pow(A, 1 / <obj>)
+ 45      | art <var> ...................... performs A = Math.Pow(A, 1 / <var>)
+ A2      | asin ........................... performs A = Math.Asin(A)
+ 0D      | asl ............................ performs A = A << 1
+ 95      | asnh ........................... performs A = Math.Asinh(A)
+ 0E      | asr ............................ performs A = A >> 1
+ A4      | atan ........................... performs A = Math.Atan(A)
+ B5      | atnh ........................... performs A = Math.Atanh(A)
+ C4      | atnt <obj> ..................... performs A = Math.Atan2(A, <obj>)
+ D4      | atnt <var> ..................... performs A = Math.Atan2(A, <var>)
+
+ 11      | bfc <label> .................... branches to <label> iff the C flag is cleared
+ 13      | bfn <label> .................... branches to <label> iff the N flag is cleared
+ 15      | bfo <label> .................... branches to <label> iff the O flag is cleared
+ 84      | bfp <label> .................... branches to <label> iff the P flag is cleared
+ 17      | bfr <label> .................... branches to <label> iff the R flag is cleared
+ 19      | bfz <label> .................... branches to <label> iff the Z flag is cleared
+ 38      | blg ............................ performs A = Math.Log2(A)
+ 1A      | br <label> ..................... branches to <label> unconditionally
+ 7C      | brf <obj>, <label> ............. branches to <label> iff <obj> is zero (numbers, char), null (reference types) or empty (string, set, list, array)
+ 7D      | brf <var>, <label> ............. branches to <label> iff <var> is zero (numbers, char), null (reference types) or empty (string, set, list, array)
+ 7A      | brt <obj>, <label> ............. branches to <label> iff <obj> is non-zero (numbers, char), non-null (reference types) and non-empty (string, set, list, array)
+ 7B      | brt <var>, <label> ............. branches to <label> iff <var> is non-zero (numbers, char), non-null (reference types) and non-empty (string, set, list, array)
+ 10      | btc <label> .................... branches to <label> iff the C flag is set
+ 12      | btn <label> .................... branches to <label> iff the N flag is set
+ 14      | bto <label> .................... branches to <label> iff the O flag is set
+ 74      | btp <label> .................... branches to <label> iff the P flag is set
+ 16      | btr <label> .................... branches to <label> iff the R flag is set
+ 18      | btz <label> .................... branches to <label> iff the Z flag is set
+ 67      | bin ............................ puts the binary representation of A into S.  A must be an integer
+ 68      | binz ........................... puts the binary representation of A into S, including leading zeroes.  A must be an integer
+ 69      | bit <obj> ...................... performs A = GetBit(A, <obj>).  <obj> must be an integer
+ 79      | bit <var> ...................... performs A = GetBit(A, <var>).  <var> must be an integer
+ 6A      | bits ........................... replaces A with its bit representation.  A must be one of the floating-point types, and the resulting type of A depends on its initial type
+
+ 1B      | call <func> .................... jumps to <func>
+ F7      | caps ........................... sets A to whether CAPS LOCK is enabled as a <bool>
+ 63      | cast <type> .................... casts A to a variable of type <type>
+ F5      | cclb ........................... sets the background color of the console to A.  Expected value is an <int> between 0 and 15.  If the P flag is set, the value is copied to A instead
+ F6      | cclf ........................... sets the foreground color of the console to A.  Expected value is an <int> between 0 and 15.  If the P flag is set, the value is copied to A instead
+ A1      | ceil ........................... performs A = Math.Ceiling(A)
+ 05      | ceq <obj> ...................... sets the O flag iff A == <obj>
+ 25      | ceq <var> ...................... sets the O flag iff A == <var>
+ 08      | cge <obj> ...................... sets the O flag iff A >= <obj>
+ 28      | cge <var> ...................... sets the O flag iff A >= <var>
+ 06      | cgt <obj> ...................... sets the O flag iff A > <obj>
+ 26      | cgt <var> ...................... sets the O flag iff A > <var>
+ 0F      | clc ............................ clears the C flag
+ 09      | cle <obj> ...................... sets the O flag iff A <= <obj>
+ 29      | cle <var> ...................... sets the O flag iff A <= <var>
+ 1F      | cln ............................ clears the N flag
+ 2F      | clo ............................ clears the O flag
+ 6F      | clp ............................ clears the P flag
+ 3F      | clr ............................ clears the R flag
+ FD      | cls ............................ clears the console
+ 07      | clt <obj> ...................... sets the O flag iff A < <obj>
+ 08      | clt <var> ...................... sets the O flag iff A < <var>
+ 4F      | clz ............................ clears the Z flag
+ FC      | cnrb ........................... resets the console's background colour to its default
+ FB      | cnrf ........................... resets the console's foreground colour to its default
+ F9      | cnwh ........................... sets the console window's height.  A must be an <int>.  If the P flag is set, the value is copied to A instead
+ F8      | cnww ........................... sets the console window's width.  A must be an <int>.  If the P flag is set, the value is copied to A instead
+ F1      | conh ........................... sets the height of the console's text buffer to the value in A.  A must be an <int>.  If the P flag is set, the value is copied to A instead
+ FA      | conr ........................... resets the console's colours to their default values
+ F2      | cont ........................... sets the title of the console to S.  If the P flag is set, the value is copied to S instead
+ F0      | conw ........................... sets the width of the console's text buffer to the value in A.  A must be an <int>.  If the P flag is set, the value is copied to A instead
+ 93      | cos ............................ Performs A = Math.Cos(A)
+ B3      | cosh ........................... Performs A = Math.Cosh(A)
+ E4      | cpcj ........................... sets A to its complex conjugate (a - bi)
+ E2      | cpco ........................... performs A = 0 + 1i
+ E8      | cpi ............................ given a <complex> value in A, a + bi, performs A = b
+ E6      | cpnr ........................... given a <complex> value in A, a + bi, performs A = -a + bi
+ E3      | cpo ............................ performs A = 1 + 1i
+ E7      | cpr ............................ given a <complex> value in A, a + bi, performs A = a
+ E1      | cpro ........................... performs A = 1 + 0i
+ E5      | cprv ........................... given a <complex> value in A, a + bi, performs A = b + ai
+ E0      | cpz ............................ performs A = 0 + 0i
+ ED      | csrv ........................... sets whether the text cursor is visible.  A must be a <bool>.  If the P flag is set, the value is copied into A instead
+ F3      | csrx ........................... sets the column the text cursor is located at in the console to A.  A must be an <int>.  If the P flag is set, the value is copied to A instead
+ F4      | csry ........................... sets the row the text cursor is located at in the console to A.  A must be an <int>.  If the P flag is set, the value is copied to A instead
+
+ 81      | dex ............................ decrements X by 1
+ 83      | dey ............................ decrements Y by 1
+ 33      | div <obj> ...................... performs A = A / <obj>
+ 43      | div <var> ...................... performs A = A / <var>
+ 5E 00   | dtad <obj> ..................... adds <obj> days to A.  A must be a <date> instance
+ 5E 08   | dtad <var> ..................... adds <var> days to A.  A must be a <date> instance
+ 5E 01   | dtah <obj> ..................... adds <obj> hours to A.  A must be a <date> instance
+ 5E 09   | dtah <var> ..................... adds <var> hours to A.  A must be a <date> instance
+ 5E 02   | dtai <obj> ..................... adds <obj> minutes to A.  A must be a <date> instance
+ 5E 0A   | dtai <var> ..................... adds <var> minutes to A.  A must be a <date> instance
+ 5E 03   | dtam <obj> ..................... adds <obj> milliseconds to A.  A must be a <date> instance
+ 5E 0B   | dtam <var> ..................... adds <var> milliseconds to A.  A must be a <date> instance
+ 5E 04   | dtao <obj> ..................... adds <obj> months to A.  A must be a <date> instance
+ 5E 0C   | dtao <var> ..................... adds <var> months to A.  A must be a <date> instance
+ 5E 05   | dtat <obj> ..................... adds <obj> ticks to A.  A must be a <date> instance
+ 5E 0D   | dtat <var> ..................... adds <var> ticks to A.  A must be a <date> instance
+ 5E 06   | dtas <obj> ..................... adds <obj> seconds to A.  A must be a <date> instance
+ 5E 0E   | dtas <var> ..................... adds <var> seconds to A.  A must be a <date> instance
+ 5E 07   | dtay <obj> ..................... adds <obj> years to A.  A must be a <date> instance
+ 5E 0F   | dtay <var> ..................... adds <var> years to A.  A must be a <date> instance
+ 5E 10   | dtd ............................ gets the Days value from A and puts it into A.  A must be a <date> instance
+ 5E 22   | dte ............................ sets A to DateTime.UnixEpoch
+ 5E 20   | dtfm ........................... formats A according to S, then puts the result in S.  A must be a <date> instance
+ 5E 11   | dth ............................ gets the Hours value from A and puts it into A.  A must be a <date> instance
+ 5E 12   | dti ............................ gets the Minutes value from A and puts it into A.  A must be a <date> instance
+ 5E 13   | dtm ............................ gets the Milliseconds value from A and puts into A.  A must be a <date> instance
+ 5E 21   | dtn ............................ sets A to DateTime.Now
+ 5E 14   | dto ............................ gets the Months value from A and puts it into A.  A must be a <date> instance
+ 5E 15   | dtt ............................ gets the Ticks value from A and puts it into A.  A must be a <date> instance
+ 5E 16   | dts ............................ gets the Seconds value from A and puts it into A.  A must be a <date> instance
+ 5E 17   | dty ............................ gets the Years value from A and puts it into A.  A must be a <date> instance
+ 4D      | dup ............................ duplicates the value on the top of the Stack via reference duplication.  Both values will refer to the same object, should the type be a reference type
+ 5D      | dupd ........................... duplicates the value on the top of the Stack via deep cloning.  Neither value will refer to the same object
+
+ 61      | err ............................ throws an exception with the message string stored in S
+ 71      | err <obj> ...................... throws an exception with the message string <obj>.  <obj> is expected to be a <string>
+ 78      | exp ............................ performs A = Math.Exp(A)
+
+ 91      | flor ........................... performs A = Math.Floor(A)
+
+ FF      | halt ........................... stops the program.  The exit code is stored in X
+
+ 75      | idx <obj> ...................... performs X = A.IndexOf(<obj>)
+ 85      | idx <var> ...................... performs X = A.IndexOf(<var>)
+ 87      | idxv ........................... gets the "index value" of a <index> in A.  Negative values correspond to a reverse-end indexer
+ 48      | inc ............................ prompts the user with Console.Write(S), then waits for a character to be entered.  S stores the inputted character as a <string>
+ 49      | incb ........................... same as "inc", but the inputted character isn't printed
+ 47      | inl ............................ prompts the user with Console.Write(S), then waits for a line of characters to be entered.  S stores the inputted line
+ 57      | intp ........................... interpolates S using A.  A must be an <obj[]>
+ 5A      | inv ............................ performs A = 1 / A
+ 80      | inx ............................ increases X by 1
+ 82      | iny ............................ increases Y by 1
+ 65 40   | iob <obj> ...................... starts I/O stream <obj>
+ 65 41   | iob <var> ...................... starts I/O stream <var>
+ 65 42   | ioc <obj> ...................... closes I/O stream <obj>
+ 65 43   | ioc <var> ...................... closes I/O stream <var>
+ 65 30   | iofp <obj>, <obj2>, <obj3> ..... sets the stream position for stream <obj> based on <obj2> (the offset) and <obj3> (the seek type)
+ 65 31   | iofp <obj>, <obj2>, <var> ...... sets the stream position for stream <obj> based on <obj2> (the offset) and <var> (the seek type)
+ 65 32   | iofp <obj>, <var>, <obj2> ...... sets the stream position for stream <obj> based on <var> (the offset) and <obj2> (the seek type)
+ 65 33   | iofp <obj>, <var>, <var2> ...... sets the stream position for stream <obj> based on <var> (the offset) and <var2> (the seek type)
+ 65 34   | iofp <var>, <obj>, <obj2> ...... sets the stream position for stream <var> based on <obj> (the offset) and <obj2> (the seek type)
+ 65 35   | iofp <var>, <obj>, <var2> ...... sets the stream position for stream <var> based on <obj> (the offset) and <var2> (the seek type)
+ 65 36   | iofp <var>, <var2>, <obj> ...... sets the stream position for stream <var> based on <var2> (the offset) and <obj> (the seek type)
+ 65 37   | iofp <var>, <var2>, <var3> ..... sets the stream position for stream <var> based on <var2> (the offset) and <var3> (the seek type)
+ 65 00   | ior <obj>, <type> .............. reads a value of type <type> from stream <obj> and stores it in A
+ 65 01   | ior <var>, <type> .............. reads a value of type <type> from stream <var> and stores it in A
+ 65 20   | ios <obj>, <obj2>, <obj3> ...... sets setting <obj2> of stream <obj> to <obj3>
+ 65 21   | ios <obj>, <obj2>, <var> ....... sets setting <obj2> of stream <obj> to <var>
+ 65 22   | ios <obj>, <var>, <obj2> ....... sets setting <var> of stream <obj> to <obj2>
+ 65 23   | ios <obj>, <var>, <var2> ....... sets setting <var> of stream <obj> to <var2>
+ 65 24   | ios <var>, <obj>, <obj2> ....... sets setting <obj> of stream <var> to <obj2>
+ 65 25   | ios <var>, <obj>, <var2> ....... sets setting <obj> of stream <var> to <var2>
+ 65 26   | ios <var>, <var2>, <obj> ....... sets setting <var2> of stream <var> to <obj>
+ 65 27   | ios <var>, <var2>, <var3> ...... sets setting <var2> of stream <var> to <var3>
+ 65 28   | ios <obj>, <obj2> .............. gets setting <obj2> of stream <obj> and stores it in A
+ 65 29   | ios <var>, <obj> ............... gets setting <obj> of stream <var> and stores it in A
+ 65 2A   | ios <obj>, <var> ............... gets setting <var> of stream <obj> and stores it in A
+ 65 2B   | ios <var>, <var2> .............. gets setting <var2> of stream <var> and stores it in A
+ 65 10   | iow <obj>, <obj2> .............. writes <obj2> to stream <obj>
+ 65 11   | iow <obj>, <var> ............... writes <var> to stream <obj>
+ 65 12   | iow <var>, <obj> ............... writes <obj> to stream <var>
+ 65 13   | iow <var>, <var2> .............. writes <var2> to stream <var>
+ 60      | is <type> ...................... sets the O flag iff the type of A matches <type>.  For checking if A is an array, use "array" as the type
+ 62      | isa <type> ..................... sets the O flag iff A is an array and its element type matches <type>
+
+ 7E      | lda <obj> ...................... loads function argument <obj> and pushes it to the Evaluation Stack.  <obj> must be an integer
+ 5B      | ldrg ........................... sets A to the program's arguments (a <string[]>)
+ 22      | len ............................ performs A = length(A)
+ 73      | lens ........................... resizes a <list> in A to have the length specified in Y
+ 36      | ln  ............................ performs A = Math.Log(A)
+ 37      | log ............................ performs A = Math.Log10(A)
+ 6E      | lscp ........................... performs A = A.Capacity -- A must be a <list>
+ 6D      | lsct ........................... performs A = A.Count -- A must be a <list>
+
+ 46      | mov <var>, <obj> ............... moves <obj> into <var>
+ 56      | mov <var>, <var2> .............. moves <var2> into <var>
+ 66      | mov [<arr>, &X], <obj> ......... moves <obj> into <arr>, indexed with X
+ 76      | mov [<arr>, &Y], <obj> ......... moves <obj> into <arr>, indexed with Y
+ 86      | mov <var>, [<arr>, &X] ......... moves <arr>, indexed with X, into <var>
+ 96      | mov <var>, [<arr>, &Y] ......... moves <arr>, indexed with Y, into <var>
+ A6      | mov [<arr>, &X], <var> ......... moves <var> into <arr>, indexed with X
+ B6      | mov [<arr>, &Y], <var> ......... moves <var> into <arr>, indexed with Y
+ C6      | mov [<arr>, &X], [<arr2>, &Y] .. moves <arr2>, indexed with Y, into <arr>, indexed with X
+ D6      | mov [<arr>, &Y], [<arr2>, &X] .. moves <arr2>, indexed with X, into <arr>, indexed with Y
+ C5      | mov [<arr>, &X], [<arr2>, &Y] .. moves <arr2>, indexed with X, into <arr>, indexed with X
+ D5      | mov [<arr>, &Y], [<arr2>, &Y] .. moves <arr2>, indexed with Y, into <arr>, indexed with Y
+ 32      | mul <obj> ...................... performs A = A * <obj>
+ 42      | mul <var> ...................... performs A = A * <var>
+
+ 3A      | neg ............................ performs A = -A
+ 2E 00   | new index ...................... pushes a new indexer value to the Stack, where X is the value of the indexer
+ 2E 10   | new <type>[] ................... pushes a new array of <type> values to the Stack, where X is how many elements are in the array
+ 2E 60   | new date ....................... pushes DateTime.MinValue to the Stack
+ 2E 61   | new date, <obj> ................ pushes a new <date> instance to the Stack based on the value of <obj>
+ 2E 62   | new date, <var> ................ pushes a new <date> instance to the Stack based on the value of <var>
+ 2E 30   | new list, &Y ................... pushes a new <list> to the Stack whose initial capacity is set to Y
+ 2E 80   | new rand ....................... pushes a new <rand> instance to the Stack
+ 2E 81   | new rand, <obj> ................ pushes a new <rand> instance to the Stack with <obj> as the seed
+ 2E 82   | new rand, <var> ................ pushes a new <rand> instance to the Stack with <var> as the seed
+ 2E 20   | new range ...................... pushes a new <range> instance to the Stack, where X is the start of the range and Y is the end
+ 2E 70   | new regex ...................... pushes a new <regex> instance to the Stack, where S is the matching string
+ 2E 50   | new set ........................ pushes a new empty <set> to the Stack
+ 2E 51   | new set, <obj> ................. pushes a new <set> instance to the Stack whose initial values are in <obj>.  <obj> is expected to be an array of number types
+ 2E 52   | new set, <var> ................. pushes a new <set> instance to the Stack whose initial values are in <var>.  <var> is expected to be an array of number types
+ 2E 40   | new time ....................... pushes TimeSpan.Zero to the stack
+ 2E 41   | new time, <obj> ................ pushes a new <time> instance to the Stack based on the value of <obj>
+ 2E 42   | new time, <var> ................ pushes a new <time> instance to the Stack based on the value of <var>
+ 2E 90   | new <constructor> .............. calls the constructor method <constructor> and pushes the object to the Stack
+ 02      | not ............................ performs A = ~A
+
+ 01      | or <obj>  ...................... performs A = A | <obj>
+ 21      | or <var>  ...................... performs A = A | <var>
+ 
+ 4C      | pntl ........................... prints A with a newline
+ 2A      | poa ............................ pops a value from the Stack and puts it into A
+ B8      | poed ........................... pops a value from the Evaluation Stack (internal mechanism in C#) and discards the value
+ 98      | poev <type> .................... pops a value from the Evaluation Stack (internal mechanism in C#), unboxes the value to <type> and sets the result to A
+ 1C      | pop ............................ pops a value from the Stack
+ 3C      | pop <var> ...................... pops a value from the Stack and puts it into <var>
+ 3E      | pos ............................ pops a value from the Stack and puts it into S
+ 34      | pow <obj> ...................... performs A = Math.Pow(A, <obj>)
+ 44      | pow <var> ...................... performs A = Math.Pow(A, <var>)
+ 2B      | pox ............................ pops a value from the Stack and puts it into X
+ 2C      | poy ............................ pops a value from the Stack and puts it into Y
+ 4A      | prnt ........................... prints A
+ 64      | prse <type> .................... parses S into a value of type <type>.  If the parsing was successful, the parsed value is put into A and the N flag is set
+ 0A      | psa ............................ pushes A to the Stack
+ 88      | psev <type> .................... pushes A to the Evaluation Stack (internal mechanism in C#), boxing the value to <type>.  Used to return values from a function
+ 3B      | psh <obj> ...................... pushes <obj> to the stack
+ 4B      | psh <var> ...................... pushes <var> to the stack
+ 3D      | pss ............................ pushes S to the Stack
+ 0B      | psx ............................ pushes X to the Stack
+ 0C      | psy ............................ pushes Y to the Stack
+
+ 5C      | rem <obj> ...................... performs A = A % <obj>
+ 6C      | rem <var> ...................... performs A = A % <var>
+ 04      | ret ............................ returns immediately from the current function
+ 8A      | rge ............................ sets A to the end component of a <range> in A
+ 9A      | rge <obj> ...................... sets the end component of a <range> in A to <obj>
+ AA      | rge <var> ...................... sets the end component of a <range> in A to <var>
+ 89      | rgs ............................ sets A to the start component of a <range> in A
+ 99      | rgs <obj> ...................... sets the start component of a <range> in A to <obj>
+ A9      | rgs <var> ...................... sets the start component of a <range> in A to <var>
+ 97      | rgxf <obj> ..................... given a <regex> instance in A, performs S = A.ReplaceString(S, <obj>)
+ A7      | rgxf <var> ..................... given a <regex> instance in A, performs S = A.ReplaceString(S, <var>)
+ B1      | rgxm <obj> ..................... gets match <obj> in the <regex> in A and puts it into S
+ A8      | rgxm <var> ..................... gets match <var> in the <regex> in A and puts it into S
+ B0      | rgxs ........................... sets the R flag iff the <regex> in A could find a match from S and also sets the "matches" collection inside of the <regex> in A
+ 4E 40   | rndb <arr> ..................... uses a <rand> instance in A to fill <arr> with random bytes.  <arr> must be an <u8[]>
+ 4E 20   | rndd ........................... uses a <rand> instance in A to generate an f64 in [0, 1) and sets the result to A
+ 4E 21   | rndd <obj> ..................... uses a <rand> instance in A to generate an f64 in [0, <obj>) and sets the result to A
+ 4E 22   | rndd <var> ..................... uses a <rand> instance in A to generate an f64 in [0, <var>) and sets the result to A
+ 4E 23   | rndd <obj>, <obj2> ............. uses a <rand> instance in A to generate an f64 in [<obj>, <obj2>) and sets the result to A
+ 4E 24   | rndd <obj>, <var> .............. uses a <rand> instance in A to generate an f64 in [<obj>, <var>) and sets the result to A
+ 4E 25   | rndd <var>, <obj> .............. uses a <rand> instance in A to generate an f64 in [<var>, <obj>) and sets the result to A
+ 4E 26   | rndd <var>, <var2> ............. uses a <rand> instance in A to generate an f64 in [<var>, <var2>) and sets the result to A
+ 4E 10   | rndf ........................... uses a <rand> instance in A to generate an float in [0, 1) and sets the result to A
+ 4E 11   | rndf <obj> ..................... uses a <rand> instance in A to generate an float in [0, <obj>) and sets the result to A
+ 4E 12   | rndf <var> ..................... uses a <rand> instance in A to generate an float in [0, <var>) and sets the result to A
+ 4E 13   | rndf <obj>, <obj2> ............. uses a <rand> instance in A to generate an float in [<obj>, <obj2>) and sets the result to A
+ 4E 14   | rndf <obj>, <var> .............. uses a <rand> instance in A to generate an float in [<obj>, <var>) and sets the result to A
+ 4E 15   | rndf <var>, <obj> .............. uses a <rand> instance in A to generate an float in [<var>, <obj>) and sets the result to A
+ 4E 16   | rndf <var>, <var2> ............. uses a <rand> instance in A to generate an float in [<var>, <var2>) and sets the result to A
+ 4E 00   | rndi ........................... uses a <rand> instance in A to generate an int in [0, int.MaxValue) and sets the result to A
+ 4E 01   | rndi <obj> ..................... uses a <rand> instance in A to generate an int in [0, <obj>) and sets the result to A
+ 4E 02   | rndi <var> ..................... uses a <rand> instance in A to generate an int in [0, <var>) and sets the result to A
+ 4E 03   | rndi <obj>, <obj2> ............. uses a <rand> instance in A to generate an int in [<obj>, <obj2>) and sets the result to A
+ 4E 04   | rndi <obj>, <var> .............. uses a <rand> instance in A to generate an int in [<obj>, <var>) and sets the result to A
+ 4E 05   | rndi <var>, <obj> .............. uses a <rand> instance in A to generate an int in [<var>, <obj>) and sets the result to A
+ 4E 06   | rndi <var>, <var2> ............. uses a <rand> instance in A to generate an int in [<var>, <var2>) and sets the result to A
+ 4E 30   | rndl ........................... uses a <rand> instance in A to generate an long in [0, long.maxValue) and sets the result to A
+ 4E 31   | rndl <obj> ..................... uses a <rand> instance in A to generate an long in [0, <obj>) and sets the result to A
+ 4E 32   | rndl <var> ..................... uses a <rand> instance in A to generate an long in [0, <var>) and sets the result to A
+ 4E 33   | rndl <obj>, <obj2> ............. uses a <rand> instance in A to generate an long in [<obj>, <obj2>) and sets the result to A
+ 4E 34   | rndl <obj>, <var> .............. uses a <rand> instance in A to generate an long in [<obj>, <var>) and sets the result to A
+ 4E 35   | rndl <var>, <obj> .............. uses a <rand> instance in A to generate an long in [<var>, <obj>) and sets the result to A
+ 4E 36   | rndl <var>, <var2> ............. uses a <rand> instance in A to generate an long in [<var>, <var2>) and sets the result to A
+ 1D      | rol ............................ rotates the bits between the C flag and A.  E.g. A BCDEFGHI ==> B CDEFGHIA
+ 1E      | ror ............................ rotates the bits between the C flag and A.  E.g. A BCDEFGHI ==> I ABCDEFGH
+
+ 70      | sbs ............................ performs S = S.Substring(X, Y)
+ C1      | sdiv <obj> ..................... performs A = string.Split(S, <obj>)
+ D1      | sdiv <var> ..................... performs A = string.Split(S, <var>)
+ AB      | shas <obj> ..................... sets the O flag iff A contains <obj>.  A must be a <set> instance
+ BB      | shas <var> ..................... sets the O flag iff A contains <var>.  A must be a <set> instance
+ 92      | sin ............................ performs A = Math.Sin(A)
+ B2      | sinh ........................... performs A = Math.Sinh(A)
+ 6B      | size ........................... performs A = sizeof(A)
+ C0      | sjn <obj> ...................... performs S = string.Join(A, <obj>)
+ D0      | sjn <var> ...................... performs S = string.Join(A, <var>)
+ 77      | sqrt ........................... performs A = Math.Sqrt(A)
+ C3      | srep ........................... performs S = Duplicate(S, A)
+ C2      | srmv <obj> ..................... performs S = S.Remove(<obj>)
+ D2      | srmv <var> ..................... performs S = S.Remove(<var>)
+ 5F      | stc ............................ sets the C flag
+ 8E      | stco <obj> ..................... performs A = Ac, given <obj> as the set universe.  A and <obj> must be <set> instances
+ 9E      | stco <var> ..................... performs A = Ac, given <var> as the set universe.  A and <var> must be <set> instances
+ 8F      | stdf <obj> ..................... performs A = A - <obj>.  A and <obj> must be <set> instances
+ 9F      | stdf <var> ..................... performs A = A - <var>.  A and <var> must be <set> instances
+ 8D      | stdj <obj> ..................... sets the O flag iff A is disjoint with <obj>.  A and <obj> must be <set> instances
+ 9D      | stdj <var> ..................... sets the O flag iff A is disjoint with <var>.  A and <var> must be <set> instances
+ 8C      | stin <obj> ..................... performs A = A ∩ <obj>.  A and <obj> must be <set> instances
+ 9C      | stin <var> ..................... performs A = A ∩ <var>.  A and <var> must be <set> instances
+ 7F      | stp ............................ sets the P flag
+ 8B      | stun <obj> ..................... performs A = A ∪ <obj>.  A and <obj> must be <set> instances
+ 9D      | stun <var> ..................... performs A = A ∪ <var>.  A and <var> must be <set> instances
+ 31      | sub <obj> ...................... performs A = A - <obj>
+ 41      | sub <var> ...................... performs A = A - <var>
+ 2D      | swap ........................... swaps the positions of the top two elements on the Stack
+ DF      | sys <obj> ...................... calls one of the defined "system calls". <obj> must be an <int>
+ EF      | sys <var> ...................... calls one of the defined "system calls". <var> must be an <int>
+
+ 94      | tan ............................ performs A = Math.Tan(A)
+ B4      | tanh ........................... performs A = Math.Tanh(A)
+ 58      | tas ............................ copies A into S
+ 51      | tax ............................ copies A into X
+ 52      | tay ............................ copies A into Y
+ 24 00   | tmad <obj> ..................... adds <obj> days to A.  A must be a <time> instance
+ 24 01   | tmad <var> ..................... adds <var> days to A.  A must be a <time> instance
+ 24 02   | tmah <obj> ..................... adds <obj> hours to A.  A must be a <time> instance
+ 24 03   | tmah <var> ..................... adds <var> hours to A.  A must be a <time> instance
+ 24 04   | tmai <obj> ..................... adds <obj> minutes to A.  A must be a <time> instance
+ 24 05   | tmai <var> ..................... adds <var> minutes to A.  A must be a <time> instance
+ 24 06   | tmam <obj> ..................... adds <obj> milliseconds to A.  A must be a <time> instance
+ 24 07   | tmam <var> ..................... adds <var> milliseconds to A.  A must be a <time> instance
+ 24 0A   | tmas <obj> ..................... adds <obj> seconds to A.  A must be a <time> instance
+ 24 0B   | tmas <var> ..................... adds <var> seconds to A.  A must be a <time> instance
+ 24 08   | tmat <obj> ..................... adds <obj> ticks to A.  A must be a <time> instance
+ 24 09   | tmat <var> ..................... adds <var> ticks to A.  A must be a <time> instance
+ 24 10   | tmcd ........................... gets the Days value from A and puts it into A.  A must be a <time> instance
+ 24 11   | tmch ........................... gets the Hours value from A and puts it into A.  A must be a <time> instance
+ 24 12   | tmci ........................... gets the Minutes value from A and puts it into A.  A must be a <time> instance
+ 24 13   | tmcm ........................... gets the Milliseconds value from A and puts it into A.  A must be a <time> instance
+ 24 15   | tmcs ........................... gets the TotalSeconds value from A and puts it into A.  A must be a <time> instance
+ 24 20   | tmfm ........................... formats A according to S, then puts the result in S.  A must be a <time> instance
+ 24 14   | tmt ............................ gets the Ticks value from A and puts it into A.  A must be a <time> instance
+ 24 16   | tmtd ........................... gets the TotalDays value from A and puts it into A.  A must be a <time> instance
+ 24 17   | tmth ........................... gets the TotalHours value from A and puts it into A.  A must be a <time> instance
+ 24 18   | tmti ........................... gets the TotalMinutes value from A and puts it into A.  A must be a <time> instance
+ 24 19   | tmtm ........................... gets the TotalMilliseconds value from A and puts it into A.  A must be a <time> instance
+ 24 1A   | tmts ........................... gets the TotalSeconds value from A and puts it into A.  A must be a <time> instance
+ 90      | tryc <label> ................... enters a try-clause, where <label> points to the start of the catch-clause
+ A0      | tryf <label>, <label2> ......... enters a try-clause, where <label> points to the start of the catch-clause and <label2> points to the start of the finally-clause
+ D3      | tryn <label> ................... enters a try-clause, where <label> points to the start of the finally-clause (no catch clause)
+ 59      | tsa ............................ copies S into A
+ 53      | txa ............................ copies X into A
+ 54      | txy ............................ copies X into Y
+ 55      | tya ............................ copies Y into A
+ 72      | type ........................... puts the string representation of the type of A into S
+ 56      | tyx ............................ copies Y into X
+
+ EE      | wait <obj> ..................... pauses execution for <obj> milliseconds
+ FE      | wait <var> ..................... pauses execution for <var> milliseconds
+
+ 03      | xor <obj> ...................... performs A = A ^ <obj>
+ 23      | xor <var> ...................... performs A = A ^ <var>

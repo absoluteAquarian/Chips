@@ -3,7 +3,7 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net6.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
+    <ImplicitUsings>disable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <LangVersion>preview</LangVersion>
     <AssemblyName>chipsc</AssemblyName>
@@ -19,23 +19,55 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Remove="src\Compilation\BytecodeFunction.cs~RF546e6065.TMP" />
-  </ItemGroup>
-
-  <ItemGroup>
     <PackageReference Include="Mono.Cecil" Version="0.11.4" />
     <PackageReference Include="Sprache" Version="2.3.1" />
     <PackageReference Include="System.CodeDom" Version="6.0.0" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Reference Include="Chips.Core">
-      <HintPath>Chips.Core.dll</HintPath>
-    </Reference>
+	<PackageReference Include="DecimalMath.DecimalEx" Version="1.0.2" />
   </ItemGroup>
 
   <ItemGroup>
     <Folder Include="stdlib\" />
+  </ItemGroup>
+  
+  <ItemGroup>
+    <None Include="src\Runtime\Types\NumberProcessing\InternalTypes.cs">
+      <DesignTime>True</DesignTime>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>InternalTypes.tt</DependentUpon>
+    </None>
+    <None Include="src\Runtime\Utility\ValueConverter.Casting.cs">
+      <DesignTime>True</DesignTime>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>ValueConverter.Casting.tt</DependentUpon>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="src\Runtime\Types\NumberProcessing\InternalTypes.tt">
+      <Generator>TextTemplatingFileGenerator</Generator>
+      <LastGenOutput>InternalTypes.cs</LastGenOutput>
+    </None>
+    <None Update="src\Runtime\Utility\ValueConverter.Casting.tt">
+      <Generator>TextTemplatingFileGenerator</Generator>
+      <LastGenOutput>ValueConverter.Casting.cs</LastGenOutput>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Service Include="{508349b6-6b84-4df5-91f0-309beebad82d}" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Update="src\Runtime\Types\NumberProcessing\InternalTypes.cs">
+      <DesignTime>True</DesignTime>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>InternalTypes.tt</DependentUpon>
+    </Compile>
+    <Compile Update="src\Runtime\Utility\ValueConverter.Casting.cs">
+      <DesignTime>True</DesignTime>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>ValueConverter.Casting.tt</DependentUpon>
+    </Compile>
   </ItemGroup>
 
 </Project>

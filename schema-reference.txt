@@ -1,0 +1,57 @@
+﻿// This file serves as an example of how Chips code is structured
+
+.asm_name Project
+.stack 500
+
+.namespace Sample {
+	.class assembly static Program {
+		.func public static Main() {
+			.locals [
+				args = string[]
+			]
+			
+			clo
+			clz
+			
+			ldrg
+			mov args, &A
+
+			len
+			btz NoArgs
+
+			ceq 1
+			bfo TooManyArgs
+
+			new object[]
+			pop &A
+
+			mov &X, 0
+			mov [&A, &X], [args, &X]
+
+			mov &S, "Program argument: {0}"
+			intp
+
+			tsa
+			
+			pntl
+
+			// Namespaces/types aren't needed for functions in the same class
+			// If a function does not have any overloads, the parameters do not need to be specified
+			call Interop
+			
+			ret
+		NoArgs:
+		TooManyArgs:
+			err "Expected one argument"
+			ret
+		}
+
+		.func private static Interop() {
+			// Example of using the evaluation stack and C# methods
+			psev "Hello from the Interop() function!"
+			call [mscorlib] System.Console::WriteLine(string)
+
+			ret
+		}
+	}
+}
