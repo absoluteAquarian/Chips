@@ -3,6 +3,8 @@
 .asm_name Project
 .stack 500
 
+.include System
+
 .namespace Sample {
 	.class assembly static Program {
 		.func public static Main() {
@@ -49,7 +51,7 @@
 		.func private static Interop() {
 			// Example of using the evaluation stack and C# methods
 			psev "Hello from the Interop() function!"
-			call [mscorlib] System.Console::WriteLine(string)
+			call Console::WriteLine(string)  // Alternatively:  call System.Console::WriteLine(string)
 
 			ret
 		}

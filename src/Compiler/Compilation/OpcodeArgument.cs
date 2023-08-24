@@ -8,6 +8,9 @@ using Mono.Cecil.Cil;
 using System;
 using System.IO;
 using System.Numerics;
+using System.Reflection;
+using System.Text;
+using System.Text.RegularExpressions;
 
 namespace Chips.Compilation {
 	internal abstract class OpcodeArgument {
@@ -24,7 +27,9 @@ namespace Chips.Compilation {
 
 		internal abstract void Compile(ILProcessor il, string sourceFile);
 
-		internal abstract void Bake(BinaryWriter writer, string sourceFile);
+		internal virtual void Bake(BinaryWriter writer, string sourceFile) {
+			writer.Write(Data);
+		}
 	}
 
 	internal class OpcodeArgumentConstant : OpcodeArgument {
@@ -47,6 +52,31 @@ namespace Chips.Compilation {
 				case OperandType.Random:
 				case OperandType.UserDef:
 					throw new IOException($"Constant type {valueType} cannot be used as a constant");
+			}
+		}
+
+		internal override void Bake(BinaryWriter writer, string sourceFile) {
+			switch (valueType) {
+				case OperandType.I32:
+				case OperandType.I16:
+				case OperandType.I8:
+				case OperandType.U32:
+				case OperandType.U8:
+				case OperandType.U16:
+				case OperandType.Char:
+				case OperandType.Bool:
+				case OperandType.I64:
+				case OperandType.U64:
+				case OperandType.F32:
+				case OperandType.F16:
+				case OperandType.F64:
+				case OperandType.F128:
+				case OperandType.String:
+					writer.Write(Data);
+					break;
+				default:
+					ChipsCompiler.exceptions.Add(new(sourceFile, "Could not compile constant type: " + valueType));
+					break;
 			}
 		}
 
@@ -94,45 +124,6 @@ namespace Chips.Compilation {
 					break;
 			}
 		}
-
-		internal override void Bake(BinaryWriter writer, string sourceFile) {
-			writer.Write((byte)valueType);
-			switch (valueType) {
-				case OperandType.I32:
-					break;
-				case OperandType.I16:
-					break;
-				case OperandType.I8:
-					break;
-				case OperandType.U32:
-					break;
-				case OperandType.U8:
-					break;
-				case OperandType.U16:
-					break;
-				case OperandType.Char:
-					break;
-				case OperandType.Bool:
-					break;
-				case OperandType.I64:
-					break;
-				case OperandType.U64:
-					break;
-				case OperandType.F32:
-					break;
-				case OperandType.F16:
-					break;
-				case OperandType.F64:
-					break;
-				case OperandType.F128:
-					break;
-				case OperandType.String:
-					break;
-				default:
-					ChipsCompiler.exceptions.Add(new(sourceFile, "Could not compile constant type: " + valueType));
-					break;
-			}
-		}
 	}
 
 	//Handles Local/Global variables, Registers and Flags
@@ -153,6 +144,7 @@ namespace Chips.Compilation {
 
 		internal protected OpcodeArgumentVariable(byte[] data, OperandInformationType typeOverride) : base(data, typeOverride) {
 			byte flags = data[0];
+
 			int index = data.Get7BitEncodedInt(1, out int offset);
 			valueDataOffset = offset + 1;
 
@@ -246,6 +238,14 @@ namespace Chips.Compilation {
 			int index = 0;
 			referencedType = data.GetStringFromData(ref index);
 		}
+
+		internal override void Bake(BinaryWriter writer, string sourceFile) {
+			throw new NotImplementedException();
+		}
+
+		internal override void Compile(ILProcessor il, string sourceFile) {
+			throw new NotImplementedException();
+		}
 	}
 
 	//Used in "release" builds
@@ -277,14 +277,14 @@ namespace Chips.Compilation {
 				OperandType.Object => typeof(object),
 				OperandType.Char => typeof(char),
 				OperandType.String => typeof(string),
-				OperandType.Indexer => typeof(.RuntimeTypes.Indexer),
+				OperandType.Indexer => typeof(Runtime.Types.Indexer),
 				OperandType.Array => typeof(Array),
-				OperandType.Range => typeof(.RuntimeTypes.Range),
-				OperandType.List => typeof(.RuntimeTypes.List),
+				OperandType.Range => typeof(Runtime.Types.Range),
+				OperandType.List => typeof(Runtime.Types.List),
 				OperandType.Time => typeof(TimeSpan),
-				OperandType.Set => typeof(.RuntimeTypes.ArithmeticSet),
+				OperandType.Set => typeof(Runtime.Types.ArithmeticSet),
 				OperandType.Date => typeof(DateTime),
-				OperandType.Regex => typeof(.RuntimeTypes.Regex),
+				OperandType.Regex => typeof(Runtime.Types.Regex),
 				OperandType.Bool => typeof(bool),
 				OperandType.Random => typeof(Random),
 				OperandType.Complex => typeof(Complex),
@@ -303,14 +303,58 @@ namespace Chips.Compilation {
 				userDefinedType = data.GetStringFromData(ref index);
 			}
 		}
+
+		internal override void Bake(BinaryWriter writer, string sourceFile) {
+			throw new NotImplementedException();
+		}
+
+		internal override void Compile(ILProcessor il, string sourceFile) {
+			throw new NotImplementedException();
+		}
 	}
 
 	internal class OpcodeArgumentFunctionCall : OpcodeArgument {
+		// Formats:
+		//   NAMESPACE.TYPE::METHOD(ARG,LIST)
+		//   TYPE::METHOD(ARG,LIST)
+		//   TYPE<GENERIC,ARGS>::METHOD(ARG,LIST)
 		public readonly string functionIdentifier;
 
 		public OpcodeArgumentFunctionCall(byte[] data) : base(data, OperandInformationType.FunctionCall) {
 			int index = 0;
 			functionIdentifier = data.GetStringFromData(ref index);
+		}
+
+		internal override void Bake(BinaryWriter writer, string sourceFile) {
+			throw new NotImplementedException();
+		}
+
+		internal override void Compile(ILProcessor il, string sourceFile) {
+			// Parse identifier
+
+		}
+
+		private void GetFunctionInformation(string sourceFile, out Type type, out MethodInfo method) {
+			type = null!;
+			method = null!;
+
+			int len = functionIdentifier.Length;
+
+			StringBuilder phrase = new();
+
+			for (int i = 0; i < len; i++) {
+				char c = functionIdentifier[i];
+
+				if (type is null && c == ':') {
+					// Next char must also be a colon
+					if (c == len - 1 || functionIdentifier[len + 1] != ':') {
+						ChipsCompiler.exceptions.Add(new CompilationException(sourceFile, "Parent type for function declaration could not be resolved"));
+						return;
+					}
+
+
+				}
+			}
 		}
 	}
 

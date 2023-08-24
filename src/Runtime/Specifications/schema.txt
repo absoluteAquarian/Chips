@@ -374,36 +374,6 @@ BYTECODE | OPCODE
  5A      | inv ............................ performs A = 1 / A
  80      | inx ............................ increases X by 1
  82      | iny ............................ increases Y by 1
- 65 40   | iob <obj> ...................... starts I/O stream <obj>
- 65 41   | iob <var> ...................... starts I/O stream <var>
- 65 42   | ioc <obj> ...................... closes I/O stream <obj>
- 65 43   | ioc <var> ...................... closes I/O stream <var>
- 65 30   | iofp <obj>, <obj2>, <obj3> ..... sets the stream position for stream <obj> based on <obj2> (the offset) and <obj3> (the seek type)
- 65 31   | iofp <obj>, <obj2>, <var> ...... sets the stream position for stream <obj> based on <obj2> (the offset) and <var> (the seek type)
- 65 32   | iofp <obj>, <var>, <obj2> ...... sets the stream position for stream <obj> based on <var> (the offset) and <obj2> (the seek type)
- 65 33   | iofp <obj>, <var>, <var2> ...... sets the stream position for stream <obj> based on <var> (the offset) and <var2> (the seek type)
- 65 34   | iofp <var>, <obj>, <obj2> ...... sets the stream position for stream <var> based on <obj> (the offset) and <obj2> (the seek type)
- 65 35   | iofp <var>, <obj>, <var2> ...... sets the stream position for stream <var> based on <obj> (the offset) and <var2> (the seek type)
- 65 36   | iofp <var>, <var2>, <obj> ...... sets the stream position for stream <var> based on <var2> (the offset) and <obj> (the seek type)
- 65 37   | iofp <var>, <var2>, <var3> ..... sets the stream position for stream <var> based on <var2> (the offset) and <var3> (the seek type)
- 65 00   | ior <obj>, <type> .............. reads a value of type <type> from stream <obj> and stores it in A
- 65 01   | ior <var>, <type> .............. reads a value of type <type> from stream <var> and stores it in A
- 65 20   | ios <obj>, <obj2>, <obj3> ...... sets setting <obj2> of stream <obj> to <obj3>
- 65 21   | ios <obj>, <obj2>, <var> ....... sets setting <obj2> of stream <obj> to <var>
- 65 22   | ios <obj>, <var>, <obj2> ....... sets setting <var> of stream <obj> to <obj2>
- 65 23   | ios <obj>, <var>, <var2> ....... sets setting <var> of stream <obj> to <var2>
- 65 24   | ios <var>, <obj>, <obj2> ....... sets setting <obj> of stream <var> to <obj2>
- 65 25   | ios <var>, <obj>, <var2> ....... sets setting <obj> of stream <var> to <var2>
- 65 26   | ios <var>, <var2>, <obj> ....... sets setting <var2> of stream <var> to <obj>
- 65 27   | ios <var>, <var2>, <var3> ...... sets setting <var2> of stream <var> to <var3>
- 65 28   | ios <obj>, <obj2> .............. gets setting <obj2> of stream <obj> and stores it in A
- 65 29   | ios <var>, <obj> ............... gets setting <obj> of stream <var> and stores it in A
- 65 2A   | ios <obj>, <var> ............... gets setting <var> of stream <obj> and stores it in A
- 65 2B   | ios <var>, <var2> .............. gets setting <var2> of stream <var> and stores it in A
- 65 10   | iow <obj>, <obj2> .............. writes <obj2> to stream <obj>
- 65 11   | iow <obj>, <var> ............... writes <var> to stream <obj>
- 65 12   | iow <var>, <obj> ............... writes <obj> to stream <var>
- 65 13   | iow <var>, <var2> .............. writes <var2> to stream <var>
  60      | is <type> ...................... sets the O flag iff the type of A matches <type>.  For checking if A is an array, use "array" as the type
  62      | isa <type> ..................... sets the O flag iff A is an array and its element type matches <type>
 
