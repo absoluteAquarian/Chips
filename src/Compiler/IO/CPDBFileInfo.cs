@@ -1,40 +1,45 @@
-﻿using Chips.Utility;
+﻿using Chips.Compiler.Utility;
+using Chips.Utility;
 using System;
 using System.IO;
 
 namespace Chips.Compiler.IO {
 	internal abstract class CPDBFileInfo {
 		public readonly string parentMethod;
+		public readonly string name;
 
 		private readonly byte[] data;
 
 		public ReadOnlySpan<byte> Data => data;
 
-		public CPDBFileInfo(string parentMethod, byte[] data) {
+		public CPDBFileInfo(string parentMethod, string name, byte[] data) {
 			this.parentMethod = parentMethod;
+			this.name = name;
 			this.data = data;
 		}
 
-		public void Write(BinaryWriter writer) {
+		public void Write(BinaryWriter writer, StringHeap heap) {
+			StringMetadata token = heap.GetOrAdd(name);
+			token.Serialize(writer);
+
 			writer.Write7BitEncodedInt(data.Length);
 			writer.Write(data);
 		}
 
-		public static byte[] Read(BinaryReader reader) {
+		public static byte[] Read(BinaryReader reader, StringHeap heap, out string name) {
+			StringMetadata token = StringMetadata.Deserialize(reader);
+			name = heap.GetString(token);
+
 			int length = reader.Read7BitEncodedInt();
 			return reader.ReadBytes(length);
 		}
 	}
 
 	internal class CPDBLocalVariable : CPDBFileInfo {
-		public readonly string variableName;
-
 		public readonly int variableIndex;
 
-		public CPDBLocalVariable(string parentMethod, byte[] data) : base(parentMethod, data) {
+		public CPDBLocalVariable(string parentMethod, string name, byte[] data) : base(parentMethod, name, data) {
 			int index = 0;
-
-			variableName = data.GetCPDBString(ref index);
 
 			variableIndex = data.Get7BitEncodedInt(index, out _);
 		}
@@ -47,10 +52,8 @@ namespace Chips.Compiler.IO {
 
 		public readonly int opcodeOffset;
 
-		public CPDBFunctionLabel(string parentMethod, byte[] data) : base(parentMethod, data) {
+		public CPDBFunctionLabel(string parentMethod, string name, byte[] data) : base(parentMethod, name, data) {
 			int index = 0;
-
-			labelName = data.GetCPDBString(ref index);
 
 			labelIndex = data.Get7BitEncodedInt(index, out int bytesRead);
 			index += bytesRead;

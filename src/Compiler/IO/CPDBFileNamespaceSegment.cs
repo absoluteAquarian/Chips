@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using Chips.Compiler.Utility;
+using System.Collections.Generic;
 using System.IO;
 
 namespace Chips.Compiler.IO {
@@ -21,22 +22,25 @@ namespace Chips.Compiler.IO {
 
 		public void AddType(CPDBFileTypeSegment type) => types.Add(type);
 
-		public void Write(BinaryWriter writer) {
-			writer.Write(name);
+		public void Write(BinaryWriter writer, StringHeap heap) {
+			StringMetadata token = heap.GetOrAdd(name);
+			token.Serialize(writer);
+
 			writer.Write7BitEncodedInt(types.Count);
 
 			foreach (var type in types)
-				type.Write(writer);
+				type.Write(writer, heap);
 		}
 
-		public static CPDBFileNamespaceSegment Read(BinaryReader reader) {
-			string name = reader.ReadString();
+		public static CPDBFileNamespaceSegment Read(BinaryReader reader, StringHeap heap) {
+			StringMetadata token = StringMetadata.Deserialize(reader);
+			string name = heap.GetString(token);
 
 			CPDBFileNamespaceSegment segment = new(name);
 			
 			int count = reader.Read7BitEncodedInt();
 			for (int i = 0; i < count; i++)
-				segment.AddType(CPDBFileTypeSegment.Read(reader));
+				segment.AddType(CPDBFileTypeSegment.Read(reader, heap));
 
 			return segment;
 		}

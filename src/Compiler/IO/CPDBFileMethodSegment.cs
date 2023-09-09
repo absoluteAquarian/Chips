@@ -1,4 +1,5 @@
 ﻿using Chips.Compiler.Compilation;
+using Chips.Compiler.Utility;
 using Chips.Utility;
 using System.Collections.Generic;
 using System.IO;
@@ -22,10 +23,9 @@ namespace Chips.Compiler.IO {
 			using MemoryStream ms = new();
 			using BinaryWriter writer = new(ms);
 
-			writer.Write(localName.EncodeToCPDB());
 			writer.Write7BitEncodedInt(index);
 
-			locals.Add(new CPDBLocalVariable(method, ms.ToArray()));
+			locals.Add(new CPDBLocalVariable(method, localName, ms.ToArray()));
 		}
 
 		public void AddLocal(CPDBLocalVariable local) => locals.Add(local);
@@ -34,41 +34,42 @@ namespace Chips.Compiler.IO {
 			using MemoryStream ms = new();
 			using BinaryWriter writer = new(ms);
 
-			writer.Write(label.Name.EncodeToCPDB());
 			writer.Write7BitEncodedInt(label.Index);
 			writer.Write7BitEncodedInt(label.OpcodeOffset);
 
-			labels.Add(new CPDBFunctionLabel(method, ms.ToArray()));
+			labels.Add(new CPDBFunctionLabel(method, label.Name, ms.ToArray()));
 		}
 
 		public void AddLabel(CPDBFunctionLabel label) => labels.Add(label);
 
-		public void Write(BinaryWriter writer) {
-			writer.Write(name);
+		public void Write(BinaryWriter writer, StringHeap heap) {
+			StringMetadata token = heap.GetOrAdd(name);
+			token.Serialize(writer);
 
 			writer.Write7BitEncodedInt(locals.Count);
 			foreach (var local in locals)
-				local.Write(writer);
+				local.Write(writer, heap);
 
 			writer.Write7BitEncodedInt(labels.Count);
 			foreach (var label in labels)
-				label.Write(writer);
+				label.Write(writer, heap);
 		}
 
-		public static CPDBFileMethodSegment Read(BinaryReader reader) {
-			string name = reader.ReadString();
+		public static CPDBFileMethodSegment Read(BinaryReader reader, StringHeap heap) {
+			StringMetadata token = StringMetadata.Deserialize(reader);
+			string name = heap.GetString(token);
 			CPDBFileMethodSegment segment = new(name);
 
 			int localCount = reader.Read7BitEncodedInt();
 			for (int i = 0; i < localCount; i++) {
-				byte[] data = CPDBFileInfo.Read(reader);
-				segment.locals.Add(new CPDBLocalVariable(name, data));
+				byte[] data = CPDBFileInfo.Read(reader, heap, out string localName);
+				segment.locals.Add(new CPDBLocalVariable(name, localName, data));
 			}
 
 			int labelCount = reader.Read7BitEncodedInt();
 			for (int i = 0; i < labelCount; i++) {
-				byte[] data = CPDBFileInfo.Read(reader);
-				segment.labels.Add(new CPDBFunctionLabel(name, data));
+				byte[] data = CPDBFileInfo.Read(reader, heap, out string labelName);
+				segment.labels.Add(new CPDBFunctionLabel(name, labelName, data));
 			}
 
 			return segment;

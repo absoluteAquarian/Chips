@@ -1,12 +1,14 @@
 ﻿using AsmResolver.DotNet;
 using AsmResolver.PE.DotNet.Cil;
 using Chips.Compiler;
+using Chips.Compiler.Utility;
 using Chips.Runtime.Types;
 using Chips.Runtime.Types.NumberProcessing;
 using Chips.Runtime.Utility;
 using Chips.Utility;
 using Chips.Utility.Reflection;
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.IO;
 
@@ -35,7 +37,7 @@ namespace Chips.Runtime.Specifications {
 		public override OpcodeID Code => OpcodeID.Ldci;
 
 		public override bool Compile(CompilationContext context, OpcodeArgumentCollection args) {
-			if (!ValidateArgumentAndEmitRegisterAccess(context, args, out IInteger? argAsInteger, "an integer"))
+			if (!ValidateArgumentAndEmitNumberRegisterAccess(context, args, out IInteger? argAsInteger, "an integer"))
 				return false;
 
 			var instructions = context.Instructions;
@@ -138,7 +140,7 @@ namespace Chips.Runtime.Specifications {
 		public override OpcodeID Code => OpcodeID.Ldcf;
 
 		public override bool Compile(CompilationContext context, OpcodeArgumentCollection args) {
-			if (!ValidateArgumentAndEmitRegisterAccess(context, args, out IFloat? argAsFloat, "a floating-point"))
+			if (!ValidateArgumentAndEmitNumberRegisterAccess(context, args, out IFloat? argAsFloat, "a floating-point"))
 				return false;
 
 			var instructions = context.Instructions;
@@ -202,30 +204,44 @@ namespace Chips.Runtime.Specifications {
 
 		public override OpcodeID Code => OpcodeID.Ldcs;
 
+		// Ldcs is the odd one out of the "load constant" opcodes, so it needs a specialized method
+		private bool ValidateArgumentAndEmitStringRegisterAcces(CompilationContext context, OpcodeArgumentCollection args, out StringMetadata arg) {
+			if (args.Count != 1)
+				throw ChipsCompiler.ErrorAndThrow(context.resolver.activeSourceFile, new ArgumentException($"Opcode \"{Name}\" expects one argument"));
+
+			if (args[0] is not StringMetadata argAsType)
+				throw ChipsCompiler.ErrorAndThrow(context.resolver.activeSourceFile, new ArgumentException($"Opcode \"{Name}\" expects a string metadata token argument"));
+
+			context.Instructions.Add(CilOpCodes.Ldsfld, context.importer.ImportField(typeof(Registers).GetCachedField(Register)!));
+
+			arg = argAsType;
+			return true;
+		}
+
 		public override bool Compile(CompilationContext context, OpcodeArgumentCollection args) {
-			if (!ValidateArgumentAndEmitRegisterAccess(context, args, out string? argAsString, "a string"))
+			if (!ValidateArgumentAndEmitStringRegisterAcces(context, args, out StringMetadata argAsToken))
 				return false;
 
 			var instructions = context.Instructions;
 
-			instructions.Add(CilOpCodes.Ldstr, argAsString);
+			instructions.Add(CilOpCodes.Ldstr, context.heap.GetString(argAsToken));
 			instructions.Add(CilOpCodes.Call, context.importer.ImportMethod(typeof(StringRegister).GetCachedProperty("Value")!.SetMethod!));
 
 			return true;
 		}
 
 		protected override object? DeserializeArgument(BinaryReader reader) {
-			return reader.ReadString();
+			return StringMetadata.Deserialize(reader);
 		}
 
 		protected override object? ParseArgument(CompilationContext context, string arg) {
 			// Convert escape sequences to the actual characters
-			return arg.SanitizeString();
+			return context.heap.GetOrAdd(arg.SanitizeString());
 		}
 
 		protected override void SerializeArgument(BinaryWriter writer, object? arg) {
-			// Argument is guaranteed to be a string by this point, but it needs to be casted again
-			writer.Write((string)arg!);
+			// Argument is guaranteed to be a string metadata token for the string heap by this point, but it needs to be casted again
+			((StringMetadata)arg!).Serialize(writer);
 		}
 	}
 

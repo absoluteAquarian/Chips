@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using Chips.Compiler.Utility;
+using System.Collections.Generic;
 using System.IO;
 
 namespace Chips.Compiler.IO {
@@ -15,16 +16,16 @@ namespace Chips.Compiler.IO {
 
 		public void AddNamespace(CPDBFileNamespaceSegment ns) => namespaces.Add(ns);
 
-		public void Write(BinaryWriter writer) {
+		public void Write(BinaryWriter writer, StringHeap heap) {
 			writer.Write7BitEncodedInt(namespaces.Count);
 			foreach (var ns in namespaces)
-				ns.Write(writer);
+				ns.Write(writer, heap);
 		}
 
-		public void Read(BinaryReader reader) {
+		public void Read(BinaryReader reader, StringHeap heap) {
 			int count = reader.Read7BitEncodedInt();
 			for (int i = 0; i < count; i++)
-				namespaces.Add(CPDBFileNamespaceSegment.Read(reader));
+				namespaces.Add(CPDBFileNamespaceSegment.Read(reader, heap));
 		}
 	}
 }

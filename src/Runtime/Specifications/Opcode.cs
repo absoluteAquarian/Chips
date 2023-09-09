@@ -4,6 +4,7 @@ using Chips.Compiler;
 using Chips.Compiler.Utility;
 using Chips.Parsing;
 using Chips.Runtime.Types;
+using Chips.Runtime.Types.NumberProcessing;
 using Chips.Runtime.Utility;
 using Chips.Utility;
 using Chips.Utility.Reflection;
@@ -124,7 +125,7 @@ namespace Chips.Runtime.Specifications {
 
 		public sealed override StackBehavior StackBehavior => StackBehavior.None;
 
-		protected bool ValidateArgumentAndEmitRegisterAccess<T>(CompilationContext context, OpcodeArgumentCollection args, [NotNullWhen(true)] out T? arg, string expectedArgument) {
+		protected bool ValidateArgumentAndEmitNumberRegisterAccess<T>(CompilationContext context, OpcodeArgumentCollection args, [NotNullWhen(true)] out T? arg, string expectedArgument) where T : INumber {
 			if (args.Count != 1)
 				throw ChipsCompiler.ErrorAndThrow(context.resolver.activeSourceFile, new ArgumentException($"Opcode \"{Name}\" expects one argument"));
 

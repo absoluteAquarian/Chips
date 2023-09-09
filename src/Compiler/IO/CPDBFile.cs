@@ -1,7 +1,8 @@
-﻿using Chips.Utility;
+﻿using Chips.Compiler.Utility;
+using Chips.Utility;
 using System;
-using System.Diagnostics.CodeAnalysis;
 using System.IO;
+using System.Text;
 
 namespace Chips.Compiler.IO {
 	internal class CPDBFile {
@@ -13,7 +14,7 @@ namespace Chips.Compiler.IO {
 			if (Path.GetExtension(file) != ".cpdb")
 				throw new IOException("File extension was not \".cpdb\"");
 
-			using BinaryReader reader = new(File.OpenRead(file));
+			using BinaryReader reader = new(File.OpenRead(file), Encoding.Unicode);
 
 			ValidateReader(reader);
 
@@ -23,7 +24,7 @@ namespace Chips.Compiler.IO {
 		}
 
 		public static CPDBFile FromStream(Stream stream) {
-			using BinaryReader reader = new(stream);
+			using BinaryReader reader = new(stream, Encoding.Unicode);
 
 			ValidateReader(reader);
 
@@ -41,7 +42,10 @@ namespace Chips.Compiler.IO {
 		}
 
 		private void PopulateInformation(BinaryReader reader) {
-			Information.Read(reader);
+			StringHeap heap = new StringHeap();
+			heap.Deserialize(reader);
+
+			Information.Read(reader, heap);
 		}
 
 		public void WriteToFile(string file) => WriteToStream(File.Create(file));
@@ -52,7 +56,15 @@ namespace Chips.Compiler.IO {
 			// Write the magic header
 			writer.Write("CPDB\x1A\xEE\xFE".EncodeASCIISpan());
 
-			Information.Write(writer);
+			StringHeap heap = new StringHeap();
+
+			using MemoryStream infoData = new();
+			using (BinaryWriter infoWriter = new(infoData))
+				Information.Write(writer, heap);
+
+			// Write heap first so that it is available when reading
+			heap.Serialize(writer);
+			writer.Write(infoData.ToArray());
 		}
 	}
 }
