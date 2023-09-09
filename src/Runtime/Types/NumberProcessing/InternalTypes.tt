@@ -1,4 +1,4 @@
-﻿<#@ template debug="false" hostspecific="true" language="C#" #>
+﻿﻿<#@ template debug="false" hostspecific="true" language="C#" #>
 <#@ assembly name="System.Core" #>
 <#@ import namespace="System" #>
 <#@ output extension=".cs" #>
@@ -14,14 +14,27 @@ using Chips.Runtime.Utility;
 using System;
 
 #pragma warning disable CS0162
-namespace Chips.Runtime.Types.NumberProcessing{
+namespace Chips.Runtime.Types.NumberProcessing {
 <# foreach (var type in iTypes) {
 #>
 	[TextTemplateGenerated]
-	public struct <#= type.Name #>_T : INumber, IInteger {
+	public struct <#= type.Name #>_T : IInteger {
 		private <#= type.Name #> value;
 
 		public object Value => value;
+
+		public <#= type.Name #> ActualValue => value;
+
+		public bool IsZero => value == 0;
+
+<# if (!type.Name.StartsWith("U")) {
+#>
+		public bool IsNegative => value < 0;
+<# } else {
+#>
+		public bool IsNegative => false;
+<#
+} #>
 
 		public <#= type.Name #>_T(<#= type.Name #> value) {
 			this.value = value;
@@ -35,12 +48,19 @@ namespace Chips.Runtime.Types.NumberProcessing{
 <#
 } #>
 
-		public INumber Abs()
 <# if (!type.Name.StartsWith("U")) {
 #>
-			=> new <#= type.Name #>_T(value > 0 ? value : -value);
-<# }else{
+		public INumber Abs() {
+			if (value == <#= type.Name #>.MinValue) {
+				Registers.F.Overflow = true;
+				return new <#= type.Name #>_T(<#= type.Name #>.MaxValue);
+			}
+
+			return new <#= type.Name #>_T(Math.Abs(value));
+		}
+<# } else {
 #>
+		public INumber Abs()
 			=> new <#= type.Name #>_T(value);
 <#
 } #>
@@ -56,6 +76,22 @@ namespace Chips.Runtime.Types.NumberProcessing{
 				return number.Add(this);
 
 			<#= type.Name #>_T convert = ValueConverter.CastTo<#= type.Name #>_T(number);
+
+<# if (!type.Name.StartsWith("U")) {
+#>
+			if ((value < 0 && convert.value < 0 && value + convert.value > 0) || (value > 0 && convert.value > 0 && value + convert.value < 0)) {
+				Registers.F.Overflow = true;
+				return new <#= type.Name #>_T(value < 0 ? <#= type.Name #>.MinValue : <#= type.Name #>.MaxValue);
+			}
+<# } else {
+#>
+			if (value + convert.value < value) {
+				Registers.F.Overflow = true;
+				return new <#= type.Name #>_T(<#= type.Name #>.MaxValue);
+			}
+<#
+} #>
+
 			return new <#= type.Name #>_T(unchecked(value + convert.value));
 		}
 
@@ -80,8 +116,8 @@ namespace Chips.Runtime.Types.NumberProcessing{
 		}
 
 		public IInteger ArithmeticRotateLeft() {
-			bool carry = Metadata.Flags.Carry;
-			Metadata.Flags.Carry = unchecked(value & (<#= type.Name #>)((<#= type.Name #>)1 << (8 * sizeof(<#= type.Name #>) - 1))) != 0;
+			bool carry = Registers.F.Carry;
+			Registers.F.Carry = unchecked(value & (<#= type.Name #>)((<#= type.Name #>)1 << (8 * sizeof(<#= type.Name #>) - 1))) != 0;
 			
 			var i = new <#= type.Name #>_T(value << 1);
 			if (carry)
@@ -91,8 +127,8 @@ namespace Chips.Runtime.Types.NumberProcessing{
 		}
 
 		public IInteger ArithmeticRotateRight() {
-			bool carry = Metadata.Flags.Carry;
-			Metadata.Flags.Carry = (value & 1) != 0;
+			bool carry = Registers.F.Carry;
+			Registers.F.Carry = (value & 1) != 0;
 			
 			var i = new <#= type.Name #>_T(value >> 1);
 			if (carry)
@@ -111,7 +147,7 @@ namespace Chips.Runtime.Types.NumberProcessing{
 <# if (type.Name != "UInt64") {
 #>
 			string bin = Convert.ToString(value, 2);
-<# }else{
+<# } else {
 #>
 			string bin = Convert.ToString((long)value, 2);
 <#
@@ -136,21 +172,6 @@ namespace Chips.Runtime.Types.NumberProcessing{
 
 			<#= type.Name #>_T convert = ValueConverter.CastTo<#= type.Name #>_T(number);
 			return new <#= type.Name #>_T(!inverseLogic ? value / convert.value : convert.value / value);
-		}
-
-		public IInteger GetBit(IInteger bit) {
-			if (bit is not INumber number)
-				throw new ArgumentException("Internal Chips Error -- Value was an integer, but not a number");
-			
-			if (ArithmeticSet.Number.Create(number.Value).CompareTo(ushort.MaxValue) >= 0)
-				return new <#= type.Name #>_T(0);
-
-			ushort shift = (ushort)ValueConverter.CastToUInt16_T(number).Value;
-			if (shift >= 8 * sizeof(<#= type.Name #>))
-				return new <#= type.Name #>_T(0);
-			
-			<#= type.Name #> mask = (<#= type.Name #>)(1 << shift);
-			return new <#= type.Name #>_T(value & mask);
 		}
 
 		public INumber Increment()
@@ -180,7 +201,7 @@ namespace Chips.Runtime.Types.NumberProcessing{
 			}
 
 			return new <#= type.Name #>_T(-value);
-<# }else{
+<# } else {
 #>
 			throw new InvalidOperationException("Negation cannot be performed on unsigned integers");
 <#
@@ -271,10 +292,29 @@ namespace Chips.Runtime.Types.NumberProcessing{
 <# foreach (var type in fTypes) { 
 #>
 	[TextTemplateGenerated]
-	public struct <#= type.Name #>_T : INumber, IFloat{
+	public struct <#= type.Name #>_T : IFloat {
 		private <#= type.Name #> value;
 
 		public object Value => value;
+
+		public <#= type.Name #> ActualValue => value;
+
+		public bool IsZero => value == 0;
+
+		public bool IsNegative => value < 0;
+
+<# if (type.Name != "Decimal") {
+#>
+		public bool IsNaN => <#= type.Name #>.IsNaN(value);
+
+		public bool IsInfinity => <#= type.Name #>.IsInfinity(value);
+<# } else {
+#>
+		public bool IsNaN => false;
+
+		public bool IsInfinity => false;
+<#
+} #>
 
 		public <#= type.Name #>_T(<#= type.Name #> value) {
 			this.value = value;
@@ -295,7 +335,7 @@ namespace Chips.Runtime.Types.NumberProcessing{
 <# if (type.Name != "Decimal") {
 #>
 			=> new <#= type.Name #>_T((<#= type.Name #>)Math.Acos(value));
-<# }else{
+<# } else {
 #>
 			=> new <#= type.Name #>_T(DecimalMath.DecimalEx.ACos(value));
 <#
@@ -305,7 +345,7 @@ namespace Chips.Runtime.Types.NumberProcessing{
 <# if (type.Name != "Decimal") {
 #>
 			=> new <#= type.Name #>_T((<#= type.Name #>)Math.Acosh(value));
-<# }else{
+<# } else {
 #>
 			=> throw new InvalidOperationException("Performing \"acosh\" on <f128> values is not supported");
 <#
@@ -327,7 +367,7 @@ namespace Chips.Runtime.Types.NumberProcessing{
 <# if (type.Name != "Decimal") {
 #>
 			=> new <#= type.Name #>_T((<#= type.Name #>)Math.Asin(value));
-<# }else{
+<# } else {
 #>
 			=> new <#= type.Name #>_T(DecimalMath.DecimalEx.ASin(value));
 <#
@@ -337,7 +377,7 @@ namespace Chips.Runtime.Types.NumberProcessing{
 <# if (type.Name != "Decimal") {
 #>
 			=> new <#= type.Name #>_T((<#= type.Name #>)Math.Asinh(value));
-<# }else{
+<# } else {
 #>
 			=> throw new InvalidOperationException("Performing \"asinh\" on <f128> values is not supported");
 <#
@@ -347,7 +387,7 @@ namespace Chips.Runtime.Types.NumberProcessing{
 <# if (type.Name != "Decimal") {
 #>
 			=> new <#= type.Name #>_T((<#= type.Name #>)Math.Atan(value));
-<# }else{
+<# } else {
 #>
 			=> new <#= type.Name #>_T(DecimalMath.DecimalEx.ATan(value));
 <#
@@ -368,7 +408,7 @@ namespace Chips.Runtime.Types.NumberProcessing{
 <# if (type.Name != "Decimal") {
 #>
 			return new <#= type.Name #>_T((<#= type.Name #>)Math.Atan2(!inverseLogic ? value : convert.value, !inverseLogic ? convert.value : value));
-<# }else{
+<# } else {
 #>
 			return new <#= type.Name #>_T(DecimalMath.DecimalEx.ATan2(value, convert.value));
 <#
@@ -379,7 +419,7 @@ namespace Chips.Runtime.Types.NumberProcessing{
 <# if (type.Name != "Decimal") {
 #>
 			=> new <#= type.Name #>_T((<#= type.Name #>)Math.Asinh(value));
-<# }else{
+<# } else {
 #>
 			=> throw new InvalidOperationException("Performing \"atanh\" on <f128> values is not supported");
 <#
@@ -392,7 +432,7 @@ namespace Chips.Runtime.Types.NumberProcessing{
 <# if (type.Name != "Decimal") {
 #>
 			=> new <#= type.Name #>_T((<#= type.Name #>)Math.Cos(value));
-<# }else{
+<# } else {
 #>
 			=> new <#= type.Name #>_T(DecimalMath.DecimalEx.Cos(value));
 <#
@@ -402,7 +442,7 @@ namespace Chips.Runtime.Types.NumberProcessing{
 <# if (type.Name != "Decimal") {
 #>
 			=> new <#= type.Name #>_T((<#= type.Name #>)Math.Cosh(value));
-<# }else{
+<# } else {
 #>
 			=> throw new InvalidOperationException("Performing \"cosh\" on <f128> values is not supported");
 <#
@@ -427,7 +467,7 @@ namespace Chips.Runtime.Types.NumberProcessing{
 <# if (type.Name != "Decimal") {
 #>
 			=> new <#= type.Name #>_T((<#= type.Name #>)Math.Exp(value));
-<# }else{
+<# } else {
 #>
 			=> new <#= type.Name #>_T(DecimalMath.DecimalEx.Exp(value));
 <#
@@ -440,7 +480,7 @@ namespace Chips.Runtime.Types.NumberProcessing{
 <# if (type.Name == "Decimal") {
 #>
 			=> throw new InvalidOperationException("Retrieving the bits on an <f128> instance is not supported");
-<# }else{
+<# } else {
 #>
 			=> (ValueConverter.RetrieveFloatingPointBits(this) as IInteger)!;
 <#
@@ -456,7 +496,7 @@ namespace Chips.Runtime.Types.NumberProcessing{
 <# if (type.Name != "Decimal") {
 #>
 			=> new <#= type.Name #>_T((<#= type.Name #>)Math.Log(value));
-<# }else{
+<# } else {
 #>
 			=> new <#= type.Name #>_T(DecimalMath.DecimalEx.Log(value));
 <#
@@ -466,7 +506,7 @@ namespace Chips.Runtime.Types.NumberProcessing{
 <# if (type.Name != "Decimal") {
 #>
 			=> new <#= type.Name #>_T((<#= type.Name #>)Math.Log10(value));
-<# }else{
+<# } else {
 #>
 			=> new <#= type.Name #>_T(DecimalMath.DecimalEx.Log10(value));
 <#
@@ -476,7 +516,7 @@ namespace Chips.Runtime.Types.NumberProcessing{
 <# if (type.Name != "Decimal") {
 #>
 			=> new <#= type.Name #>_T((<#= type.Name #>)Math.Log2(value));
-<# }else{
+<# } else {
 #>
 			=> new <#= type.Name #>_T(DecimalMath.DecimalEx.Log2(value));
 <#
@@ -531,7 +571,7 @@ namespace Chips.Runtime.Types.NumberProcessing{
 <# if (type.Name != "Decimal") {
 #>
 			=> new <#= type.Name #>_T((<#= type.Name #>)Math.Sin(value));
-<# }else{
+<# } else {
 #>
 			=> new <#= type.Name #>_T(DecimalMath.DecimalEx.Sin(value));
 <#
@@ -541,7 +581,7 @@ namespace Chips.Runtime.Types.NumberProcessing{
 <# if (type.Name != "Decimal") {
 #>
 			=> new <#= type.Name #>_T((<#= type.Name #>)Math.Sinh(value));
-<# }else{
+<# } else {
 #>
 			=> throw new InvalidOperationException("Performing \"sinh\" on <f128> values is not supported");
 <#
@@ -551,7 +591,7 @@ namespace Chips.Runtime.Types.NumberProcessing{
 <# if (type.Name != "Decimal") {
 #>
 			=> new <#= type.Name #>_T((<#= type.Name #>)Math.Sqrt(value));
-<# }else{
+<# } else {
 #>
 			=> new <#= type.Name #>_T(DecimalMath.DecimalEx.Sqrt(value));
 <#
@@ -573,7 +613,7 @@ namespace Chips.Runtime.Types.NumberProcessing{
 <# if (type.Name != "Decimal") {
 #>
 			=> new <#= type.Name #>_T((<#= type.Name #>)Math.Tan(value));
-<# }else{
+<# } else {
 #>
 			=> new <#= type.Name #>_T(DecimalMath.DecimalEx.Tan(value));
 <#
@@ -583,7 +623,7 @@ namespace Chips.Runtime.Types.NumberProcessing{
 <# if (type.Name != "Decimal") {
 #>
 			=> new <#= type.Name #>_T((<#= type.Name #>)Math.Tanh(value));
-<# }else{
+<# } else {
 #>
 			=> throw new InvalidOperationException("Performing \"tanh\" on <f128> values is not supported");
 <#

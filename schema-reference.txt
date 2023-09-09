@@ -1,57 +1,38 @@
-﻿// This file serves as an example of how Chips code is structured
+﻿; This file serves as an example of how Chips code is structured
+.import System.Runtime
 
-.asm_name Project
-.stack 500
-
-.include System
+.extern System from System.Runtime
 
 .namespace Sample {
-	.class assembly static Program {
-		.func public static Main() {
-			.locals [
-				args = string[]
-			]
-			
-			clo
-			clz
-			
-			ldrg
-			mov args, &A
+	.type Program : class assembly static {
+		.method Main (args: string[]) public static -> void {
+			; Print "Hello world!"
+			ldcs "Hello world!"
+			prntl
 
-			len
-			btz NoArgs
+			; Calculate something using &A, then print it
+			ldci 100
+			add 15
+			div 3
+			mul 4
+			push &A
+			tostr
+			push &S
+			ldcs "(100 + 15) / 3 * 4 = "
+			cat
+			prntl
 
-			ceq 1
-			bfo TooManyArgs
-
-			new object[]
-			pop &A
-
-			mov &X, 0
-			mov [&A, &X], [args, &X]
-
-			mov &S, "Program argument: {0}"
-			intp
-
-			tsa
-			
-			pntl
-
-			// Namespaces/types aren't needed for functions in the same class
-			// If a function does not have any overloads, the parameters do not need to be specified
-			call Interop
-			
-			ret
-		NoArgs:
-		TooManyArgs:
-			err "Expected one argument"
-			ret
-		}
-
-		.func private static Interop() {
-			// Example of using the evaluation stack and C# methods
-			psev "Hello from the Interop() function!"
-			call Console::WriteLine(string)  // Alternatively:  call System.Console::WriteLine(string)
+			; Calculate something using &I, then print it
+			ldcf 45.0f
+			subf 15.25f
+			; Multiplying by larger number type (double > float) will upcast to it
+			mulf 13.5
+			push &I
+			tostr "N3"
+			push &S
+			ldcs "(45.0 - 15.25) * 13.5 = "
+			cat
+			prntl
 
 			ret
 		}

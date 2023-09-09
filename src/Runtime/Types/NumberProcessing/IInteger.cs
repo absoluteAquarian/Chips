@@ -1,5 +1,5 @@
 ﻿namespace Chips.Runtime.Types.NumberProcessing {
-	public interface IInteger {
+	public interface IInteger : INumber {
 		IInteger And(IInteger number);
 
 		IInteger ArithmeticShiftLeft();
@@ -9,10 +9,6 @@
 		IInteger ArithmeticRotateLeft();
 
 		IInteger ArithmeticRotateRight();
-
-		string BinaryRepresentation(bool leadingZeroes);
-
-		IInteger GetBit(IInteger bit);
 
 		IInteger Not();
 

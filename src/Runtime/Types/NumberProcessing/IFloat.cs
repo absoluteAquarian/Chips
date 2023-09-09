@@ -1,5 +1,9 @@
 ﻿namespace Chips.Runtime.Types.NumberProcessing {
-	public interface IFloat {
+	public interface IFloat : INumber {
+		bool IsNaN { get; }
+
+		bool IsInfinity { get; }
+
 		IFloat Acos();
 
 		IFloat Acosh();

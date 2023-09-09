@@ -1,8 +1,8 @@
-﻿using Mono.Cecil;
+﻿using AsmResolver.DotNet;
 using System.Collections.Generic;
 
 namespace Chips.Compilation {
-	internal class AssemblyInformationTree : Dictionary<string, ModuleInformationTree> {
+	internal class AssemblyInformationTree : List<ModuleInformationTree> {
 		public readonly AssemblyDefinition Assembly;
 
 		public AssemblyInformationTree(AssemblyDefinition assembly) : base() {

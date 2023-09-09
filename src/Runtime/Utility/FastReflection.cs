@@ -4,6 +4,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Reflection.Emit;
+using System.Runtime.CompilerServices;
 
 namespace Chips.Runtime.Utility {
 	/// <summary>
@@ -25,9 +26,11 @@ namespace Chips.Runtime.Utility {
 			
 			public delegate object? RetrieveDelegate(T instance);
 			public delegate void AssignDelegate(ref T instance, object? value);
+			public delegate nint RetrieveRefDelegate(ref T instance);
 			
 			public static readonly ConcurrentDictionary<string, RetrieveDelegate> getFieldFuncs = new();
 			public static readonly ConcurrentDictionary<string, AssignDelegate> setFieldFuncs = new();
+			public static readonly ConcurrentDictionary<string, RetrieveRefDelegate> getFieldRefFuncs = new();
 		}
 
 		public static object? RetrieveField(this Type type, string fieldName, object? instance) {
@@ -65,6 +68,20 @@ namespace Chips.Runtime.Utility {
 		public static object? RetrieveStaticField(this Type type, string fieldName) => RetrieveField(type, fieldName, null);
 
 		public static T? RetrieveStaticField<T>(this Type type, string fieldName) => RetrieveField<T>(type, fieldName, null);
+
+		public static nint RetrieveFieldAddress<T>(ref T instance, string fieldName) {
+			FieldGenericDelegates<T>.RetrieveRefDelegate func = BuildGenericRetrieveFieldRefDelegate<T>(fieldName);
+
+			return func(ref instance);
+		}
+
+		public static ref F RetrieveFieldRef<T, F>(ref T instance, string fieldName) {
+			FieldGenericDelegates<T>.RetrieveRefDelegate func = BuildGenericRetrieveFieldRefDelegate<T>(fieldName);
+
+			unsafe {
+				return ref Unsafe.AsRef<F>((void*)func(ref instance));
+			}
+		}
 
 		public static void AssignField(this Type type, string fieldName, object? instance, object? value) {
 			Action<object?, object?> func = BuildAssignFieldDelegate(type, fieldName);
@@ -266,6 +283,35 @@ namespace Chips.Runtime.Utility {
 			}
 
 			FieldGenericDelegates<T>.getFieldFuncs[fieldName] = func = method.CreateDelegate<FieldGenericDelegates<T>.RetrieveDelegate>();
+
+			return func;
+		}
+
+		private static FieldGenericDelegates<T>.RetrieveRefDelegate BuildGenericRetrieveFieldRefDelegate<T>(string fieldName) {
+			Type type = typeof(T);
+			FieldGenericDelegates<T>.RetrieveRefDelegate? func;
+
+			if (FieldGenericDelegates<T>.getFieldRefFuncs.TryGetValue(fieldName, out func))
+				return func;
+
+			FieldInfo fieldInfo = GetField(type, fieldName);
+
+			string name = $"{typeof(FastReflection).FullName}.BuildGenericRetrieveFieldRefDelegate<{type.GetSimplifiedGenericTypeName()}>.get_{fieldName}";
+			DynamicMethod method = new(name, typeof(nint), new[] { type.MakeByRefType() }, type, skipVisibility: true);
+
+			ILGenerator il = method.GetILGenerator();
+
+			il.Emit(OpCodes.Ldarg_0);
+			il.Emit(OpCodes.Ldflda, fieldInfo);
+			il.Emit(OpCodes.Ret);
+
+			if (!FieldGenericDelegates<T>.retrieveUnloadingRegistered) {
+				FieldGenericDelegates<T>.retrieveUnloadingRegistered = true;
+
+				ALCReflectionUnloader.OnUnload(type.Assembly, FieldGenericDelegates<T>.getFieldFuncs.Clear);
+			}
+
+			FieldGenericDelegates<T>.getFieldRefFuncs[fieldName] = func = method.CreateDelegate<FieldGenericDelegates<T>.RetrieveRefDelegate>();
 
 			return func;
 		}

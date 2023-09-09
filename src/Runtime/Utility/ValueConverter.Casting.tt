@@ -1,4 +1,4 @@
-﻿<#@ template debug="false" hostspecific="true" language="C#" #>
+﻿﻿<#@ template debug="false" hostspecific="true" language="C#" #>
 <#@ assembly name="System.Core" #>
 <#@ import namespace="System" #>
 <#@ output extension=".cs" #>
@@ -16,13 +16,10 @@ namespace Chips.Runtime.Utility {
 <# foreach (var type in types) {
 #>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public static <#= type.Name #>_T CastTo<#= type.Name #>_T<T>(this T number) where T : INumber
-			=> new(Convert.To<#= type.Name #>(EnsureObjectCanBeCastToIConvertable(number)?.Value
-				?? throw new ArgumentException($"Cannot cast a <~cplx> value to <{TypeTracking.GetChipsType(typeof(<#= type.Name #>_T))}>")));
+		public static <#= type.Name #>_T CastTo<#= type.Name #>_T<T>(this T number) where T : INumber => new(Convert.To<#= type.Name #>(number?.Value ?? throw new ArgumentNullException(nameof(number))));
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public static <#= type.Name #>_T CastTo<#= type.Name #>_T(this <#= type.Name #> number)
-			=> new(number);
+		public static <#= type.Name #>_T CastTo<#= type.Name #>_T(this <#= type.Name #> number) => new(number);
 
 <#
 } #>

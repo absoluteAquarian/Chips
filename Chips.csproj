@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net6.0</TargetFramework>
+    <TargetFramework>net7.0</TargetFramework>
     <ImplicitUsings>disable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <LangVersion>preview</LangVersion>
@@ -19,16 +19,18 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Mono.Cecil" Version="0.11.4" />
-    <PackageReference Include="Sprache" Version="2.3.1" />
-    <PackageReference Include="System.CodeDom" Version="6.0.0" />
-	<PackageReference Include="DecimalMath.DecimalEx" Version="1.0.2" />
+    <Compile Remove="stdlib\**" />
+    <EmbeddedResource Remove="stdlib\**" />
+    <None Remove="stdlib\**" />
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="stdlib\" />
+    <PackageReference Include="AsmResolver.DotNet" Version="5.4.0" />
+    <PackageReference Include="Sprache" Version="2.3.1" />
+	<PackageReference Include="DecimalMath.DecimalEx" Version="1.0.2" />
+	<PackageReference Include="System.CodeDom" Version="7.0.0" />
   </ItemGroup>
-  
+
   <ItemGroup>
     <None Include="src\Runtime\Types\NumberProcessing\InternalTypes.cs">
       <DesignTime>True</DesignTime>
@@ -39,17 +41,6 @@
       <DesignTime>True</DesignTime>
       <AutoGen>True</AutoGen>
       <DependentUpon>ValueConverter.Casting.tt</DependentUpon>
-    </None>
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Update="src\Runtime\Types\NumberProcessing\InternalTypes.tt">
-      <Generator>TextTemplatingFileGenerator</Generator>
-      <LastGenOutput>InternalTypes.cs</LastGenOutput>
-    </None>
-    <None Update="src\Runtime\Utility\ValueConverter.Casting.tt">
-      <Generator>TextTemplatingFileGenerator</Generator>
-      <LastGenOutput>ValueConverter.Casting.cs</LastGenOutput>
     </None>
   </ItemGroup>
 
@@ -68,6 +59,17 @@
       <AutoGen>True</AutoGen>
       <DependentUpon>ValueConverter.Casting.tt</DependentUpon>
     </Compile>
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="src\Runtime\Types\NumberProcessing\InternalTypes.tt">
+      <Generator>TextTemplatingFileGenerator</Generator>
+      <LastGenOutput>InternalTypes.cs</LastGenOutput>
+    </None>
+    <None Update="src\Runtime\Utility\ValueConverter.Casting.tt">
+      <Generator>TextTemplatingFileGenerator</Generator>
+      <LastGenOutput>ValueConverter.Casting.cs</LastGenOutput>
+    </None>
   </ItemGroup>
 
 </Project>

@@ -1,0 +1,549 @@
+ENVIRONMENT
+====================
+
+Registers:
+
+A - arithmetic
+* used by integer instructions
+
+X - indexer
+* used by array instructions
+
+Y - indexer
+* used by array instructions
+
+I - floating-point arithmetic
+* used by floating-point instructions
+
+S - strings
+* used by string instructions
+
+E - exception
+* used in throw/catch instructions and clauses
+
+F - status flags
+* [ C - - I S Z N V ]
+* V = overflow
+  * set if arithmetic instruction resulted in overflow or infinity
+* N = negative
+  * set when:
+    * &A is set to a negative integer
+    * &I is set to a negative floating-point number
+    * A negative integer/floating-point number is pushed to the evaluation stack
+* Z = zero
+  * set when:
+    * &A is set to zero
+    * &I is set to zero
+    * &S is set to null
+* S = conversion
+  * set if conversion instruction was successful
+* I = invalid floating-point
+  * set when &I is set to NaN
+* C = carry
+  * set/cleared by certain arithmetic operations
+
+KEYWORDS
+====================
+.alias     | type alias (".alias ABC = X.Y.Z;")
+.field     | begins field definition
+.method    | begins method definition, body enclosed by {}
+.type      | begins class/struct definition, body enclosed by {}
+.namespace | begins namespace definition, body enclosed by {}
+.import    | begins assembly import definition (".import Assembly")
+.extern    | begins namespace import definition (".extern Namespace.Name from Assembly")
+public     | "public" type/member access modifier
+assembly   | "internal" type/member access modifier
+inherit    | "protected" member access modifier
+private    | "private" member access modifier
+static     | "static" type/member access modifier
+class      | "class" type definition
+struct     | "struct" type definition
+enum       | "enum" type definition
+const      | constant field/local modifier
+
+
+OPCODES
+====================
+       _________________________________________________________________________________________________________________________________
+_______|___x0__|___x1__|___x2__|___x3__|___x4__|___x5__|___x6__|___x7__|___x8__|___x9__|___xA__|___xB__|___xC__|___xD__|___xE__|___xF__|
+|  0x  |   nop |   brk |  ldci |  ldcf |  ldcs |  ldfi |  ldfs |  ldrg |  ldlc | ldmtd |  ldns |  ldel |  comp |    is |  conv | kbrdy |
+|  1x  |  push |   pop |   pop |   dup |   cli | ldfia | ldfsa | ldrga | ldlca |  ldzi | ldind | ldela |   bzs |   bge | tostr | kbkey |
+|  2x  |   clc |   clv |   cln |   clz |   cls |  stfi |  stfs |  strg |  stlc |  ldzf | stind |  stel |   bzc |   ble | tostr | kblin |
+|  3x  |   stc |  inca |  deca |  inci |  deci |   cat |   cat |  find |  find | ldziu | split |   rem |   bcs |  call | calli | print |
+|  4x  |   add |   sub |   mul |   div |   mod |   rep |   and |    or |   xor |  ldzd |  muls |  ldel |   bcc |   ret |       | prntl |
+|  5x  |   add |   sub |   mul |   div |   mod |   rep |   and |    or |   xor |  ldzl |  trim | ldela |   bns |       |       |       |
+|  6x  |  addf |  subf |  mulf |  divf |  modf |  repf |   not |   neg |  negf | ldzlu | trims |  stel |   bnc |       |       |       |
+|  7x  |  addf |  subf |  mulf |  divf |  modf |  repf |   asr |   asl |   ror |   rol | trime |       |   bvs |       |       |       |
+|  8x  |  traf |  trad |  trfi |  trfl |  trax |  tray |   asr |   asl |       |  ldzm |       |       |   bvc |       |       |       |
+|  9x  | nwarr | nwobj |   len |       |  trxa |  trya |       |       |       |       |       |       |   bss |       |       |       |
+|  Ax  |       |       |       |       |       |       |       |       |       |       |       |       |   bsc |       |       |       |
+|  Bx  |       |       |       |       |       |       |       |       |       |       |       |       |   bis |       |       |       |
+|  Cx  |       |       |       |       |       |       |       |       |       |       |       |       |   bic |       |       |       |
+|  Dx  |       |       |       |       |       |       |       |       |       |       |       |       |       |       |       |       |
+|  Ex  |       |       |       |       |       |       |       |       |       |       |       |       |       |       |       |       |
+|  Fx  |       |       |       |       |       |       |       |       |       |       |       |       |       |       |  wait |  halt |
+----------------------------------------------------------------------------------------------------------------------------------------
+
+-- A --
+ADD [40]
+* Syntax: add
+* Pops an integer and adds it to &A
+ADD [50]
+* Syntax: add <int>
+* Adds an integer to &A
+ADDF [60]
+* Syntax: addf
+* Pops a floating-point number and adds it to &I
+ADDF [70]
+* Syntax: addf <float>
+* Adds a floating-point number to &I
+AND [46]
+* Syntax: and
+* Pops an integer and performs bitwise AND with &A
+AND [56]
+* Syntax: and <int>
+* Performs bitwise AND with an integer and &A
+ASL [77]
+* Syntax: asl
+* Pops an integer and shifts &A by it to the left
+ASL [87]
+* Syntax: asl <int>
+* Shifts &A by the specified integer amount to the left
+ASR [76]
+* Syntax: asr
+* Pops an integer and shifts &A by it to the right
+ASR [86]
+* Syntax: asr <int>
+* Shifts &A by the specified integer amount to the right
+
+-- B --
+BGE [1D]
+* Syntax: bge <label>
+* Jumps to a label if the Zero flag is set or the Negative flag is cleared
+BLE [2D]
+* Syntax: ble <label>
+* Jumps to a label if the Zero flag or Negative flag is set
+BIC [BC]
+* Syntax: bic <label>
+* Jumps to a label if the Invalid flag is cleared
+BIS [AC]
+* Syntax: bis <label>
+* Jumps to a label if the Invalid flag is set
+BNC [6C]
+* Syntax: bnc <label>
+* Jumps to a label if the Negative flag is cleared
+BNS [5C]
+* Syntax: bns <label>
+* Jumps to a label if the Negative flag is set
+BRK [01]
+* Syntax: brk
+* Direct translation of "break" CIL opcode
+BSC [AC]
+* Syntax: bsc <label>
+* Jumps to a label if the Conversion flag is cleared
+BSS [9C]
+* Syntax: bss <label>
+* Jumps to a label if the Conversion flag is set
+BVC [8C]
+* Syntax: bvc <label>
+* Jumps to a label if the Overflow flag is cleared
+BVS [7C]
+* Syntax: bvs <label>
+* Jumps to a label if the Overflow flag is set
+BZC [2C]
+* Syntax: bzc <label>
+* Jumps to a label if the Zero flag is cleared
+BZS [1C]
+* Syntax: bzs <label>
+* Jumps to a label if the Zero flag is set
+
+-- C --
+CALL [3D]
+* Syntax: call <token>
+* Invokes the specified method, popping values as needed
+CALLI [3E]
+* Syntax: calli <typeReturn>(<type1>, <type2>, ..., <typeN>)
+* Invokes the method at the address in &A using the specified method signature, popping values as needed
+CAT [35]
+* Syntax: cat <string>
+* Concatenates &S with the given string
+CAT [36]
+* Syntax: cat
+* Pops an object and concatenates &S with its ToString result
+CLC [20]
+* Syntax: clc
+* Clears the Carry flag
+CLI [14]
+* Syntax: cli
+* Clears the Invalid flag
+CLN [22]
+* Syntax: cln
+* Clears the Negative flag
+CLV [21]
+* Syntax: clv
+* Clears the Overflow flag
+CLZ [23]
+* Syntax: clz
+* Clears the Zero flag
+COMP [0C]
+* Syntax: comp
+* Pops two numbers
+  * If the numbers are equal, the Zero flag is set
+  * The Negative flag is set if the first is less than the second
+CONV [0E]
+* Syntax: conv <type>
+* Pops a value, then attempts to cast it to a specified type
+  * If successful, the Conversion flag is set and the converted value is pushed
+  * Otherwise, no value is pushed
+
+-- D --
+DECA [32]
+* Syntax: deca
+* Decreases &A by one
+DECI [34]
+* Syntax: deci
+* Decreases &I by one
+DIV [43]
+* Syntax: div
+* Pops an integer and divides &A by it
+DIV [53]
+* Syntax: div <int>
+* Divides &A by an integer
+DIVF [63]
+* Syntax: divf
+* Pops a floating-point number and divides &I by it
+DIVF [73]
+* Syntax: divf <float>
+* Divides &I by a floating-point number
+DUP [13]
+* Syntax: dup
+* Pops a value and pushes it twice
+
+-- E --
+-- F --
+FIND [37]
+* Syntax: find
+* Pops an object from the stack and sets &A to the index of its first occurrence in &S
+FIND [38]
+* Syntax: find <string>
+* Sets &A to the index of the first occurrence of the specified string in &S
+
+-- G --
+-- H --
+HALT [FF]
+* Syntax: halt
+* Forces the application to exit with the exit code in &A
+
+-- I --
+INCA [31]
+* Syntax: inca
+* Increases &A by one
+INCI [33]
+* Syntax: inci
+* Increases &I by one
+IS [0D]
+* Syntax: is <type|null>
+* Pops a value and sets the Zero flag if it is the specified type or a subclass of the type, or null
+  * If it is the specified type, the casted value is pushed
+
+-- J --
+-- K --
+KBKEY [1F]
+* Syntax: kbkey
+* Blocks until a key has been pressed, then puts the pressed key in &S
+KBLIN [2F]
+* Syntax: kblin
+* Blocks until ENTER has been pressed, then puts the inputted string in &S
+KBRDY [0F]
+* Syntax: kbrdy
+* Pushes true (1) if any keys have been pressed and are ready for input, false (0) otherwise
+
+-- L --
+LDCI [02]
+* Syntax: ldci <int>
+* Loads a constant integer into &A
+LDCF [03]
+* Syntax: ldcf <float>
+* Loads a constant floating-point number into &I
+LDCS [04]
+* Syntax: ldcs <str>
+* Loads a constant string into &S
+LDEL [0B]
+* Syntax: ldel &X
+* Pops an array, then pushes the element at the index in &X
+LDELA [1B]
+* Syntax: ldela &X
+* Pops an array, then loads the address of the element at the index in &X into &A
+LDEL [4B]
+* Syntax: ldel &Y
+* Pops an array, then pushes the element at the index in &Y
+LDELA [5B]
+* Syntax: ldela &Y
+* Pops an array, then loads the address of the element at the index in &Y into &A
+LDFI [05]
+* Syntax: ldfi <token>
+* Pops an object, then pushes an instance field from the object
+LDFIA [15]
+* Syntax: ldfia <token>
+* Pops an object, then loads the address of an instance field from the object into &A
+LDFS [06]
+* Syntax: ldfs <token>
+* Pushes a static field
+LDFSA [16]
+* Syntax: ldfsa <token>
+* Loads the address of a static field into &A
+LDIND [1A]
+* Syntax: ldind
+* Loads the value at the address in &A
+LDLC [08]
+* Syntax: ldlc <int>
+* Pushes a local
+LDLCA [18]
+* Syntax: ldlca <int>
+* Loads the address of a local into &A
+LDMTD [09]
+* Syntax: ldmtd <token>
+* Loads the address of a method into &A
+LDNS [0A]
+* Syntax: ldns
+* Loads null into &S
+LDRG [07]
+* Syntax: ldrg <int>
+* Pushes a method argument
+LDRGA [17]
+* Syntax: ldarga <int>
+* Loads the address of a method argument into &A
+LDZD [49]
+* Syntax: ldzd
+* Loads a zero double (0d) into &I
+LDZF [29]
+* Syntax: ldzf
+* Loads a zero float (0f) into &I
+LDZI [19]
+* Sytnax: ldzi
+* Loads a zero integer into &A
+LDZIU [39]
+* Syntax: ldziu
+* Loads a zero unsigned integer into &A
+LDZL [59]
+* Syntax: ldzl
+* Loads a zero long integer into &A
+LDZLU [69]
+* Syntax: ldzlu
+* Loads a zero unsigned long integer into &A
+LDZM [89]
+* Syntax: ldzm
+* Loads a zero decimal (0m) into &I
+LEN [92]
+* Syntax: len
+* Pops an object, then:
+  * sets &A to the Length for arrays and strings
+  * sets &A the Count for IEnumerables if a non-enumerated count can be determined, or to -1 otherwise
+
+-- M --
+MOD [44]
+* Syntax: mod
+* Pops an integer and sets &A to the modulus of &A and the value
+MOD [54]
+* Syntax: mod <int>
+* Sets &A to the modulus of &A and an integer
+MODF [64]
+* Syntax: modf
+* Pops a floating-point number and sets &I to the modulus of &I and the value
+MODF [74]
+* Syntax: modf <float>
+* Sets &I to the modulus of &I and a floating-point number
+MUL [42]
+* Syntax: mul
+* Pops an integer and multiplies &A by it
+MUL [52]
+* Syntax: mul <int>
+* Multiplies &A by an integer
+MULF [62]
+* Syntax: mulf
+* Pops a floating-point number and multiplies &I by it
+MULF [72]
+* Syntax: mulf <float>
+* Multiplies &I by a floating-point number
+MULS [4A]
+* Syntax: muls
+* Concatenates &A copies of &S
+
+-- N --
+NEG [67]
+* Syntax: neg
+* Negates &A, i.e. multiplies it by -1
+NEGF [58]
+* Syntax: negf
+* Negates &I, i.e. multiplies it by -1
+NOT [66]
+* Syntax: not
+* Performs bitwise NOT with &A
+NOP [00]
+* Syntax: nop
+* Direct translation of "nop" CIL opcode
+NWARR [90]
+* Syntax: newarr <type>
+* Pushes a new array of the specified type using &A as the length of the array
+NWOBJ [91]
+* Syntax: newobj <token>
+* Pushes a new object created using the constructor specified, popping values as needed
+
+-- O --
+OR [47]
+* Syntax: or
+* Pops an integer and performs bitwise OR with it and &A
+OR [57]
+* Syntax: or <int>
+* Performs bitwise OR with an integer and &A
+
+-- P --
+POP [11]
+* Syntax: pop <reg>
+* Pops a value and stores it in a register
+POP [12]
+* Syntax: pop
+* Pops a value from the stack
+PRINT [3F]
+* Syntax: print
+* Prints the string in &S to the console
+PRNTL [4F]
+* Syntax: prntl
+* Prints the string in &S to the console with a newline
+PUSH [10]
+* Syntax: push <reg>
+* Pushes the value in a register
+
+-- Q --
+-- R --
+REM [3B]
+* Syntax: rem
+* Pops an object, then removes all instances of its string representation from &S
+REP [45]
+* Syntax: rep
+* Pops an integer and sets &A to the result of the repeat function for &A and the value
+  * -1 rep 10 = 9
+REP [55]
+* Syntax: rep <int>
+* Sets &A to the result of the repeat function for &A and an integer
+  * -1 rep 10 = 9
+REPF [65]
+* Syntax: repf
+* Pops a floating-point number and sets &I to the repeat function for &I and the value
+  * -0.5 rep 2.5 = 2
+REPF [75]
+* Syntax: repf <float>
+* Sets &I to the result of the repeat function for &I and a floating-point number
+  * -0.5 rep 2.5 = 2
+RET [4D]
+* Syntax: ret
+* Immediately returns execution to the caller
+ROL [79]
+* Syntax: rol
+* Shifts &A by one to the left, setting the lowest bit to the Carry flag and updating the Carry flag to the previous highest bit
+ROR [78]
+* Syntax: ror
+* Shifts &A by one to the right, setting the highest bit to the Carry flag and updating the Carry flag to the previous lowest bit
+
+-- S --
+SPLIT [3A]
+* Syntax: split
+* Pops an object, splits &S into an array of strings using the string representation of the object and pushes the array
+  * If the Zero flag is set, empty strings are removed
+STC [30]
+* Syntax: stc
+* Sets the Carry flag
+STEL [2B]
+* Syntax: stel &X
+* Pops an array and a value, then stores the value in the element at the index in &X
+STEL [2B]
+* Syntax: stel &Y
+* Pops an array and a value, then stores the value in the element at the index in &Y
+STFI [25]
+* Syntax: stfi <token>
+* Pops an object and a value and stores the value in the instance field in the object
+STFS [26]
+* Syntax: stfs <token>
+* Pops a value and stores it in a static field
+STIND [2A]
+* Syntax: stind
+* Pops a value and stores it in the value at the address in &A
+STLC [28]
+* Syntax: stlc <int>
+* Pops a value and stores it in a local
+STRG [27]
+* Syntax: strg <int>
+* Pops a value and stores it in a method argument
+SUB [41]
+* Syntax: sub
+* Pops an integer and subtracts it from &A
+SUB [51]
+* Syntax: sub <int>
+* Subtracts an integer from &A
+SUBF [61]
+* Syntax: subf
+* Pops a floating-point number and subtracts it from &I
+SUBF [71]
+* Syntax: subf <float>
+* Subtracts a floating-point number from &I
+
+-- T --
+TOSTR [1E]
+* Syntax: tostr
+* Pops a value and puts its ToString representation in &S
+TOSTR [2E]
+* Syntax: tostr <string>
+* Pops a value and puts its ToString representation with the specified format in &S
+TRAD [81]
+* Syntax: trad
+* Casts the value in &A to a double and stores it in &I
+TRAF [80]
+* Syntax: traf
+* Casts the value in &A to a float and stores it in &I
+TRAX [84]
+* Syntax: trax
+* Moves &A to &X
+TRAY [85]
+* Syntax: tray
+* Moves &A to &Y
+TRFI [82]
+* Syntax: trfi
+* Casts the value in &I to an integer and stores it in &A
+  * If the value is too large, &A is set to +/- MaxValue and the Overflow flag is set
+TRFL [83]
+* Syntax: trfl
+* Casts the value in &I to a long integer and stores it in &A
+  * If the value is too large, &A is set to +/- MaxValue and the Overflow flag is set
+TRIM [5A]
+* Syntax: trim
+* Trims whitespace from the start and end of &S
+TRIME [7A]
+* Syntax: trime
+* Trims whitespace from the end of &S
+TRIMS [6A]
+* Syntax: trims
+* Trims whitespace from the start of &S
+TRXA [94]
+* Syntax: trxa
+* Moves &X to &A
+TRYA [95]
+* Syntax: trya
+* Moves &Y to &A
+
+-- U --
+-- V --
+-- W --
+WAIT [FE]
+* Syntax: wait <int>
+* Forces the current thread to sleep for the provided number of milliseconds
+
+-- X --
+XOR [48]
+* Syntax: xor
+* Pops an integer and performs bitwise XOR with it and &A
+XOR [58]
+* Syntax: xor <int>
+* Performs bitwise XOR with an integer and &A
+
+-- Y --
+-- Z --

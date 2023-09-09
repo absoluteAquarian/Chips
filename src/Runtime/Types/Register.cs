@@ -1,47 +1,148 @@
-﻿using Chips.Runtime.Meta;
-using Chips.Runtime.Specifications;
-using Chips.Runtime.Types.NumberProcessing;
+﻿using Chips.Runtime.Types.NumberProcessing;
 using Chips.Runtime.Utility;
+using System;
 
 namespace Chips.Runtime.Types {
-	public unsafe class Register {
-		private object? data;
-		public object? Data {
-			get => getDataOverride is not null ? getDataOverride() : data;
+	public abstract class Register {
+		public int ID { get; init; }
+
+		public abstract bool AcceptsValue(object? value);
+	}
+
+	public abstract class Register<T> : Register {
+		private T _value;
+
+		public T Value {
+			get => _value;
 			set {
-				if (acceptValueFunc is not null && !acceptValueFunc(value))
-					throw new RegisterAssignmentException($"{Formatting.FormatObject(this)} cannot accept values of type \"{TypeTracking.GetChipsType(value)}\"", globalContext);
-
-				data = value;
-
-				Metadata.Registers.CheckRegister(this);
+				if (HasValueChanged(_value, value)) {
+					OnValueChanged(value);
+					_value = value;
+				}
 			}
 		}
 
-		internal readonly delegate*<object?, bool> acceptValueFunc;
+		protected abstract bool HasValueChanged(T oldValue, T newValue);
 
-		internal delegate*<object?> getDataOverride;
+		protected abstract void OnValueChanged(T newValue);
+	}
 
-		public readonly string name;
-
-		internal static Opcode.FunctionContext globalContext;
-
-		internal Register(string name, object? initialValue, delegate*<object?, bool> acceptValueFunc) {
-			this.name = name;
-			Data = initialValue;
-			this.acceptValueFunc = acceptValueFunc;
+	public sealed class IntegerRegister : Register<IInteger> {
+		protected override bool HasValueChanged(IInteger oldValue, IInteger newValue) {
+			// Automatically handles type changes as well as value equivalence
+			return !oldValue.Value.Equals(newValue.Value);
 		}
 
-		public bool GetDataAsInt32(out int value) {
-			if (ValueConverter.BoxToUnderlyingType(Data) is INumber num) {
-				value = (int)ValueConverter.CastToInt32_T(num).Value;
-				return true;
-			}
-
-			value = -1;
-			return false;
+		protected override void OnValueChanged(IInteger newValue) {
+			Registers.F.Zero = newValue.IsZero;
+			Registers.F.Negative = newValue.IsNegative;
 		}
 
-		public override string ToString() => $"&{name}";
+		public override bool AcceptsValue(object? value) {
+			return ValueConverter.BoxToUnderlyingType(value) is IInteger;
+		}
+
+		public void Set(sbyte value) => Value = value.CastToSByte_T();
+		public void Set(byte value) => Value = value.CastToByte_T();
+		public void Set(short value) => Value = value.CastToInt16_T();
+		public void Set(ushort value) => Value = value.CastToUInt16_T();
+		public void Set(int value) => Value = value.CastToInt32_T();
+		public void Set(uint value) => Value = value.CastToUInt32_T();
+		public void Set(long value) => Value = value.CastToInt64_T();
+		public void Set(ulong value) => Value = value.CastToUInt64_T();
+	}
+
+	public sealed class FloatRegister : Register<IFloat> {
+		protected override bool HasValueChanged(IFloat oldValue, IFloat newValue) {
+			return !oldValue.Value.Equals(newValue.Value);
+		}
+
+		protected override void OnValueChanged(IFloat newValue) {
+			Registers.F.Zero = newValue.IsZero;
+			Registers.F.Negative = newValue.IsNegative;
+			Registers.F.InvalidFloat = newValue.IsNaN;
+		}
+
+		public override bool AcceptsValue(object? value) {
+			return ValueConverter.BoxToUnderlyingType(value) is IFloat;
+		}
+
+		public void Set(float value) => Value = value.CastToSingle_T();
+		public void Set(double value) => Value = value.CastToDouble_T();
+		public void Set(decimal value) => Value = value.CastToDecimal_T();
+	}
+
+	public sealed class StringRegister : Register<string> {
+		protected override bool HasValueChanged(string oldValue, string newValue) {
+			return oldValue != newValue;
+		}
+
+		protected override void OnValueChanged(string newValue) {
+			Registers.F.Zero = newValue is null;
+		}
+
+		public override bool AcceptsValue(object? value) {
+			return value is string;
+		}
+	}
+
+	public sealed class ExceptionRegister : Register<Exception> {
+		protected override bool HasValueChanged(Exception oldValue, Exception newValue) {
+			return !object.ReferenceEquals(oldValue, newValue);
+		}
+
+		protected override void OnValueChanged(Exception newValue) { }
+
+		public override bool AcceptsValue(object? value) {
+			return value is Exception;
+		}
+	}
+
+	public sealed class FlagsRegister : Register<byte> {
+		public const byte Mask_Carry = 0x80;
+		public bool Carry {
+			get => (Value & Mask_Carry) != 0;
+			set => Value = (byte)(value ? Value | Mask_Carry : Value & ~Mask_Carry);
+		}
+
+		public const byte Mask_InvalidFloat = 0x10;
+		public bool InvalidFloat {
+			get => (Value & Mask_InvalidFloat) != 0;
+			set => Value = (byte)(value ? Value | Mask_InvalidFloat : Value & ~Mask_InvalidFloat);
+		}
+
+		public const byte Mask_Conversion = 0x08;
+		public bool Conversion {
+			get => (Value & Mask_Conversion) != 0;
+			set => Value = (byte)(value ? Value | Mask_Conversion : Value & ~Mask_Conversion);
+		}
+
+		public const byte Mask_Zero = 0x04;
+		public bool Zero {
+			get => (Value & Mask_Zero) != 0;
+			set => Value = (byte)(value ? Value | Mask_Zero : Value & ~Mask_Zero);
+		}
+
+		public const byte Mask_Negative = 0x02;
+		public bool Negative {
+			get => (Value & Mask_Negative) != 0;
+			set => Value = (byte)(value ? Value | Mask_Negative : Value & ~Mask_Negative);
+		}
+
+		public const byte Mask_Overflow = 0x01;
+		public bool Overflow {
+			get => (Value & Mask_Overflow) != 0;
+			set => Value = (byte)(value ? Value | Mask_Overflow : Value & ~Mask_Overflow);
+		}
+
+		protected override bool HasValueChanged(byte oldValue, byte newValue) {
+			return oldValue != newValue;
+		}
+
+		protected override void OnValueChanged(byte newValue) { }
+
+		public override bool AcceptsValue(object? value) {
+			throw new NotSupportedException("Flags register does not support writing to it");
+		}
 	}
 }

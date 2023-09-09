@@ -3,12 +3,18 @@ using Chips.Runtime.Utility;
 using System;
 
 #pragma warning disable CS0162
-namespace Chips.Runtime.Types.NumberProcessing{
+namespace Chips.Runtime.Types.NumberProcessing {
 	[TextTemplateGenerated]
-	public struct SByte_T : INumber, IInteger {
+	public struct SByte_T : IInteger {
 		private SByte value;
 
 		public object Value => value;
+
+		public SByte ActualValue => value;
+
+		public bool IsZero => value == 0;
+
+		public bool IsNegative => value < 0;
 
 		public SByte_T(SByte value) {
 			this.value = value;
@@ -18,8 +24,14 @@ namespace Chips.Runtime.Types.NumberProcessing{
 			this.value = (SByte)value;
 		}
 
-		public INumber Abs()
-			=> new SByte_T(value > 0 ? value : -value);
+		public INumber Abs() {
+			if (value == SByte.MinValue) {
+				Registers.F.Overflow = true;
+				return new SByte_T(SByte.MaxValue);
+			}
+
+			return new SByte_T(Math.Abs(value));
+		}
 
 		public INumber Add(INumber number) {
 			//For sizes larger than int, this block should be removed by the compiler
@@ -32,6 +44,12 @@ namespace Chips.Runtime.Types.NumberProcessing{
 				return number.Add(this);
 
 			SByte_T convert = ValueConverter.CastToSByte_T(number);
+
+			if ((value < 0 && convert.value < 0 && value + convert.value > 0) || (value > 0 && convert.value > 0 && value + convert.value < 0)) {
+				Registers.F.Overflow = true;
+				return new SByte_T(value < 0 ? SByte.MinValue : SByte.MaxValue);
+			}
+
 			return new SByte_T(unchecked(value + convert.value));
 		}
 
@@ -56,8 +74,8 @@ namespace Chips.Runtime.Types.NumberProcessing{
 		}
 
 		public IInteger ArithmeticRotateLeft() {
-			bool carry = Metadata.Flags.Carry;
-			Metadata.Flags.Carry = unchecked(value & (SByte)((SByte)1 << (8 * sizeof(SByte) - 1))) != 0;
+			bool carry = Registers.F.Carry;
+			Registers.F.Carry = unchecked(value & (SByte)((SByte)1 << (8 * sizeof(SByte) - 1))) != 0;
 			
 			var i = new SByte_T(value << 1);
 			if (carry)
@@ -67,8 +85,8 @@ namespace Chips.Runtime.Types.NumberProcessing{
 		}
 
 		public IInteger ArithmeticRotateRight() {
-			bool carry = Metadata.Flags.Carry;
-			Metadata.Flags.Carry = (value & 1) != 0;
+			bool carry = Registers.F.Carry;
+			Registers.F.Carry = (value & 1) != 0;
 			
 			var i = new SByte_T(value >> 1);
 			if (carry)
@@ -105,21 +123,6 @@ namespace Chips.Runtime.Types.NumberProcessing{
 
 			SByte_T convert = ValueConverter.CastToSByte_T(number);
 			return new SByte_T(!inverseLogic ? value / convert.value : convert.value / value);
-		}
-
-		public IInteger GetBit(IInteger bit) {
-			if (bit is not INumber number)
-				throw new ArgumentException("Internal Chips Error -- Value was an integer, but not a number");
-			
-			if (ArithmeticSet.Number.Create(number.Value).CompareTo(ushort.MaxValue) >= 0)
-				return new SByte_T(0);
-
-			ushort shift = (ushort)ValueConverter.CastToUInt16_T(number).Value;
-			if (shift >= 8 * sizeof(SByte))
-				return new SByte_T(0);
-			
-			SByte mask = (SByte)(1 << shift);
-			return new SByte_T(value & mask);
 		}
 
 		public INumber Increment()
@@ -229,10 +232,16 @@ namespace Chips.Runtime.Types.NumberProcessing{
 	}
 
 	[TextTemplateGenerated]
-	public struct Int16_T : INumber, IInteger {
+	public struct Int16_T : IInteger {
 		private Int16 value;
 
 		public object Value => value;
+
+		public Int16 ActualValue => value;
+
+		public bool IsZero => value == 0;
+
+		public bool IsNegative => value < 0;
 
 		public Int16_T(Int16 value) {
 			this.value = value;
@@ -242,8 +251,14 @@ namespace Chips.Runtime.Types.NumberProcessing{
 			this.value = (Int16)value;
 		}
 
-		public INumber Abs()
-			=> new Int16_T(value > 0 ? value : -value);
+		public INumber Abs() {
+			if (value == Int16.MinValue) {
+				Registers.F.Overflow = true;
+				return new Int16_T(Int16.MaxValue);
+			}
+
+			return new Int16_T(Math.Abs(value));
+		}
 
 		public INumber Add(INumber number) {
 			//For sizes larger than int, this block should be removed by the compiler
@@ -256,6 +271,12 @@ namespace Chips.Runtime.Types.NumberProcessing{
 				return number.Add(this);
 
 			Int16_T convert = ValueConverter.CastToInt16_T(number);
+
+			if ((value < 0 && convert.value < 0 && value + convert.value > 0) || (value > 0 && convert.value > 0 && value + convert.value < 0)) {
+				Registers.F.Overflow = true;
+				return new Int16_T(value < 0 ? Int16.MinValue : Int16.MaxValue);
+			}
+
 			return new Int16_T(unchecked(value + convert.value));
 		}
 
@@ -280,8 +301,8 @@ namespace Chips.Runtime.Types.NumberProcessing{
 		}
 
 		public IInteger ArithmeticRotateLeft() {
-			bool carry = Metadata.Flags.Carry;
-			Metadata.Flags.Carry = unchecked(value & (Int16)((Int16)1 << (8 * sizeof(Int16) - 1))) != 0;
+			bool carry = Registers.F.Carry;
+			Registers.F.Carry = unchecked(value & (Int16)((Int16)1 << (8 * sizeof(Int16) - 1))) != 0;
 			
 			var i = new Int16_T(value << 1);
 			if (carry)
@@ -291,8 +312,8 @@ namespace Chips.Runtime.Types.NumberProcessing{
 		}
 
 		public IInteger ArithmeticRotateRight() {
-			bool carry = Metadata.Flags.Carry;
-			Metadata.Flags.Carry = (value & 1) != 0;
+			bool carry = Registers.F.Carry;
+			Registers.F.Carry = (value & 1) != 0;
 			
 			var i = new Int16_T(value >> 1);
 			if (carry)
@@ -329,21 +350,6 @@ namespace Chips.Runtime.Types.NumberProcessing{
 
 			Int16_T convert = ValueConverter.CastToInt16_T(number);
 			return new Int16_T(!inverseLogic ? value / convert.value : convert.value / value);
-		}
-
-		public IInteger GetBit(IInteger bit) {
-			if (bit is not INumber number)
-				throw new ArgumentException("Internal Chips Error -- Value was an integer, but not a number");
-			
-			if (ArithmeticSet.Number.Create(number.Value).CompareTo(ushort.MaxValue) >= 0)
-				return new Int16_T(0);
-
-			ushort shift = (ushort)ValueConverter.CastToUInt16_T(number).Value;
-			if (shift >= 8 * sizeof(Int16))
-				return new Int16_T(0);
-			
-			Int16 mask = (Int16)(1 << shift);
-			return new Int16_T(value & mask);
 		}
 
 		public INumber Increment()
@@ -453,18 +459,30 @@ namespace Chips.Runtime.Types.NumberProcessing{
 	}
 
 	[TextTemplateGenerated]
-	public struct Int32_T : INumber, IInteger {
+	public struct Int32_T : IInteger {
 		private Int32 value;
 
 		public object Value => value;
+
+		public Int32 ActualValue => value;
+
+		public bool IsZero => value == 0;
+
+		public bool IsNegative => value < 0;
 
 		public Int32_T(Int32 value) {
 			this.value = value;
 		}
 
 
-		public INumber Abs()
-			=> new Int32_T(value > 0 ? value : -value);
+		public INumber Abs() {
+			if (value == Int32.MinValue) {
+				Registers.F.Overflow = true;
+				return new Int32_T(Int32.MaxValue);
+			}
+
+			return new Int32_T(Math.Abs(value));
+		}
 
 		public INumber Add(INumber number) {
 			//For sizes larger than int, this block should be removed by the compiler
@@ -477,6 +495,12 @@ namespace Chips.Runtime.Types.NumberProcessing{
 				return number.Add(this);
 
 			Int32_T convert = ValueConverter.CastToInt32_T(number);
+
+			if ((value < 0 && convert.value < 0 && value + convert.value > 0) || (value > 0 && convert.value > 0 && value + convert.value < 0)) {
+				Registers.F.Overflow = true;
+				return new Int32_T(value < 0 ? Int32.MinValue : Int32.MaxValue);
+			}
+
 			return new Int32_T(unchecked(value + convert.value));
 		}
 
@@ -501,8 +525,8 @@ namespace Chips.Runtime.Types.NumberProcessing{
 		}
 
 		public IInteger ArithmeticRotateLeft() {
-			bool carry = Metadata.Flags.Carry;
-			Metadata.Flags.Carry = unchecked(value & (Int32)((Int32)1 << (8 * sizeof(Int32) - 1))) != 0;
+			bool carry = Registers.F.Carry;
+			Registers.F.Carry = unchecked(value & (Int32)((Int32)1 << (8 * sizeof(Int32) - 1))) != 0;
 			
 			var i = new Int32_T(value << 1);
 			if (carry)
@@ -512,8 +536,8 @@ namespace Chips.Runtime.Types.NumberProcessing{
 		}
 
 		public IInteger ArithmeticRotateRight() {
-			bool carry = Metadata.Flags.Carry;
-			Metadata.Flags.Carry = (value & 1) != 0;
+			bool carry = Registers.F.Carry;
+			Registers.F.Carry = (value & 1) != 0;
 			
 			var i = new Int32_T(value >> 1);
 			if (carry)
@@ -550,21 +574,6 @@ namespace Chips.Runtime.Types.NumberProcessing{
 
 			Int32_T convert = ValueConverter.CastToInt32_T(number);
 			return new Int32_T(!inverseLogic ? value / convert.value : convert.value / value);
-		}
-
-		public IInteger GetBit(IInteger bit) {
-			if (bit is not INumber number)
-				throw new ArgumentException("Internal Chips Error -- Value was an integer, but not a number");
-			
-			if (ArithmeticSet.Number.Create(number.Value).CompareTo(ushort.MaxValue) >= 0)
-				return new Int32_T(0);
-
-			ushort shift = (ushort)ValueConverter.CastToUInt16_T(number).Value;
-			if (shift >= 8 * sizeof(Int32))
-				return new Int32_T(0);
-			
-			Int32 mask = (Int32)(1 << shift);
-			return new Int32_T(value & mask);
 		}
 
 		public INumber Increment()
@@ -674,10 +683,16 @@ namespace Chips.Runtime.Types.NumberProcessing{
 	}
 
 	[TextTemplateGenerated]
-	public struct Int64_T : INumber, IInteger {
+	public struct Int64_T : IInteger {
 		private Int64 value;
 
 		public object Value => value;
+
+		public Int64 ActualValue => value;
+
+		public bool IsZero => value == 0;
+
+		public bool IsNegative => value < 0;
 
 		public Int64_T(Int64 value) {
 			this.value = value;
@@ -687,8 +702,14 @@ namespace Chips.Runtime.Types.NumberProcessing{
 			this.value = (Int64)value;
 		}
 
-		public INumber Abs()
-			=> new Int64_T(value > 0 ? value : -value);
+		public INumber Abs() {
+			if (value == Int64.MinValue) {
+				Registers.F.Overflow = true;
+				return new Int64_T(Int64.MaxValue);
+			}
+
+			return new Int64_T(Math.Abs(value));
+		}
 
 		public INumber Add(INumber number) {
 			//For sizes larger than int, this block should be removed by the compiler
@@ -701,6 +722,12 @@ namespace Chips.Runtime.Types.NumberProcessing{
 				return number.Add(this);
 
 			Int64_T convert = ValueConverter.CastToInt64_T(number);
+
+			if ((value < 0 && convert.value < 0 && value + convert.value > 0) || (value > 0 && convert.value > 0 && value + convert.value < 0)) {
+				Registers.F.Overflow = true;
+				return new Int64_T(value < 0 ? Int64.MinValue : Int64.MaxValue);
+			}
+
 			return new Int64_T(unchecked(value + convert.value));
 		}
 
@@ -725,8 +752,8 @@ namespace Chips.Runtime.Types.NumberProcessing{
 		}
 
 		public IInteger ArithmeticRotateLeft() {
-			bool carry = Metadata.Flags.Carry;
-			Metadata.Flags.Carry = unchecked(value & (Int64)((Int64)1 << (8 * sizeof(Int64) - 1))) != 0;
+			bool carry = Registers.F.Carry;
+			Registers.F.Carry = unchecked(value & (Int64)((Int64)1 << (8 * sizeof(Int64) - 1))) != 0;
 			
 			var i = new Int64_T(value << 1);
 			if (carry)
@@ -736,8 +763,8 @@ namespace Chips.Runtime.Types.NumberProcessing{
 		}
 
 		public IInteger ArithmeticRotateRight() {
-			bool carry = Metadata.Flags.Carry;
-			Metadata.Flags.Carry = (value & 1) != 0;
+			bool carry = Registers.F.Carry;
+			Registers.F.Carry = (value & 1) != 0;
 			
 			var i = new Int64_T(value >> 1);
 			if (carry)
@@ -774,21 +801,6 @@ namespace Chips.Runtime.Types.NumberProcessing{
 
 			Int64_T convert = ValueConverter.CastToInt64_T(number);
 			return new Int64_T(!inverseLogic ? value / convert.value : convert.value / value);
-		}
-
-		public IInteger GetBit(IInteger bit) {
-			if (bit is not INumber number)
-				throw new ArgumentException("Internal Chips Error -- Value was an integer, but not a number");
-			
-			if (ArithmeticSet.Number.Create(number.Value).CompareTo(ushort.MaxValue) >= 0)
-				return new Int64_T(0);
-
-			ushort shift = (ushort)ValueConverter.CastToUInt16_T(number).Value;
-			if (shift >= 8 * sizeof(Int64))
-				return new Int64_T(0);
-			
-			Int64 mask = (Int64)(1 << shift);
-			return new Int64_T(value & mask);
 		}
 
 		public INumber Increment()
@@ -898,10 +910,16 @@ namespace Chips.Runtime.Types.NumberProcessing{
 	}
 
 	[TextTemplateGenerated]
-	public struct Byte_T : INumber, IInteger {
+	public struct Byte_T : IInteger {
 		private Byte value;
 
 		public object Value => value;
+
+		public Byte ActualValue => value;
+
+		public bool IsZero => value == 0;
+
+		public bool IsNegative => value < 0;
 
 		public Byte_T(Byte value) {
 			this.value = value;
@@ -911,8 +929,14 @@ namespace Chips.Runtime.Types.NumberProcessing{
 			this.value = (Byte)value;
 		}
 
-		public INumber Abs()
-			=> new Byte_T(value > 0 ? value : -value);
+		public INumber Abs() {
+			if (value == Byte.MinValue) {
+				Registers.F.Overflow = true;
+				return new Byte_T(Byte.MaxValue);
+			}
+
+			return new Byte_T(Math.Abs(value));
+		}
 
 		public INumber Add(INumber number) {
 			//For sizes larger than int, this block should be removed by the compiler
@@ -925,6 +949,12 @@ namespace Chips.Runtime.Types.NumberProcessing{
 				return number.Add(this);
 
 			Byte_T convert = ValueConverter.CastToByte_T(number);
+
+			if ((value < 0 && convert.value < 0 && value + convert.value > 0) || (value > 0 && convert.value > 0 && value + convert.value < 0)) {
+				Registers.F.Overflow = true;
+				return new Byte_T(value < 0 ? Byte.MinValue : Byte.MaxValue);
+			}
+
 			return new Byte_T(unchecked(value + convert.value));
 		}
 
@@ -949,8 +979,8 @@ namespace Chips.Runtime.Types.NumberProcessing{
 		}
 
 		public IInteger ArithmeticRotateLeft() {
-			bool carry = Metadata.Flags.Carry;
-			Metadata.Flags.Carry = unchecked(value & (Byte)((Byte)1 << (8 * sizeof(Byte) - 1))) != 0;
+			bool carry = Registers.F.Carry;
+			Registers.F.Carry = unchecked(value & (Byte)((Byte)1 << (8 * sizeof(Byte) - 1))) != 0;
 			
 			var i = new Byte_T(value << 1);
 			if (carry)
@@ -960,8 +990,8 @@ namespace Chips.Runtime.Types.NumberProcessing{
 		}
 
 		public IInteger ArithmeticRotateRight() {
-			bool carry = Metadata.Flags.Carry;
-			Metadata.Flags.Carry = (value & 1) != 0;
+			bool carry = Registers.F.Carry;
+			Registers.F.Carry = (value & 1) != 0;
 			
 			var i = new Byte_T(value >> 1);
 			if (carry)
@@ -998,21 +1028,6 @@ namespace Chips.Runtime.Types.NumberProcessing{
 
 			Byte_T convert = ValueConverter.CastToByte_T(number);
 			return new Byte_T(!inverseLogic ? value / convert.value : convert.value / value);
-		}
-
-		public IInteger GetBit(IInteger bit) {
-			if (bit is not INumber number)
-				throw new ArgumentException("Internal Chips Error -- Value was an integer, but not a number");
-			
-			if (ArithmeticSet.Number.Create(number.Value).CompareTo(ushort.MaxValue) >= 0)
-				return new Byte_T(0);
-
-			ushort shift = (ushort)ValueConverter.CastToUInt16_T(number).Value;
-			if (shift >= 8 * sizeof(Byte))
-				return new Byte_T(0);
-			
-			Byte mask = (Byte)(1 << shift);
-			return new Byte_T(value & mask);
 		}
 
 		public INumber Increment()
@@ -1122,10 +1137,16 @@ namespace Chips.Runtime.Types.NumberProcessing{
 	}
 
 	[TextTemplateGenerated]
-	public struct UInt16_T : INumber, IInteger {
+	public struct UInt16_T : IInteger {
 		private UInt16 value;
 
 		public object Value => value;
+
+		public UInt16 ActualValue => value;
+
+		public bool IsZero => value == 0;
+
+		public bool IsNegative => false;
 
 		public UInt16_T(UInt16 value) {
 			this.value = value;
@@ -1149,6 +1170,12 @@ namespace Chips.Runtime.Types.NumberProcessing{
 				return number.Add(this);
 
 			UInt16_T convert = ValueConverter.CastToUInt16_T(number);
+
+			if (value + convert.value < value) {
+				Registers.F.Overflow = true;
+				return new UInt16_T(UInt16.MaxValue);
+			}
+
 			return new UInt16_T(unchecked(value + convert.value));
 		}
 
@@ -1173,8 +1200,8 @@ namespace Chips.Runtime.Types.NumberProcessing{
 		}
 
 		public IInteger ArithmeticRotateLeft() {
-			bool carry = Metadata.Flags.Carry;
-			Metadata.Flags.Carry = unchecked(value & (UInt16)((UInt16)1 << (8 * sizeof(UInt16) - 1))) != 0;
+			bool carry = Registers.F.Carry;
+			Registers.F.Carry = unchecked(value & (UInt16)((UInt16)1 << (8 * sizeof(UInt16) - 1))) != 0;
 			
 			var i = new UInt16_T(value << 1);
 			if (carry)
@@ -1184,8 +1211,8 @@ namespace Chips.Runtime.Types.NumberProcessing{
 		}
 
 		public IInteger ArithmeticRotateRight() {
-			bool carry = Metadata.Flags.Carry;
-			Metadata.Flags.Carry = (value & 1) != 0;
+			bool carry = Registers.F.Carry;
+			Registers.F.Carry = (value & 1) != 0;
 			
 			var i = new UInt16_T(value >> 1);
 			if (carry)
@@ -1222,21 +1249,6 @@ namespace Chips.Runtime.Types.NumberProcessing{
 
 			UInt16_T convert = ValueConverter.CastToUInt16_T(number);
 			return new UInt16_T(!inverseLogic ? value / convert.value : convert.value / value);
-		}
-
-		public IInteger GetBit(IInteger bit) {
-			if (bit is not INumber number)
-				throw new ArgumentException("Internal Chips Error -- Value was an integer, but not a number");
-			
-			if (ArithmeticSet.Number.Create(number.Value).CompareTo(ushort.MaxValue) >= 0)
-				return new UInt16_T(0);
-
-			ushort shift = (ushort)ValueConverter.CastToUInt16_T(number).Value;
-			if (shift >= 8 * sizeof(UInt16))
-				return new UInt16_T(0);
-			
-			UInt16 mask = (UInt16)(1 << shift);
-			return new UInt16_T(value & mask);
 		}
 
 		public INumber Increment()
@@ -1340,10 +1352,16 @@ namespace Chips.Runtime.Types.NumberProcessing{
 	}
 
 	[TextTemplateGenerated]
-	public struct UInt32_T : INumber, IInteger {
+	public struct UInt32_T : IInteger {
 		private UInt32 value;
 
 		public object Value => value;
+
+		public UInt32 ActualValue => value;
+
+		public bool IsZero => value == 0;
+
+		public bool IsNegative => false;
 
 		public UInt32_T(UInt32 value) {
 			this.value = value;
@@ -1367,6 +1385,12 @@ namespace Chips.Runtime.Types.NumberProcessing{
 				return number.Add(this);
 
 			UInt32_T convert = ValueConverter.CastToUInt32_T(number);
+
+			if (value + convert.value < value) {
+				Registers.F.Overflow = true;
+				return new UInt32_T(UInt32.MaxValue);
+			}
+
 			return new UInt32_T(unchecked(value + convert.value));
 		}
 
@@ -1391,8 +1415,8 @@ namespace Chips.Runtime.Types.NumberProcessing{
 		}
 
 		public IInteger ArithmeticRotateLeft() {
-			bool carry = Metadata.Flags.Carry;
-			Metadata.Flags.Carry = unchecked(value & (UInt32)((UInt32)1 << (8 * sizeof(UInt32) - 1))) != 0;
+			bool carry = Registers.F.Carry;
+			Registers.F.Carry = unchecked(value & (UInt32)((UInt32)1 << (8 * sizeof(UInt32) - 1))) != 0;
 			
 			var i = new UInt32_T(value << 1);
 			if (carry)
@@ -1402,8 +1426,8 @@ namespace Chips.Runtime.Types.NumberProcessing{
 		}
 
 		public IInteger ArithmeticRotateRight() {
-			bool carry = Metadata.Flags.Carry;
-			Metadata.Flags.Carry = (value & 1) != 0;
+			bool carry = Registers.F.Carry;
+			Registers.F.Carry = (value & 1) != 0;
 			
 			var i = new UInt32_T(value >> 1);
 			if (carry)
@@ -1440,21 +1464,6 @@ namespace Chips.Runtime.Types.NumberProcessing{
 
 			UInt32_T convert = ValueConverter.CastToUInt32_T(number);
 			return new UInt32_T(!inverseLogic ? value / convert.value : convert.value / value);
-		}
-
-		public IInteger GetBit(IInteger bit) {
-			if (bit is not INumber number)
-				throw new ArgumentException("Internal Chips Error -- Value was an integer, but not a number");
-			
-			if (ArithmeticSet.Number.Create(number.Value).CompareTo(ushort.MaxValue) >= 0)
-				return new UInt32_T(0);
-
-			ushort shift = (ushort)ValueConverter.CastToUInt16_T(number).Value;
-			if (shift >= 8 * sizeof(UInt32))
-				return new UInt32_T(0);
-			
-			UInt32 mask = (UInt32)(1 << shift);
-			return new UInt32_T(value & mask);
 		}
 
 		public INumber Increment()
@@ -1558,10 +1567,16 @@ namespace Chips.Runtime.Types.NumberProcessing{
 	}
 
 	[TextTemplateGenerated]
-	public struct UInt64_T : INumber, IInteger {
+	public struct UInt64_T : IInteger {
 		private UInt64 value;
 
 		public object Value => value;
+
+		public UInt64 ActualValue => value;
+
+		public bool IsZero => value == 0;
+
+		public bool IsNegative => false;
 
 		public UInt64_T(UInt64 value) {
 			this.value = value;
@@ -1585,6 +1600,12 @@ namespace Chips.Runtime.Types.NumberProcessing{
 				return number.Add(this);
 
 			UInt64_T convert = ValueConverter.CastToUInt64_T(number);
+
+			if (value + convert.value < value) {
+				Registers.F.Overflow = true;
+				return new UInt64_T(UInt64.MaxValue);
+			}
+
 			return new UInt64_T(unchecked(value + convert.value));
 		}
 
@@ -1609,8 +1630,8 @@ namespace Chips.Runtime.Types.NumberProcessing{
 		}
 
 		public IInteger ArithmeticRotateLeft() {
-			bool carry = Metadata.Flags.Carry;
-			Metadata.Flags.Carry = unchecked(value & (UInt64)((UInt64)1 << (8 * sizeof(UInt64) - 1))) != 0;
+			bool carry = Registers.F.Carry;
+			Registers.F.Carry = unchecked(value & (UInt64)((UInt64)1 << (8 * sizeof(UInt64) - 1))) != 0;
 			
 			var i = new UInt64_T(value << 1);
 			if (carry)
@@ -1620,8 +1641,8 @@ namespace Chips.Runtime.Types.NumberProcessing{
 		}
 
 		public IInteger ArithmeticRotateRight() {
-			bool carry = Metadata.Flags.Carry;
-			Metadata.Flags.Carry = (value & 1) != 0;
+			bool carry = Registers.F.Carry;
+			Registers.F.Carry = (value & 1) != 0;
 			
 			var i = new UInt64_T(value >> 1);
 			if (carry)
@@ -1658,21 +1679,6 @@ namespace Chips.Runtime.Types.NumberProcessing{
 
 			UInt64_T convert = ValueConverter.CastToUInt64_T(number);
 			return new UInt64_T(!inverseLogic ? value / convert.value : convert.value / value);
-		}
-
-		public IInteger GetBit(IInteger bit) {
-			if (bit is not INumber number)
-				throw new ArgumentException("Internal Chips Error -- Value was an integer, but not a number");
-			
-			if (ArithmeticSet.Number.Create(number.Value).CompareTo(ushort.MaxValue) >= 0)
-				return new UInt64_T(0);
-
-			ushort shift = (ushort)ValueConverter.CastToUInt16_T(number).Value;
-			if (shift >= 8 * sizeof(UInt64))
-				return new UInt64_T(0);
-			
-			UInt64 mask = (UInt64)(1 << shift);
-			return new UInt64_T(value & mask);
 		}
 
 		public INumber Increment()
@@ -1776,10 +1782,20 @@ namespace Chips.Runtime.Types.NumberProcessing{
 	}
 
 	[TextTemplateGenerated]
-	public struct Single_T : INumber, IFloat{
+	public struct Single_T : IFloat {
 		private Single value;
 
 		public object Value => value;
+
+		public Single ActualValue => value;
+
+		public bool IsZero => value == 0;
+
+		public bool IsNegative => value < 0;
+
+		public bool IsNaN => Single.IsNaN(value);
+
+		public bool IsInfinity => Single.IsInfinity(value);
 
 		public Single_T(Single value) {
 			this.value = value;
@@ -1955,10 +1971,20 @@ namespace Chips.Runtime.Types.NumberProcessing{
 	}
 	
 	[TextTemplateGenerated]
-	public struct Double_T : INumber, IFloat{
+	public struct Double_T : IFloat {
 		private Double value;
 
 		public object Value => value;
+
+		public Double ActualValue => value;
+
+		public bool IsZero => value == 0;
+
+		public bool IsNegative => value < 0;
+
+		public bool IsNaN => Double.IsNaN(value);
+
+		public bool IsInfinity => Double.IsInfinity(value);
 
 		public Double_T(Double value) {
 			this.value = value;
@@ -2138,10 +2164,20 @@ namespace Chips.Runtime.Types.NumberProcessing{
 	}
 	
 	[TextTemplateGenerated]
-	public struct Decimal_T : INumber, IFloat{
+	public struct Decimal_T : IFloat {
 		private Decimal value;
 
 		public object Value => value;
+
+		public Decimal ActualValue => value;
+
+		public bool IsZero => value == 0;
+
+		public bool IsNegative => value < 0;
+
+		public bool IsNaN => false;
+
+		public bool IsInfinity => false;
 
 		public Decimal_T(Decimal value) {
 			this.value = value;

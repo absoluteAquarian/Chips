@@ -2,6 +2,10 @@
 	public interface INumber {
 		object Value { get; }
 
+		bool IsZero { get; }
+
+		bool IsNegative { get; }
+
 		INumber Abs();
 
 		INumber Add(INumber number);

@@ -1,7 +1,4 @@
-﻿using System;
-using System.Numerics;
-
-namespace Chips.Runtime.Utility {
+﻿namespace Chips.Runtime.Utility {
 	public enum TypeCode {
 		Null = 255,
 		/// <summary>
@@ -37,10 +34,6 @@ namespace Chips.Runtime.Utility {
 		/// </summary>
 		Uint64,
 		/// <summary>
-		/// bigint - <seealso cref="BigInteger"/>
-		/// </summary>
-		BigInt,
-		/// <summary>
 		/// float - 32bit floating-point value
 		/// </summary>
 		Float,
@@ -65,56 +58,8 @@ namespace Chips.Runtime.Utility {
 		/// </summary>
 		String,
 		/// <summary>
-		/// index
-		/// </summary>
-		Indexer,
-		/// <summary>
-		/// arrays
-		/// </summary>
-		Array,
-		/// <summary>
-		/// range - range of integers
-		/// </summary>
-		Range,
-		/// <summary>
-		/// list - dynamic-sized collection of objects
-		/// </summary>
-		List,
-		/// <summary>
-		/// time - <seealso cref="TimeSpan"/>
-		/// </summary>
-		Time,
-		/// <summary>
-		/// set - arithmetic set of numbers
-		/// </summary>
-		Set,
-		/// <summary>
-		/// date - <seealso cref="DateTime"/>
-		/// </summary>
-		Date,
-		/// <summary>
-		/// regex - <seealso cref="Types.Regex"/>
-		/// </summary>
-		Regex,
-		/// <summary>
 		/// bool - boolean
 		/// </summary>
-		Bool,
-		/// <summary>
-		/// range - <seealso cref="System.Random"/>
-		/// </summary>
-		Random,
-		/// <summary>
-		/// complex - <seealso cref="System.Numerics.Complex"/>
-		/// </summary>
-		Complex,
-		/// <summary>
-		/// Any type that doesn't have a Chips alias
-		/// </summary>
-		Unknown,
-		/// <summary>
-		/// half - 16bit floating-point value
-		/// </summary>
-		Half
+		Bool
 	}
 }
