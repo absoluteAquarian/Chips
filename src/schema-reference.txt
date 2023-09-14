@@ -1,7 +1,5 @@
 ﻿; This file serves as an example of how Chips code is structured
-.import System.Runtime
-
-.extern System from System.Runtime
+.import System from System.Runtime
 
 .namespace Sample {
 	.type Program : class assembly static {

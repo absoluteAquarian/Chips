@@ -3,7 +3,7 @@ using Chips.Utility;
 using System;
 using System.IO;
 
-namespace Chips.Compiler.IO {
+namespace Chips.Compiler.IO.PDB {
 	internal abstract class CPDBFileInfo {
 		public readonly string parentMethod;
 		public readonly string name;
@@ -19,16 +19,14 @@ namespace Chips.Compiler.IO {
 		}
 
 		public void Write(BinaryWriter writer, StringHeap heap) {
-			StringMetadata token = heap.GetOrAdd(name);
-			token.Serialize(writer);
+			heap.WriteString(writer, name);
 
 			writer.Write7BitEncodedInt(data.Length);
 			writer.Write(data);
 		}
 
 		public static byte[] Read(BinaryReader reader, StringHeap heap, out string name) {
-			StringMetadata token = StringMetadata.Deserialize(reader);
-			name = heap.GetString(token);
+			name = heap.ReadString(reader);
 
 			int length = reader.Read7BitEncodedInt();
 			return reader.ReadBytes(length);

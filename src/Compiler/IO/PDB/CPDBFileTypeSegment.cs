@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 
-namespace Chips.Compiler.IO {
+namespace Chips.Compiler.IO.PDB {
 	internal class CPDBFileTypeSegment {
 		public readonly string name;
 
@@ -23,16 +23,14 @@ namespace Chips.Compiler.IO {
 		public void AddMethod(CPDBFileMethodSegment method) => methods.Add(method);
 
 		public void Write(BinaryWriter writer, StringHeap heap) {
-			StringMetadata token = heap.GetOrAdd(name);
-			token.Serialize(writer);
+			heap.WriteString(writer, name);
 			writer.Write7BitEncodedInt(methods.Count);
 			foreach (var method in methods)
 				method.Write(writer, heap);
 		}
 
 		public static CPDBFileTypeSegment Read(BinaryReader reader, StringHeap heap) {
-			StringMetadata token = StringMetadata.Deserialize(reader);
-			string name = heap.GetString(token);
+			string name = heap.ReadString(reader);
 			
 			CPDBFileTypeSegment type = new(name);
 

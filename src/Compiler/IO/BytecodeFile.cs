@@ -1,4 +1,5 @@
 ﻿using System.IO;
+using Chips.Compiler.IO.PDB;
 
 namespace Chips.Compiler.IO {
 	internal class BytecodeFile {

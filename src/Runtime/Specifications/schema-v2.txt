@@ -49,8 +49,7 @@ KEYWORDS
 .method    | begins method definition, body enclosed by {}
 .type      | begins class/struct definition, body enclosed by {}
 .namespace | begins namespace definition, body enclosed by {}
-.import    | begins assembly import definition (".import Assembly")
-.extern    | begins namespace import definition (".extern Namespace.Name from Assembly")
+.import    | begins assembly import definition (".import Namespace.Name from Assembly")
 public     | "public" type/member access modifier
 assembly   | "internal" type/member access modifier
 inherit    | "protected" member access modifier

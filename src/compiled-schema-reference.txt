@@ -1,23 +1,35 @@
 ﻿// Compiled bytecode from schema-reference.txt
 
-// .import System.Runtime
-04 0E 53 79 73 74 65 6D 2E 52 75 6E 74 69 6D 65
+// <-- string heap -->
+//  System.RuntimeS
+// ampleProgramMain
+// argsHello World!
+// (100 + 15) / 3 *
+//  4 = N3(45.0 - 1
+// 5.25) * 13.5 = 
+5E 53 79 73 74 65 6D 2E 52 75 6E 74 69 6D 65 53
+61 6D 70 6C 65 50 72 6F 67 72 61 6D 4D 61 69 6E
+61 72 67 73 48 65 6C 6C 6F 20 57 6F 72 6C 64 21
+28 31 30 30 20 2B 20 31 35 29 20 2F 20 33 20 2A
+20 34 20 3D 20 4E 33 28 34 35 2E 30 20 2D 20 31
+35 2E 32 35 29 20 2A 20 31 33 2E 35 20 3D 20
 
-// .extern System from System.Runtime
-06 06 53 79 73 74 65 6D 0E 53 79 73 74 65 6D 2E 52 75 6E 74 69 6D 65
+// .import System from System.Runtime
+05 00 06 00 0E
 
 // .namespace Sample {
-00 06 53 61 6D 70 6C 65 01
+00 0E 06
 
 //	.type Program : class assembly static {
-01 07 50 72 6F 67 72 61 6D 80 10 00 00 01
+01 14 07 80 10 00 00 01
 
 //		.method Main (args: string[]) public static -> void {
-03 04 4D 61 69 6E 81 10 00 00 00 00 00 00 B7 01 00 02 01 04 61 72 67 73 00 00
+03 1B 04 81 10 00 00 00 00 00 00 B7 01 00 02 01
+1F 04 7F 00 00 02 00 00
 
 //			; Print "Hello world!"
 //			ldcs "Hello world!"
-04 00 0C
+04 23 0C
 //			prntl
 4F
 
@@ -37,7 +49,7 @@
 //			push &S
 10 02
 //			ldcs "(100 + 15) / 3 * 4 = "
-04 0C 15
+04 2F 15
 //			cat
 36
 //			prntl
@@ -54,11 +66,11 @@
 //			push &I
 10 01
 //			tostr "N3"
-2E 02 4E 33
+2E 44 02
 //			push &S
 10 02
 //			ldcs "(45.0 - 15.25) * 13.5 = "
-04 21 18
+04 46 18
 //			cat
 36
 //			prntl

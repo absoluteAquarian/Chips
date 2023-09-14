@@ -4,7 +4,7 @@ using System;
 using System.IO;
 using System.Text;
 
-namespace Chips.Compiler.IO {
+namespace Chips.Compiler.IO.PDB {
 	internal class CPDBFile {
 		public readonly CPDBFileMemberCollection Information = new();
 

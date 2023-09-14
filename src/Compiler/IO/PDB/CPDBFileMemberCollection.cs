@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 
-namespace Chips.Compiler.IO {
+namespace Chips.Compiler.IO.PDB {
 	internal class CPDBFileMemberCollection {
 		private readonly List<CPDBFileNamespaceSegment> namespaces = new();
 

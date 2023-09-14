@@ -4,7 +4,7 @@ using Chips.Utility;
 using System.Collections.Generic;
 using System.IO;
 
-namespace Chips.Compiler.IO {
+namespace Chips.Compiler.IO.PDB {
 	internal class CPDBFileMethodSegment {
 		public readonly string name;
 
@@ -43,8 +43,7 @@ namespace Chips.Compiler.IO {
 		public void AddLabel(CPDBFunctionLabel label) => labels.Add(label);
 
 		public void Write(BinaryWriter writer, StringHeap heap) {
-			StringMetadata token = heap.GetOrAdd(name);
-			token.Serialize(writer);
+			heap.WriteString(writer, name);
 
 			writer.Write7BitEncodedInt(locals.Count);
 			foreach (var local in locals)
@@ -56,8 +55,7 @@ namespace Chips.Compiler.IO {
 		}
 
 		public static CPDBFileMethodSegment Read(BinaryReader reader, StringHeap heap) {
-			StringMetadata token = StringMetadata.Deserialize(reader);
-			string name = heap.GetString(token);
+			string name = heap.ReadString(reader);
 			CPDBFileMethodSegment segment = new(name);
 
 			int localCount = reader.Read7BitEncodedInt();

@@ -4,7 +4,6 @@
 		Type,
 		Field,
 		Method,
-		AssemblyReference,
 		TypeAlias,
 		ExternNamespace,
 		Variable

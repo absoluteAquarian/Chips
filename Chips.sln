@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31717.71
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Chips", "Chips.csproj", "{71AA57E4-C98B-487D-AEDB-774C26F3FE4E}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Chips", "src\Chips.csproj", "{71AA57E4-C98B-487D-AEDB-774C26F3FE4E}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

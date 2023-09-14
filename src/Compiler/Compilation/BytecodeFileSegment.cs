@@ -137,20 +137,6 @@ namespace Chips.Compiler.Compilation {
 		}
 	}
 
-	internal sealed class BytecodeAssemblyReferenceSegment : BytecodeFileSegment {
-		public readonly string assemblyName;
-		public readonly AssemblyDefinition resolvedAssembly;
-
-		public BytecodeAssemblyReferenceSegment(string assemblyName, AssemblyDefinition resolvedAssembly) : base(BytecodeMember.AssemblyReference) {
-			this.assemblyName = assemblyName;
-			this.resolvedAssembly = resolvedAssembly;
-		}
-
-		public override void WriteMember(CompilationContext context, BinaryWriter writer) {
-			writer.Write(assemblyName);
-		}
-	}
-
 	internal sealed class BytecodeTypeAliasSegment : BytecodeFileSegment {
 		public readonly string alias;
 		public readonly TypeDefinition resolvedAlias;

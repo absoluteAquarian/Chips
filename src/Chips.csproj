@@ -32,12 +32,12 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Include="src\Runtime\Types\NumberProcessing\InternalTypes.cs">
+    <None Include="Runtime\Types\NumberProcessing\InternalTypes.cs">
       <DesignTime>True</DesignTime>
       <AutoGen>True</AutoGen>
       <DependentUpon>InternalTypes.tt</DependentUpon>
     </None>
-    <None Include="src\Runtime\Utility\ValueConverter.Casting.cs">
+    <None Include="Runtime\Utility\ValueConverter.Casting.cs">
       <DesignTime>True</DesignTime>
       <AutoGen>True</AutoGen>
       <DependentUpon>ValueConverter.Casting.tt</DependentUpon>
@@ -49,12 +49,12 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Update="src\Runtime\Types\NumberProcessing\InternalTypes.cs">
+    <Compile Update="Runtime\Types\NumberProcessing\InternalTypes.cs">
       <DesignTime>True</DesignTime>
       <AutoGen>True</AutoGen>
       <DependentUpon>InternalTypes.tt</DependentUpon>
     </Compile>
-    <Compile Update="src\Runtime\Utility\ValueConverter.Casting.cs">
+    <Compile Update="Runtime\Utility\ValueConverter.Casting.cs">
       <DesignTime>True</DesignTime>
       <AutoGen>True</AutoGen>
       <DependentUpon>ValueConverter.Casting.tt</DependentUpon>
@@ -62,11 +62,11 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Update="src\Runtime\Types\NumberProcessing\InternalTypes.tt">
+    <None Update="Runtime\Types\NumberProcessing\InternalTypes.tt">
       <Generator>TextTemplatingFileGenerator</Generator>
       <LastGenOutput>InternalTypes.cs</LastGenOutput>
     </None>
-    <None Update="src\Runtime\Utility\ValueConverter.Casting.tt">
+    <None Update="Runtime\Utility\ValueConverter.Casting.tt">
       <Generator>TextTemplatingFileGenerator</Generator>
       <LastGenOutput>ValueConverter.Casting.cs</LastGenOutput>
     </None>

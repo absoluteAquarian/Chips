@@ -6,7 +6,6 @@ namespace Chips.Compiler.Utility {
 	/// An object representing a heap of strings
 	/// </summary>
 	public sealed class StringHeap {
-		// Using StringBuilder to reduce string copying
 		private char[] _heap = Array.Empty<char>();
 
 		/// <summary>
@@ -19,13 +18,32 @@ namespace Chips.Compiler.Utility {
 
 			int index = heap.IndexOf(incoming, StringComparison.Ordinal);
 			if (index < 0) {
-				// Add the string to the heap
-				index = heap.Length;
-				Array.Resize(ref _heap, index + incoming.Length);
+				// Check if part of the end of the heap is the same as the beginning of the string
+				// If so, we can just add the rest of the string to the heap
+				int overlap = 0;
+				for (int i = 1; i <= heap.Length; i++) {
+					if (incoming.StartsWith(heap[^i..]))
+						overlap = i;
+				}
 
-				// Copy the string to the heap using Span
-				Span<char> resizedHeap = _heap;
-				incoming.CopyTo(resizedHeap[index..]);
+				Span<char> resizedHeap;
+				if (overlap > 0) {
+					// Add the remaning part of the string to the heap
+					index = heap.Length - overlap;
+					Array.Resize(ref _heap, index + incoming.Length);
+
+					// Copy the string to the heap using Span
+					resizedHeap = _heap;
+					incoming[overlap..].CopyTo(resizedHeap[overlap..]);
+				} else {
+					// Add the full string to the heap
+					index = heap.Length;
+					Array.Resize(ref _heap, index + incoming.Length);
+
+					// Copy the string to the heap using Span
+					resizedHeap = _heap;
+					incoming.CopyTo(resizedHeap[index..]);
+				}
 			}
 
 			// Return the index of the string in the heap
@@ -37,17 +55,27 @@ namespace Chips.Compiler.Utility {
 			if (token.Offset + token.Length > _heap.Length)
 				throw new ArgumentOutOfRangeException();
 
-			return new(_heap, (int)token.Offset, (int)token.Length);
+			return new(_heap, (int)token.Offset, token.Length);
 		}
 
 		public void Serialize(BinaryWriter writer) {
-			writer.Write(_heap.Length);
+			writer.Write7BitEncodedInt(_heap.Length);
 			writer.Write(_heap);
 		}
 
 		public void Deserialize(BinaryReader reader) {
-			int length = reader.ReadInt32();
+			int length = reader.Read7BitEncodedInt();
 			_heap = reader.ReadChars(length);
+		}
+
+		public void WriteString(BinaryWriter writer, string str) {
+			StringMetadata token = GetOrAdd(str);
+			token.Serialize(writer);
+		}
+
+		public string ReadString(BinaryReader reader) {
+			StringMetadata token = StringMetadata.Deserialize(reader);
+			return GetString(token);
 		}
 	}
 
