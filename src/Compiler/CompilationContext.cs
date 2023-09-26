@@ -13,11 +13,9 @@ namespace Chips.Compiler {
 
 		public CilInstructionCollection Instructions => _method.Instructions;
 
-		internal CompilationContext(string sourceFile, ReferenceImporter importer) {
+		internal CompilationContext(ReferenceImporter importer) {
 			this.importer = importer;
-			resolver = new() {
-				activeSourceFile = sourceFile
-			};
+			resolver = new();
 			heap = new();
 		}
 

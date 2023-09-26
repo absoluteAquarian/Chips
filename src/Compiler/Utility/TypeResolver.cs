@@ -95,12 +95,27 @@ namespace Chips.Compiler.Utility {
 		private readonly Dictionary<string, string> userDefinedTypeAliases = new();
 		private readonly List<string> availableNamespaces = new();
 
-		public string activeSourceFile;
+		public string ActiveNamespaceScope { get; private set; }
 
         public TypeResolver() {
 			AddAssembly(ChipsCompiler.DotNetAssemblyDefinition);
-			AddAssembly(ChipsCompiler.buildingAssembly.Assembly);
+			AddAssembly(ChipsCompiler.buildingAssembly);
         }
+
+		public TypeResolverSnapshot GetSnapshot() {
+			return new TypeResolverSnapshot(availableNamespaces.ToArray(), ActiveNamespaceScope, userDefinedTypeAliases);
+		}
+
+		public void RestoreSnapshot(TypeResolverSnapshot snapshot) {
+			availableNamespaces.Clear();
+			availableNamespaces.AddRange(snapshot.availableNamespaces);
+
+			ActiveNamespaceScope = snapshot.activeNamespace;
+
+			userDefinedTypeAliases.Clear();
+			foreach (var (alias, type) in snapshot.EnumerateAliases())
+				userDefinedTypeAliases.Add(alias, type);
+		}
 
         public bool AddAssembly(AssemblyDefinition? assembly) {
 			ArgumentNullException.ThrowIfNull(assembly);
@@ -133,33 +148,10 @@ namespace Chips.Compiler.Utility {
 
 		public AssemblyDefinition? GetAssembly(int index) => index < 0 || index >= referencedAssemblies.Count ? null : referencedAssemblies[index].assembly;
 
-		public void WriteAssemblies(BinaryWriter writer) {
-			writer.Write(referencedAssemblies.Count);
-
-			foreach (var assembly in referencedAssemblies)
-				writer.Write(assembly.assembly.Name!);
-		}
-
-		public void ReadAssemblies(BinaryReader reader) {
-			int assemblyCount = reader.ReadInt32();
-
-			for (int i = 0; i < assemblyCount; i++) {
-				string assemblyName = reader.ReadString();
-				
-				// TODO: load assembly from file (Chips project file defines paths?)
-				AssemblyDefinition? assembly = ;
-
-				if (assembly is null)
-					throw new Exception($"Failed to resolve assembly \"{assemblyName}\"");
-
-				AddAssembly(assembly);
-			}
-		}
-
 		public bool AddTypeAlias(string alias, string fullTypeName, bool muteErrors = false) {
 			if (userDefinedTypeAliases.ContainsKey(alias)) {
 				if (!muteErrors)
-					ChipsCompiler.Error(activeSourceFile, $"Type alias \"{alias}\" is already defined");
+					ChipsCompiler.Error($"Type alias \"{alias}\" is already defined");
 
 				return false;
 			}
@@ -171,13 +163,17 @@ namespace Chips.Compiler.Utility {
 		public bool AddNamespaceImport(string ns, bool muteErrors = false) {
 			if (availableNamespaces.Contains(ns)) {
 				if (!muteErrors)
-					ChipsCompiler.Error(activeSourceFile, $"Namespace \"{ns}\" is already imported");
+					ChipsCompiler.Error($"Namespace \"{ns}\" is already imported");
 
 				return false;
 			}
 
 			availableNamespaces.Add(ns);
 			return true;
+		}
+
+		public void EnterNamespaceScope(string ns) {
+			ActiveNamespaceScope = ns;
 		}
 
 		public void Clear(bool clearAssemblies = false) {
@@ -187,7 +183,7 @@ namespace Chips.Compiler.Utility {
 
 				// Always ensure that a reference to the .NET lib and the compiling assembly are used
 				AddAssembly(ChipsCompiler.DotNetAssemblyDefinition);
-				AddAssembly(ChipsCompiler.buildingAssembly.Assembly);
+				AddAssembly(ChipsCompiler.buildingAssembly);
 			}
 
 			userDefinedTypeAliases.Clear();
@@ -200,7 +196,7 @@ namespace Chips.Compiler.Utility {
 
 			if (referencedAssemblies.Count == 0) {
 				if (!muteErrors)
-					ChipsCompiler.Error(fullTypeName, $"Type \"{fullTypeName}\" could not be resolved due to no assemblies being referenced");
+					ChipsCompiler.Error($"Type \"{fullTypeName}\" could not be resolved due to no assemblies being referenced");
 
 				return false;
 			}
@@ -223,7 +219,7 @@ namespace Chips.Compiler.Utility {
 				// Type could not be resolved at all
 				if (!muteErrors) {
 					TypeResolveAttempt.Fail_NotFound(fullTypeName)
-						.Error(activeSourceFile);
+						.Error();
 				}
 
 				sourceAssembly = null;
@@ -252,7 +248,7 @@ namespace Chips.Compiler.Utility {
 				// Type could not be resolved at all
 				if (!muteErrors) {
 					TypeResolveAttempt.Fail_NotFound(fullTypeName)
-						.Error(activeSourceFile);
+						.Error();
 				}
 
 				sourceAssembly = null;
@@ -265,7 +261,7 @@ namespace Chips.Compiler.Utility {
 		}
 
 		private bool CheckAssembly(string fullTypeName, ResolvedAssembly assembly, ref AssemblyDefinition? sourceAssembly, ref TypeDefinition? type, bool muteErrors) {
-			var attempt = assembly.TryResolveType(fullTypeName, out TypeDefinition? typeDef, availableNamespaces);
+			var attempt = assembly.TryResolveType(fullTypeName, out TypeDefinition? typeDef, availableNamespaces.Prepend(ActiveNamespaceScope));
 
 			// Type wasn't in the assembly; just ignore it
 			if (attempt.result == TypeResolveResult.Fail_NotFound)
@@ -276,7 +272,7 @@ namespace Chips.Compiler.Utility {
 					if (type is not null) {
 						if (!muteErrors) {
 							TypeResolveAttempt.Fail_MultipleInMultipleAssemblies(fullTypeName, sourceAssembly!.FullName, assembly.assembly.FullName)
-								.Error(activeSourceFile);
+								.Error();
 						}
 
 						sourceAssembly = null;
@@ -292,13 +288,13 @@ namespace Chips.Compiler.Utility {
 					return true;
 				case TypeResolveResult.Fail_NoPossibleSources:
 					// Type could not be resolved in any assembly
-					attempt.Error(activeSourceFile);
+					attempt.Error();
 					sourceAssembly = null;
 					type = null;
 					return false;
 				case TypeResolveResult.Fail_MultipleInOneAssembly:
 					// Forward the fail and then return
-					attempt.Error(activeSourceFile);
+					attempt.Error();
 					sourceAssembly = null;
 					type = null;
 					return false;
@@ -405,11 +401,32 @@ namespace Chips.Compiler.Utility {
 
 		public static TypeResolveAttempt Fail_MultipleInMultipleAssemblies(string fullTypeName, string assemblyName1, string assemblyName2) => new(TypeResolveResult.Fail_MultipleInMultipleAssemblies, $"Type \"{fullTypeName}\" could not be resolved due to it being referenced by both \"{assemblyName1}\" and \"{assemblyName2}\"");
 
-		public void Error(string sourceFile) {
+		public void Error() {
 			if (result == TypeResolveResult.Success)
 				return;
 
-			ChipsCompiler.Error(sourceFile, reasonForFail!);
+			ChipsCompiler.Error(reasonForFail!);
+		}
+	}
+
+	public readonly struct TypeResolverSnapshot {
+		public readonly string[] availableNamespaces;
+		public readonly string activeNamespace;
+		private readonly Dictionary<string, string> _typeAliases;
+
+		private readonly bool _isValidInstance;
+		public bool IsValid => _isValidInstance;
+
+		internal TypeResolverSnapshot(string[] availableNamespaces, string activeNamespace, Dictionary<string, string> typeAliases) {
+			this.availableNamespaces = availableNamespaces;
+			this.activeNamespace = activeNamespace;
+			_typeAliases = new Dictionary<string, string>(typeAliases);
+			_isValidInstance = true;
+		}
+
+		public IEnumerable<KeyValuePair<string, string>> EnumerateAliases() {
+			foreach (var (alias, type) in _typeAliases)
+				yield return new KeyValuePair<string, string>(alias, type);
 		}
 	}
 }

@@ -2,11 +2,11 @@
 
 namespace Chips.Compiler.Compilation {
 	public sealed class ChipsLabel {
-		public readonly string Name;
+		public string Name { get; internal set; }
 
 		public int Index { get; internal set; }
 
-		public int OpcodeOffset { get; private set; }
+		public int OpcodeOffset { get; internal set; }
 
 		internal ChipsLabel(string name) {
 			Name = name;
@@ -16,9 +16,20 @@ namespace Chips.Compiler.Compilation {
 			OpcodeOffset = target.Offset;
 		}
 
-		internal void WriteMember(CompilationContext context, BinaryWriter writer) {
+		internal static ChipsLabel ReadMember(BinaryReader reader) {
+			int offset = reader.Read7BitEncodedInt();
+
+			// Resolve label later once the CPDB file is read, if it exists
+			ChipsLabel label = new($"CHP_{offset:x4}") {
+				OpcodeOffset = offset
+			};
+
+			return label;
+		}
+
+		internal void WriteMember(BinaryWriter writer) {
 			if (string.IsNullOrWhiteSpace(Name))
-				throw ChipsCompiler.ErrorAndThrow(context.resolver.activeSourceFile, new InvalidDataException("Label name cannot be empty"));
+				throw ChipsCompiler.ErrorAndThrow(new InvalidDataException("Label name cannot be empty"));
 
 			writer.Write7BitEncodedInt(OpcodeOffset);
 		}

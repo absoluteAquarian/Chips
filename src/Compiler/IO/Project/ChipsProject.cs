@@ -1,16 +1,46 @@
-﻿using Chips.Utility;
+﻿using AsmResolver.DotNet;
+using Chips.Compiler.Utility;
+using Chips.Utility;
 using System.Collections.Generic;
 using System.IO;
 
 namespace Chips.Compiler.IO.Project {
 	internal class ChipsProject {
 		private readonly SourceResolver sources = new();
-		private readonly Dictionary<string, string> assemblyNameToFileLookup = new();
+		private readonly List<string> assemblies = new();
 
-		public readonly string file;
+		private readonly List<string> bytecodeFiles = new();
 
-		private ChipsProject(string file) {
+		public readonly string? file;
+
+		public CompilationContext context;
+
+		private ChipsProject(string? file) {
 			this.file = file;
+		}
+
+		public IEnumerable<ProjectSource> EnumerateSources() => sources.EnumerateFiles();
+
+		public IEnumerable<string> EnumerateCompiledFiles() => bytecodeFiles;
+
+		public void SetupReferences(TypeResolver resolver) {
+			resolver.Clear(clearAssemblies: true);
+
+			foreach (string assembly in assemblies)
+				resolver.AddAssembly(AssemblyDefinition.FromFile(assembly));
+		}
+
+		public void AddCompiledFile(string path) {
+			if (Path.GetExtension(path) != ".bchp")
+				throw new IOException("File extension was not \".bchp\"");
+
+			bytecodeFiles.Add(path);
+		}
+
+		public static ChipsProject FromCommandline(string inputArg) {
+			ChipsProject project = new(null);
+			project.sources.AddFiles(inputArg, include: true);
+			return project;
 		}
 
 		public static ChipsProject FromFile(string file) {
@@ -32,9 +62,11 @@ namespace Chips.Compiler.IO.Project {
 
 				switch (word) {
 					case ".source":
+						// .source <include|exclude> <path>
 						ReadSource(reader, project);
 						break;
 					case ".reference":
+						// .reference <path>
 						ReadReference(reader, project);
 						break;
 					default:
@@ -72,25 +104,15 @@ namespace Chips.Compiler.IO.Project {
 				_ => throw new IOException($"Unknown source scope \"{scope}\", expected \"include\" or \"exclude\"")
 			};
 
-			string path = reader.ReadWordOrQuotedString();
+			string path = reader.ReadWordOrQuotedString(out _);
 
 			project.sources.AddFiles(path, include);
 		}
 
 		private static void ReadReference(StreamReader reader, ChipsProject project) {
-			string alias = reader.ReadWord();
+			string path = reader.ReadWordOrQuotedString(out _);
 
-			string wordFrom = reader.ReadWord();
-			if (wordFrom != "from")
-				throw new IOException($"Expected \"from\" within \".reference\" directive, found \"{wordFrom}\" instead");
-
-			string path = reader.ReadWordOrQuotedString();
-
-			// If the alias already exists, throw an error
-			if (project.assemblyNameToFileLookup.ContainsKey(alias))
-				throw new IOException($"Duplicate alias \"{alias}\" in \".reference\" directive");
-
-			project.assemblyNameToFileLookup.Add(alias, path);
+			project.assemblies.Add(path);
 		}
 	}
 }

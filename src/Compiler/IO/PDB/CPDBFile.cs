@@ -8,7 +8,7 @@ namespace Chips.Compiler.IO.PDB {
 	internal class CPDBFile {
 		public readonly CPDBFileMemberCollection Information = new();
 
-		private CPDBFile() { }
+		internal CPDBFile() { }
 
 		public static CPDBFile FromFile(string file) {
 			if (Path.GetExtension(file) != ".cpdb")

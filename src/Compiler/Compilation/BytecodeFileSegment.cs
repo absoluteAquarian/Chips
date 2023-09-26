@@ -3,6 +3,7 @@ using AsmResolver.PE.DotNet.Metadata.Tables.Rows;
 using Chips.Utility;
 using System.Collections.Generic;
 using System.IO;
+using System.Text;
 
 namespace Chips.Compiler.Compilation {
 	internal abstract class BytecodeFileSegment {
@@ -15,98 +16,232 @@ namespace Chips.Compiler.Compilation {
 		public abstract void WriteMember(CompilationContext context, BinaryWriter writer);
 
 		public void WriteSegmentIdentifier(BinaryWriter writer) => writer.Write((byte)memberType);
+
+		public static BytecodeMember ReadSegmentIdentifier(BinaryReader reader) => (BytecodeMember)reader.ReadByte();
+	}
+
+	internal abstract class BytecodeTopLevelSegment : BytecodeFileSegment {
+		protected BytecodeTopLevelSegment(BytecodeMember memberType) : base(memberType) { }
 	}
 
 	internal abstract class BytecodeTypeMemberSegment : BytecodeFileSegment {
 		protected BytecodeTypeMemberSegment(BytecodeMember memberType) : base(memberType) { }
 	}
 
-	internal sealed class BytecodeNamespaceSegment : BytecodeFileSegment {
+	internal sealed class BytecodeNamespaceSegment : BytecodeTopLevelSegment {
 		public readonly string name;
 
-		private readonly List<BytecodeTypeSegment> definedTypes = new();
+		private readonly List<BytecodeFileSegment> members = new();
 
 		public BytecodeNamespaceSegment(string name) : base(BytecodeMember.Namespace) {
 			this.name = name;
 		}
 
-		public void AddType(BytecodeTypeSegment type) => definedTypes.Add(type);
+		public void AddNamespace(BytecodeNamespaceSegment ns) => members.Add(ns);
 
-		public override void WriteMember(CompilationContext context, BinaryWriter writer) {
-			writer.Write(name);
-			writer.Write7BitEncodedInt(definedTypes.Count);
-			foreach (var type in definedTypes) {
-				type.WriteSegmentIdentifier(writer);
-				type.WriteMember(context, writer);
+		public void AddType(BytecodeTypeSegment type) => members.Add(type);
+
+		public static BytecodeNamespaceSegment ReadMember(CompilationContext context, BinaryReader reader, object? state) {
+			string name = context.heap.ReadString(reader);
+			string fullNamespace = state is string s ? $"{s}.{name}" : name;
+
+			BytecodeNamespaceSegment segment = new(fullNamespace);
+
+			int typeCount = reader.Read7BitEncodedInt();
+			for (int i = 0; i < typeCount; i++) {
+				BytecodeMember memberType = ReadSegmentIdentifier(reader);
+
+				switch (memberType) {
+					case BytecodeMember.Namespace:
+						segment.AddNamespace(ReadMember(context, reader, fullNamespace));
+						break;
+					case BytecodeMember.Type:
+						segment.AddType(BytecodeTypeSegment.ReadMember(context, reader, segment));
+						break;
+					default:
+						throw new InvalidDataException($"Invalid member type {memberType} in namespace \"{name}\"");
+				}
 			}
+
+			return segment;
 		}
-	}
-
-	internal sealed class BytecodeTypeSegment : BytecodeTypeMemberSegment {
-		public readonly BytecodeTypeSegment enclosingType;
-		public readonly string name;
-		public readonly TypeAttributes attributes;
-
-		private readonly List<BytecodeTypeMemberSegment> definedMembers = new();
-
-		public BytecodeTypeSegment(BytecodeTypeSegment enclosingType, string name, TypeAttributes attributes) : base(BytecodeMember.Type) {
-			this.enclosingType = enclosingType;
-			this.name = name;
-			this.attributes = attributes;
-		}
-
-		public void AddMember(BytecodeTypeMemberSegment member) => definedMembers.Add(member);
 
 		public override void WriteMember(CompilationContext context, BinaryWriter writer) {
-			writer.Write(name);
-			writer.Write((uint)attributes);
-			writer.Write7BitEncodedInt(definedMembers.Count);
-			foreach (var member in definedMembers) {
+			context.heap.WriteString(writer, name);
+			writer.Write7BitEncodedInt(members.Count);
+			foreach (var member in members) {
 				member.WriteSegmentIdentifier(writer);
 				member.WriteMember(context, writer);
 			}
 		}
 	}
 
+	internal sealed class BytecodeTypeSegment : BytecodeTypeMemberSegment {
+		public readonly BytecodeNamespaceSegment enclosingNamespace;
+		public readonly BytecodeTypeSegment? enclosingType;
+		public readonly string name;
+		public readonly TypeAttributes attributes;
+
+		public readonly ITypeDefOrRef baseType;
+
+		public string FullName { get; }
+
+		private readonly List<BytecodeTypeMemberSegment> definedMembers = new();
+
+		public BytecodeTypeSegment(BytecodeNamespaceSegment enclosingNamespace, BytecodeTypeSegment? enclosingType, string name, TypeAttributes attributes, ITypeDefOrRef baseType) : base(BytecodeMember.Type) {
+			this.enclosingNamespace = enclosingNamespace;
+			this.enclosingType = enclosingType;
+			this.name = name;
+			this.attributes = attributes;
+			this.baseType = baseType;
+
+			FullName = ResolveFullName();
+		}
+
+		public void AddMember(BytecodeTypeMemberSegment member) => definedMembers.Add(member);
+
+		public static BytecodeTypeSegment ReadMember(CompilationContext context, BinaryReader reader, object? state) {
+			string name = context.heap.ReadString(reader);
+			TypeAttributes attributes = (TypeAttributes)reader.ReadUInt32();
+			ITypeDefOrRef baseType = reader.ReadTypeDefinition(context.resolver, context.heap);
+
+			BytecodeNamespaceSegment enclosingNamespace = state switch {
+				BytecodeNamespaceSegment ns => ns,
+				BytecodeTypeSegment type => type.enclosingNamespace,
+				_ => throw new InvalidDataException("Invalid state for type segment")
+			};
+
+			BytecodeTypeSegment segment = new(enclosingNamespace, state as BytecodeTypeSegment, name, attributes, baseType);
+
+			int memberCount = reader.Read7BitEncodedInt();
+			for (int i = 0; i < memberCount; i++) {
+				BytecodeMember memberType = ReadSegmentIdentifier(reader);
+
+				switch (memberType) {
+					case BytecodeMember.Type:
+						segment.AddMember(ReadMember(context, reader, segment));
+						break;
+					case BytecodeMember.Field:
+						segment.AddMember(BytecodeFieldSegment.ReadMember(context, reader));
+						break;
+					case BytecodeMember.Method:
+						segment.AddMember(BytecodeMethodSegment.ReadMember(context, reader));
+						break;
+					default:
+						throw new InvalidDataException($"Invalid member type {memberType} in type \"{segment.FullName}\"");
+				}
+			}
+
+			return segment;
+		}
+
+		public override void WriteMember(CompilationContext context, BinaryWriter writer) {
+			context.heap.WriteString(writer, name);
+			writer.Write((uint)attributes);
+			writer.Write(baseType, context.heap);
+			writer.Write7BitEncodedInt(definedMembers.Count);
+			foreach (var member in definedMembers) {
+				member.WriteSegmentIdentifier(writer);
+				member.WriteMember(context, writer);
+			}
+		}
+
+		private string ResolveFullName() {
+			StringBuilder sb = new StringBuilder(enclosingNamespace.name);
+			sb.Append('.');
+			
+			Stack<BytecodeTypeSegment> typeStack = new();
+			typeStack.Push(this);
+
+			BytecodeTypeSegment? current = this;
+			while (current.enclosingType is not null) {
+				typeStack.Push(current.enclosingType);
+				current = current.enclosingType;
+			}
+
+			while (typeStack.TryPop(out current)) {
+				sb.Append(current.name);
+
+				if (typeStack.Count > 0)
+					sb.Append('+');
+			}
+
+			return sb.ToString();
+		}
+	}
+
 	internal sealed class BytecodeFieldSegment : BytecodeTypeMemberSegment {
 		public readonly BytecodeTypeSegment declaringType;
 		public readonly string name;
-		public readonly TypeDefinition type;
-		public readonly TypeAttributes attributes;
+		public readonly ITypeDefOrRef type;
+		public readonly FieldAttributes attributes;
 
-		public BytecodeFieldSegment(string name, TypeDefinition type, TypeAttributes attributes) : base(BytecodeMember.Field) {
+		public BytecodeFieldSegment(string name, ITypeDefOrRef type, FieldAttributes attributes) : base(BytecodeMember.Field) {
 			this.name = name;
 			this.type = type;
 			this.attributes = attributes;
 		}
 
+		public static BytecodeFieldSegment ReadMember(CompilationContext context, BinaryReader reader) {
+			string name = context.heap.ReadString(reader);
+			ITypeDefOrRef type = reader.ReadTypeDefinition(context.resolver, context.heap);
+			FieldAttributes attributes = (FieldAttributes)reader.ReadUInt32();
+
+			return new BytecodeFieldSegment(name, type, attributes);
+		}
+
 		public override void WriteMember(CompilationContext context, BinaryWriter writer) {
-			writer.Write(name);
-			writer.Write(type, context.resolver);
+			context.heap.WriteString(writer, name);
+			writer.Write(type, context.heap);
 			writer.Write((uint)attributes);
 		}
 	}
 
 	internal sealed class BytecodeMethodSegment : BytecodeTypeMemberSegment {
 		public readonly string name;
-		public readonly TypeAttributes attributes;
-		public readonly TypeDefinition returnType;
+		public readonly MethodAttributes attributes;
+		public readonly ITypeDefOrRef returnType;
 
 		public readonly List<BytecodeVariableSegment> parameters = new();
 		public readonly List<BytecodeVariableSegment> locals = new();
 		public readonly BytecodeMethodBody body;
 
-		public BytecodeMethodSegment(string name, TypeAttributes attributes, TypeDefinition returnType) : base(BytecodeMember.Method) {
+		public BytecodeMethodSegment(string name, MethodAttributes attributes, ITypeDefOrRef returnType) : base(BytecodeMember.Method) {
 			this.name = name;
 			this.attributes = attributes;
 			this.returnType = returnType;
 			body = new(this);
 		}
 
+		public static BytecodeMethodSegment ReadMember(CompilationContext context, BinaryReader reader) {
+			string name = context.heap.ReadString(reader);
+			MethodAttributes attributes = (MethodAttributes)reader.ReadUInt32();
+			ITypeDefOrRef returnType = reader.ReadTypeDefinition(context.resolver, context.heap);
+
+			BytecodeMethodSegment segment = new(name, attributes, returnType);
+
+			int parameterCount = reader.Read7BitEncodedInt();
+			for (int i = 0; i < parameterCount; i++)
+				segment.parameters.Add(BytecodeVariableSegment.ReadMember(context, reader));
+
+			int localCount = reader.Read7BitEncodedInt();
+			for (int i = 0; i < localCount; i++)
+				segment.locals.Add(BytecodeVariableSegment.ReadMember(context, reader));
+
+			int labelCount = reader.Read7BitEncodedInt();
+			for (int i = 0; i < labelCount; i++) {
+				var label = ChipsLabel.ReadMember(reader);
+				label.Index = i;
+				segment.body.Labels.Add(label);
+			}
+
+			return segment;
+		}
+
 		public override void WriteMember(CompilationContext context, BinaryWriter writer) {
-			writer.Write(name);
+			context.heap.WriteString(writer, name);
 			writer.Write((uint)attributes);
-			writer.Write(returnType, context.resolver);
+			writer.Write(returnType, context.heap);
 
 			writer.Write7BitEncodedInt(parameters.Count);
 			foreach (var parameter in parameters)
@@ -118,54 +253,69 @@ namespace Chips.Compiler.Compilation {
 			
 			writer.Write7BitEncodedInt(body.Labels.Count);
 			foreach (var label in body.Labels)
-				label.WriteMember(context, writer);
+				label.WriteMember(writer);
 		}
 	}
 
 	internal sealed class BytecodeVariableSegment : BytecodeFileSegment {
 		public readonly string name;
-		public readonly TypeDefinition type;
+		public readonly ITypeDefOrRef type;
 
-		public BytecodeVariableSegment(string name, TypeDefinition type) : base(BytecodeMember.Variable) {
+		public BytecodeVariableSegment(string name, ITypeDefOrRef type) : base(BytecodeMember.Variable) {
 			this.name = name;
 			this.type = type;
 		}
 
+		public static BytecodeVariableSegment ReadMember(CompilationContext context, BinaryReader reader) {
+			string name = context.heap.ReadString(reader);
+			ITypeDefOrRef type = reader.ReadTypeDefinition(context.resolver, context.heap);
+
+			return new BytecodeVariableSegment(name, type);
+		}
+
 		public override void WriteMember(CompilationContext context, BinaryWriter writer) {
-			writer.Write(name);
-			writer.Write(type, context.resolver);
+			context.heap.WriteString(writer, name);
+			writer.Write(type, context.heap);
 		}
 	}
 
-	internal sealed class BytecodeTypeAliasSegment : BytecodeFileSegment {
+	internal sealed class BytecodeTypeAliasSegment : BytecodeTopLevelSegment {
 		public readonly string alias;
-		public readonly TypeDefinition resolvedAlias;
+		public readonly ITypeDefOrRef resolvedAlias;
 
-		public BytecodeTypeAliasSegment(string alias, TypeDefinition resolvedAlias) : base(BytecodeMember.TypeAlias) {
+		public BytecodeTypeAliasSegment(string alias, ITypeDefOrRef resolvedAlias) : base(BytecodeMember.TypeAlias) {
 			this.alias = alias;
 			this.resolvedAlias = resolvedAlias;
 		}
 
+		public static BytecodeTypeAliasSegment ReadMember(CompilationContext context, BinaryReader reader) {
+			string alias = context.heap.ReadString(reader);
+			ITypeDefOrRef resolvedAlias = reader.ReadTypeDefinition(context.resolver, context.heap);
+
+			return new BytecodeTypeAliasSegment(alias, resolvedAlias);
+		}
+
 		public override void WriteMember(CompilationContext context, BinaryWriter writer) {
-			writer.Write(alias);
-			writer.Write(resolvedAlias, context.resolver);
+			context.heap.WriteString(writer, alias);
+			writer.Write(resolvedAlias, context.heap);
 		}
 	}
 
-	internal sealed class BytecodeNamespaceImportSegment : BytecodeFileSegment {
+	internal sealed class BytecodeNamespaceImportSegment : BytecodeTopLevelSegment {
 		public readonly string importedNamespace;
-		public readonly string assemblyName;
-		public readonly AssemblyDefinition sourceAssembly;
 
-		public BytecodeNamespaceImportSegment(string importedNamespace, string assemblyName, AssemblyDefinition sourceAssembly) : base(BytecodeMember.ExternNamespace) {
+		public BytecodeNamespaceImportSegment(string importedNamespace) : base(BytecodeMember.ExternNamespace) {
 			this.importedNamespace = importedNamespace;
-			this.assemblyName = assemblyName;
-			this.sourceAssembly = sourceAssembly;
+		}
+
+		public static BytecodeNamespaceImportSegment ReadMember(CompilationContext context, BinaryReader reader) {
+			string importedNamespace = context.heap.ReadString(reader);
+
+			return new BytecodeNamespaceImportSegment(importedNamespace);
 		}
 
 		public override void WriteMember(CompilationContext context, BinaryWriter writer) {
-			writer.Write(importedNamespace);
-			writer.Write(assemblyName);
+			context.heap.WriteString(writer, importedNamespace);
 		}
 	}
 }

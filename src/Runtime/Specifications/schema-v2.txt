@@ -52,7 +52,8 @@ KEYWORDS
 .import    | begins assembly import definition (".import Namespace.Name from Assembly")
 public     | "public" type/member access modifier
 assembly   | "internal" type/member access modifier
-inherit    | "protected" member access modifier
+derived    | "protected" member access modifier
+abstract   | "abstract" type/member access modifier
 private    | "private" member access modifier
 static     | "static" type/member access modifier
 class      | "class" type definition
@@ -63,25 +64,46 @@ const      | constant field/local modifier
 
 OPCODES
 ====================
-       _________________________________________________________________________________________________________________________________
-_______|___x0__|___x1__|___x2__|___x3__|___x4__|___x5__|___x6__|___x7__|___x8__|___x9__|___xA__|___xB__|___xC__|___xD__|___xE__|___xF__|
-|  0x  |   nop |   brk |  ldci |  ldcf |  ldcs |  ldfi |  ldfs |  ldrg |  ldlc | ldmtd |  ldns |  ldel |  comp |    is |  conv | kbrdy |
-|  1x  |  push |   pop |   pop |   dup |   cli | ldfia | ldfsa | ldrga | ldlca |  ldzi | ldind | ldela |   bzs |   bge | tostr | kbkey |
-|  2x  |   clc |   clv |   cln |   clz |   cls |  stfi |  stfs |  strg |  stlc |  ldzf | stind |  stel |   bzc |   ble | tostr | kblin |
-|  3x  |   stc |  inca |  deca |  inci |  deci |   cat |   cat |  find |  find | ldziu | split |   rem |   bcs |  call | calli | print |
-|  4x  |   add |   sub |   mul |   div |   mod |   rep |   and |    or |   xor |  ldzd |  muls |  ldel |   bcc |   ret |       | prntl |
-|  5x  |   add |   sub |   mul |   div |   mod |   rep |   and |    or |   xor |  ldzl |  trim | ldela |   bns |       |       |       |
-|  6x  |  addf |  subf |  mulf |  divf |  modf |  repf |   not |   neg |  negf | ldzlu | trims |  stel |   bnc |       |       |       |
-|  7x  |  addf |  subf |  mulf |  divf |  modf |  repf |   asr |   asl |   ror |   rol | trime |       |   bvs |       |       |       |
-|  8x  |  traf |  trad |  trfi |  trfl |  trax |  tray |   asr |   asl |       |  ldzm |       |       |   bvc |       |       |       |
-|  9x  | nwarr | nwobj |   len |       |  trxa |  trya |       |       |       |       |       |       |   bss |       |       |       |
-|  Ax  |       |       |       |       |       |       |       |       |       |       |       |       |   bsc |       |       |       |
-|  Bx  |       |       |       |       |       |       |       |       |       |       |       |       |   bis |       |       |       |
-|  Cx  |       |       |       |       |       |       |       |       |       |       |       |       |   bic |       |       |       |
-|  Dx  |       |       |       |       |       |       |       |       |       |       |       |       |       |       |       |       |
-|  Ex  |       |       |       |       |       |       |       |       |       |       |       |       |       |       |       |       |
-|  Fx  |       |       |       |       |       |       |       |       |       |       |       |       |       |       |  wait |  halt |
-----------------------------------------------------------------------------------------------------------------------------------------
+       ________________________________________________________________________________________________________________________________________________
+_______|___x0___|___x1___|___x2___|___x3___|___x4___|___x5___|___x6___|___x7___|___x8___|___x9___|___xA___|___xB___|___xC___|___xD___|___xE___|___xF___|
+|  0x  |    nop |    brk |  ldc.i |  ldc.f |  ldc.s |   ldfi |   ldfs |   ldrg |   ldlc |  ldmtd |  ldz.s |   ldel |   comp |     is |   conv |  kbrdy |
+|  1x  |   push |    pop |    pop |    dup |    cli |  ldfia |  ldfsa |  ldrga |  ldlca |  ldz.i |  ldind |  ldela |    bzs |    bge |  tostr |  kbkey |
+|  2x  |    clc |    clv |    cln |    clz |    cls |   stfi |   stfs |   strg |   stlc |  ldz.f |  stind |   stel |    bzc |    ble |  tostr | kbline |
+|  3x  |    stc |   inca |   deca |   inci |   deci |    cat |    cat |   find |   find | ldz.iu |  split |    rem |    bcs |   call |  calli |  print |
+|  4x  |    add |    sub |    mul |    div |    mod |    rep |    and |     or |    xor |  ldz.d |  mul.s |   ldel |    bcc |    ret |        | printl |
+|  5x  |    add |    sub |    mul |    div |    mod |    rep |    and |     or |    xor |  ldz.l |   trim |  ldela |    bns |        |        |        |
+|  6x  |  add.f |  sub.f |  mul.f |  div.f |  mod.f |  rep.f |    not |    neg |  neg.f | ldz.lu | trim.s |   stel |    bnc |        |        |        |
+|  7x  |  add.f |  sub.f |  mul.f |  div.f |  mod.f |  rep.f |    asr |    asl |    ror |    rol | trim.e |        |    bvs |        |        |        |
+|  8x  |   traf |   trad |   trfi |   trfl |   trax |   tray |    asr |    asl |        |  ldz.m |        |        |    bvc |        |        |        |
+|  9x  |  nwarr |  nwobj |    len |  ldc.d |   trxa |   trya |        |        |        |        |        |        |    bss |        |        |        |
+|  Ax  |        |        | ldc.iu |  ldc.m |        |        |        |        |        |        |        |        |    bsc |        |        |        |
+|  Bx  |        |        |  ldc.l |        |        |        |        |        |        |        |        |        |    bis |        |        |        |
+|  Cx  |        |        | ldc.lu |        |        |        |        |        |        |        |        |        |    bic |        |        |        |
+|  Dx  |        |        |        |        |        |        |        |        |        |        |        |        |        |        |        |        |
+|  Ex  |        |        |        |        |        |        |        |        |        |        |        |        |        |        |        |        |
+|  Fx  |        |        |        |        |        |        |        |        |        |        |        |        |        |  <tb1> |   wait |   halt |
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Extended Table (0xFD) - Arithmetic
+       ________________________________________________________________________________________________________________________________________________
+_______|___x0___|___x1___|___x2___|___x3___|___x4___|___x5___|___x6___|___x7___|___x8___|___x9___|___xA___|___xB___|___xC___|___xD___|___xE___|___xF___|
+|  0x  |  add.l |  sub.l |  mul.l |  div.l |  mod.l |  rep.l |  and.l |   or.l |  xor.l |        |        |        |        |        |        |        |
+|  1x  | add.iu | sub.iu | mul.iu | div.iu | mod.iu | rep.iu | and.iu |  or.iu | xor.iu |        |        |        |        |        |        |        |
+|  2x  | add.lu | sub.lu | mul.lu | div.lu | mod.lu | rep.lu | and.lu |  or.lu | xor.lu |        |        |        |        |        |        |        |
+|  3x  |  add.d |  sub.d |  mul.d |  div.d |  mod.d |  rep.d |        |        |        |        |        |        |        |        |        |        |
+|  4x  |  add.m |  sub.m |  mul.m |  div.m |  mod.m |  rep.m |        |        |        |        |        |        |        |        |        |        |
+|  5x  |        |        |        |        |        |        |        |        |        |        |        |        |        |        |        |        |
+|  6x  |        |        |        |        |        |        |        |        |        |        |        |        |        |        |        |        |
+|  7x  |        |        |        |        |        |        |        |        |        |        |        |        |        |        |        |        |
+|  8x  |        |        |        |        |        |        |        |        |        |        |        |        |        |        |        |        |
+|  9x  |        |        |        |        |        |        |        |        |        |        |        |        |        |        |        |        |
+|  Ax  |        |        |        |        |        |        |        |        |        |        |        |        |        |        |        |        |
+|  Bx  |        |        |        |        |        |        |        |        |        |        |        |        |        |        |        |        |
+|  Cx  |        |        |        |        |        |        |        |        |        |        |        |        |        |        |        |        |
+|  Dx  |        |        |        |        |        |        |        |        |        |        |        |        |        |        |        |        |
+|  Ex  |        |        |        |        |        |        |        |        |        |        |        |        |        |        |        |        |
+|  Fx  |        |        |        |        |        |        |        |        |        |        |        |        |        |        |        |        |
+--------------------------------------------------------------------------------------------------------------------------------------------------------
 
 -- A --
 ADD [40]
@@ -90,18 +112,42 @@ ADD [40]
 ADD [50]
 * Syntax: add <int>
 * Adds an integer to &A
-ADDF [60]
-* Syntax: addf
+ADD.D [FD 30]
+* Syntax: add.d <double>
+* Adds a double-precision floating-point number to &A
+ADD.F [60]
+* Syntax: add.f
 * Pops a floating-point number and adds it to &I
-ADDF [70]
-* Syntax: addf <float>
+ADD.F [70]
+* Syntax: add.f <float>
 * Adds a floating-point number to &I
+ADD.IU [FD 10]
+* Syntax: add.iu <uint>
+* Adds an unsigned integer to &A
+ADD.L [FD 00]
+* Syntax: add.l <long>
+* Adds a long integer to &A
+ADD.LU [FD 20]
+* Syntax: add.lu <ulong>
+* Adds an unsigned long integer to &A
+ADD.M [FD 40]
+* Syntax: add.m <decimal>
+* Adds a decimal number to &A
 AND [46]
 * Syntax: and
 * Pops an integer and performs bitwise AND with &A
 AND [56]
 * Syntax: and <int>
 * Performs bitwise AND with an integer and &A
+AND.IU [FD 16]
+* Syntax: and.iu <uint>
+* Performs bitwise AND with an unsigned integer and &A
+AND.L [FD 06]
+* Syntax: and.l <long>
+* Performs bitwise AND with a long integer and &A
+AND.LU [FD 26]
+* Syntax: and.lu <ulong>
+* Performs bitwise AND with an unsigned long integer and &A
 ASL [77]
 * Syntax: asl
 * Pops an integer and shifts &A by it to the left
@@ -187,8 +233,8 @@ CLZ [23]
 COMP [0C]
 * Syntax: comp
 * Pops two numbers
-  * If the numbers are equal, the Zero flag is set
-  * The Negative flag is set if the first is less than the second
+  * The Zero flag is set to A=B
+  * The Negative flag is set to A<B
 CONV [0E]
 * Syntax: conv <type>
 * Pops a value, then attempts to cast it to a specified type
@@ -208,12 +254,27 @@ DIV [43]
 DIV [53]
 * Syntax: div <int>
 * Divides &A by an integer
-DIVF [63]
-* Syntax: divf
+DIV.D [FD 33]
+* Syntax: div.d <double>
+* Divides &A by a double-precision floating-point number
+DIV.F [63]
+* Syntax: div.f
 * Pops a floating-point number and divides &I by it
-DIVF [73]
-* Syntax: divf <float>
+DIV.F [73]
+* Syntax: div.f <float>
 * Divides &I by a floating-point number
+DIV.IU [FD 13]
+* Syntax: div.iu <uint>
+* Divides &A by an unsigned integer
+DIV.L [FD 03]
+* Syntax: div.l <long>
+* Divides &A by a long integer
+DIV.LU [FD 23]
+* Syntax: div.lu <ulong>
+* Divides &A by an unsigned long integer
+DIV.M [FD 43]
+* Syntax: div.m <decimal>
+* Divides &A by a decimal number
 DUP [13]
 * Syntax: dup
 * Pops a value and pushes it twice
@@ -242,7 +303,7 @@ INCI [33]
 * Increases &I by one
 IS [0D]
 * Syntax: is <type|null>
-* Pops a value and sets the Zero flag if it is the specified type or a subclass of the type, or null
+* Pops a value and sets the Zero flag to whether it is the specified type or a subclass of the type, or null
   * If it is the specified type, the casted value is pushed
 
 -- J --
@@ -250,21 +311,36 @@ IS [0D]
 KBKEY [1F]
 * Syntax: kbkey
 * Blocks until a key has been pressed, then puts the pressed key in &S
-KBLIN [2F]
-* Syntax: kblin
+KBLINE [2F]
+* Syntax: kbline
 * Blocks until ENTER has been pressed, then puts the inputted string in &S
 KBRDY [0F]
 * Syntax: kbrdy
 * Pushes true (1) if any keys have been pressed and are ready for input, false (0) otherwise
 
 -- L --
-LDCI [02]
-* Syntax: ldci <int>
-* Loads a constant integer into &A
-LDCF [03]
-* Syntax: ldcf <float>
-* Loads a constant floating-point number into &I
-LDCS [04]
+LDC.D [93]
+* Syntax: ldc.d <double>
+* Loads a constant double-precision floating-point number into &I
+LDC.I [02]
+* Syntax: ldc.i <int>
+* Loads a constant signed integer into &A
+LDC.IU [A2]
+* Syntax: ldc.iu <uint>
+* Loads a constant unsigned integer into &A
+LDC.F [03]
+* Syntax: ldc.f <float>
+* Loads a constant single-precision floating-point number into &I
+LDC.L [B2]
+* Syntax: ldc.l <long>
+* Loads a constant signed long integer into &I
+LDC.LU [C2]
+* Syntax: ldc.lu <ulong>
+* Loads a constant unsigned long integer into &I
+LDC.M [A3]
+* Syntax: ldc.m <decimal>
+* Loads a constant decimal number into &I
+LDC.S [04]
 * Syntax: ldcs <str>
 * Loads a constant string into &S
 LDEL [0B]
@@ -302,37 +378,37 @@ LDLCA [18]
 * Loads the address of a local into &A
 LDMTD [09]
 * Syntax: ldmtd <token>
-* Loads the address of a method into &A
-LDNS [0A]
-* Syntax: ldns
-* Loads null into &S
+* Loads the address of a static method into &A
 LDRG [07]
 * Syntax: ldrg <int>
 * Pushes a method argument
 LDRGA [17]
 * Syntax: ldarga <int>
 * Loads the address of a method argument into &A
-LDZD [49]
-* Syntax: ldzd
+LDZ.D [49]
+* Syntax: ldz.d
 * Loads a zero double (0d) into &I
-LDZF [29]
-* Syntax: ldzf
+LDZ.F [29]
+* Syntax: ldz.f
 * Loads a zero float (0f) into &I
-LDZI [19]
-* Sytnax: ldzi
+LDZ.I [19]
+* Sytnax: ldz.i
 * Loads a zero integer into &A
-LDZIU [39]
-* Syntax: ldziu
+LDZ.IU [39]
+* Syntax: ldz.iu
 * Loads a zero unsigned integer into &A
-LDZL [59]
-* Syntax: ldzl
+LDZ.L [59]
+* Syntax: ldz.l
 * Loads a zero long integer into &A
-LDZLU [69]
-* Syntax: ldzlu
+LDZ.LU [69]
+* Syntax: ldz.lu
 * Loads a zero unsigned long integer into &A
-LDZM [89]
-* Syntax: ldzm
+LDZ.M [89]
+* Syntax: ldz.m
 * Loads a zero decimal (0m) into &I
+LDZ.S [0A]
+* Syntax: ldz.s
+* Loads null into &S
 LEN [92]
 * Syntax: len
 * Pops an object, then:
@@ -346,34 +422,58 @@ MOD [44]
 MOD [54]
 * Syntax: mod <int>
 * Sets &A to the modulus of &A and an integer
-MODF [64]
-* Syntax: modf
+MOD.F [64]
+* Syntax: mod.f
 * Pops a floating-point number and sets &I to the modulus of &I and the value
-MODF [74]
-* Syntax: modf <float>
+MOD.F [74]
+* Syntax: mod.f <float>
 * Sets &I to the modulus of &I and a floating-point number
+MOD.IU [FD 14]
+* Syntax: mod.iu <uint>
+* Sets &A to the modulus of &A and an unsigned integer
+MOD.L [FD 04]
+* Syntax: mod.l <long>
+* Sets &A to the modulus of &A and a long integer
+MOD.LU [FD 24]
+* Syntax: mod.lu <ulong>
+* Sets &A to the modulus of &A and an unsigned long integer
 MUL [42]
 * Syntax: mul
 * Pops an integer and multiplies &A by it
 MUL [52]
 * Syntax: mul <int>
 * Multiplies &A by an integer
-MULF [62]
-* Syntax: mulf
+MUL.D [FD 32]
+* Syntax: mul.d <double>
+* Multiplies &I by a double-precision floating-point number
+MUL.F [62]
+* Syntax: mul.f
 * Pops a floating-point number and multiplies &I by it
-MULF [72]
-* Syntax: mulf <float>
+MUL.F [72]
+* Syntax: mul.f <float>
 * Multiplies &I by a floating-point number
-MULS [4A]
-* Syntax: muls
+MUL.IU [FD 12]
+* Syntax: mul.iu <uint>
+* Multiplies &A by an unsigned integer
+MUL.L [FD 02]
+* Syntax: mul.l <long>
+* Multiplies &A by a long integer
+MUL.LU [FD 22]
+* Syntax: mul.lu <ulong>
+* Multiplies &A by an unsigned long integer
+MUL.M [FD 42]
+* Syntax: mul.m <decimal>
+* Multiplies &I by a decimal number
+MUL.S [4A]
+* Syntax: mul.s
 * Concatenates &A copies of &S
 
 -- N --
 NEG [67]
 * Syntax: neg
 * Negates &A, i.e. multiplies it by -1
-NEGF [58]
-* Syntax: negf
+NEG.F [58]
+* Syntax: neg.f
 * Negates &I, i.e. multiplies it by -1
 NOT [66]
 * Syntax: not
@@ -395,6 +495,15 @@ OR [47]
 OR [57]
 * Syntax: or <int>
 * Performs bitwise OR with an integer and &A
+OR.IU [FD 17]
+* Syntax: or.iu <uint>
+* Performs bitwise OR with an unsigned integer and &A
+OR.L [FD 07]
+* Syntax: or.l <long>
+* Performs bitwise OR with a long integer and &A
+OR.LU [FD 27]
+* Syntax: or.lu <ulong>
+* Performs bitwise OR with an unsigned long integer and &A
 
 -- P --
 POP [11]
@@ -406,8 +515,8 @@ POP [12]
 PRINT [3F]
 * Syntax: print
 * Prints the string in &S to the console
-PRNTL [4F]
-* Syntax: prntl
+PRINTL [4F]
+* Syntax: printl
 * Prints the string in &S to the console with a newline
 PUSH [10]
 * Syntax: push <reg>
@@ -426,13 +535,33 @@ REP [55]
 * Syntax: rep <int>
 * Sets &A to the result of the repeat function for &A and an integer
   * -1 rep 10 = 9
-REPF [65]
-* Syntax: repf
+REP.D [FD 35]
+* Syntax: rep.d <double>
+* Sets &I to the repeat function for &I and a double-precision floating-point number
+  * -0.5 rep 2.5 = 2
+REP.F [65]
+* Syntax: rep.f
 * Pops a floating-point number and sets &I to the repeat function for &I and the value
   * -0.5 rep 2.5 = 2
-REPF [75]
-* Syntax: repf <float>
+REP.F [75]
+* Syntax: rep.f <float>
 * Sets &I to the result of the repeat function for &I and a floating-point number
+  * -0.5 rep 2.5 = 2
+REP.IU [FD 15]
+* Syntax: rep.iu <uint>
+* Sets &A to the result of the repeat function for &A and an unsigned integer
+  * -1 rep 10 = 9
+REP.L [FD 05]
+* Syntax: rep.l <long>
+* Sets &A to the result of the repeat function for &A and a long integer
+  * -1 rep 10 = 9
+REP.LU [FD 25]
+* Syntax: rep.lu <ulong>
+* Sets &A to the result of the repeat function for &A and an unsigned long integer
+  * -1 rep 10 = 9
+REP.M [FD 45]
+* Syntax: rep.m <decimal>
+* Sets &I to the result of the repeat function for &I and a decimal number
   * -0.5 rep 2.5 = 2
 RET [4D]
 * Syntax: ret
@@ -479,12 +608,33 @@ SUB [41]
 SUB [51]
 * Syntax: sub <int>
 * Subtracts an integer from &A
-SUBF [61]
-* Syntax: subf
+SUB.D [FD 31]
+* Syntax: sub.d <double>
+* Subtracts a double-precision floating-point number from &I
+SUB.IU [FD 11]
+* Syntax: sub.iu <uint>
+* Subtracts an unsigned integer from &A
+SUB.L [FD 01]
+* Syntax: sub.l <long>
+* Subtracts a long integer from &A
+SUB.LU [FD 21]
+* Syntax: sub.lu <ulong>
+* Subtracts an unsigned long integer from &A
+SUB.F [61]
+* Syntax: sub.f
 * Pops a floating-point number and subtracts it from &I
-SUBF [71]
-* Syntax: subf <float>
+SUB.F [71]
+* Syntax: sub.f <float>
 * Subtracts a floating-point number from &I
+SUB.L [FD 01]
+* Syntax: sub.l <long>
+* Subtracts a long integer from &A
+SUB.LU [FD 21]
+* Syntax: sub.lu <ulong>
+* Subtracts an unsigned long integer from &A
+SUB.M [FD 41]
+* Syntax: sub.m <decimal>
+* Subtracts a decimal number from &I
 
 -- T --
 TOSTR [1E]
@@ -516,11 +666,11 @@ TRFL [83]
 TRIM [5A]
 * Syntax: trim
 * Trims whitespace from the start and end of &S
-TRIME [7A]
-* Syntax: trime
+TRIM.E [7A]
+* Syntax: trim.e
 * Trims whitespace from the end of &S
-TRIMS [6A]
-* Syntax: trims
+TRIM.S [6A]
+* Syntax: trim.s
 * Trims whitespace from the start of &S
 TRXA [94]
 * Syntax: trxa
@@ -543,6 +693,15 @@ XOR [48]
 XOR [58]
 * Syntax: xor <int>
 * Performs bitwise XOR with an integer and &A
+XOR.IU [FD 18]
+* Syntax: xor.iu <uint>
+* Performs bitwise XOR with an unsigned integer and &A
+XOR.L [FD 08]
+* Syntax: xor.l <long>
+* Performs bitwise XOR with a long integer and &A
+XOR.LU [FD 28]
+* Syntax: xor.lu <ulong>
+* Performs bitwise XOR with an unsigned long integer and &A
 
 -- Y --
 -- Z --

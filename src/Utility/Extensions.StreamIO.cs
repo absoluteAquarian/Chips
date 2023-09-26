@@ -1,9 +1,15 @@
-﻿using System.IO;
+﻿using Chips.Compiler;
+using Chips.Compiler.Parsing;
+using System;
+using System.Collections.Generic;
+using System.IO;
 using System.Text;
 
 namespace Chips.Utility {
 	partial class Extensions {
-		public static string ReadWord(this StreamReader reader) {
+		internal static bool StringExtensionsLinkedToSourceLines { get; set; }
+
+		public static string ReadWord(this StreamReader reader, bool terminateOnComment = false) {
 			// Read until we find a non-whitespace character
 			reader.ReadUntilNonWhitespace();
 
@@ -16,7 +22,40 @@ namespace Chips.Utility {
 			return word.ToString();
 		}
 
-		public static string ReadWordOrQuotedString(this StreamReader reader) {
+		public static string PeekWord(this StreamReader reader, bool terminateOnComment = false) {
+			long pos = reader.BaseStream.Position;
+
+			bool updateLine = StringExtensionsLinkedToSourceLines;
+			StringExtensionsLinkedToSourceLines = false;
+
+			string word = reader.ReadWord(terminateOnComment);
+
+			StringExtensionsLinkedToSourceLines = updateLine;
+
+			reader.BaseStream.Position = pos;
+			return word;
+		}
+
+		public static char ReadFirstNonWhitespaceChar(this StreamReader reader) {
+			reader.ReadUntilNonWhitespace();
+			return (char)reader.Read();
+		}
+
+		public static char PeekFirstNonWhitespaceChar(this StreamReader reader) {
+			long pos = reader.BaseStream.Position;
+
+			bool updateLine = StringExtensionsLinkedToSourceLines;
+			StringExtensionsLinkedToSourceLines = false;
+
+			char read = reader.ReadFirstNonWhitespaceChar();
+
+			StringExtensionsLinkedToSourceLines = updateLine;
+
+			reader.BaseStream.Position = pos;
+			return read;
+		}
+
+		public static string ReadWordOrQuotedString(this StreamReader reader, out bool wasQuoted, bool preprocessEscapedQuotes = false, bool terminateOnComment = false) {
 			// Read until we find a non-whitespace character
 			reader.ReadUntilNonWhitespace();
 
@@ -26,8 +65,29 @@ namespace Chips.Utility {
 				reader.Read();
 				
 				StringBuilder quotedWord = new();
-				while (reader.TryReadExcept('"', out read, alwaysConsume: true))
-					quotedWord.Append(read);
+				bool escaped = false;
+				while (reader.TryReadExcept('"', out read, alwaysConsume: true)) {
+					if (read == '\n') {
+						ChipsCompiler.CompilingSourceLine--;
+						ChipsCompiler.Error("Unexpected newline in quoted string");
+						ChipsCompiler.CompilingSourceLine++;
+					}
+
+					if (preprocessEscapedQuotes && escaped && read == '"') {
+						quotedWord.Append("\\\"");
+						escaped = false;
+					} else if (escaped && read == '\\') {
+						quotedWord.Append("\\\\");
+						escaped = false;
+					} else {
+						if (read == '\\')
+							escaped = !escaped;
+						else
+							quotedWord.Append(read);
+					}
+				}
+
+				wasQuoted = true;
 
 				return quotedWord.ToString();
 			}
@@ -35,52 +95,180 @@ namespace Chips.Utility {
 			// Otherwise, read until the next whitespace character
 			StringBuilder word = new();
 
-			while (reader.TryReadExceptWhitespace(out read))
+			while (reader.TryReadExceptWhitespace(out read)) {
+				if (terminateOnComment && read == ';')
+					break;
+
 				word.Append(read);
+			}
+
+			wasQuoted = false;
 
 			return word.ToString();
 		}
 
-		public static void ReadUntilNonWhitespace(this StreamReader reader) {
-			while (reader.TryReadWhitespace(out _));
+		public static IEnumerable<ParsedPossibleQuotedString> ReadManyWordsOrQuotedStrings(this StreamReader reader, bool preprocessEscapedQuotes = false, bool terminateOnComment = false) {
+			List<ParsedPossibleQuotedString> words = new();
+
+			string afterArg;
+			do {
+				string word = reader.ReadWordOrQuotedString(out bool wasQuoted, preprocessEscapedQuotes, terminateOnComment);
+				words.Add(new(word, wasQuoted));
+
+				afterArg = reader.PeekUntilMany(new char[] { ',', '\n' }, alwaysConsume: true);
+			} while (afterArg.Length > 0);
+
+			return words;
+		}
+
+		public static string ReadUntil(this StreamReader reader, char except, bool alwaysConsume = false) {
+			StringBuilder sb = new();
+			while (reader.TryReadExcept(except, out char read, alwaysConsume))
+				sb.Append(read);
+			return sb.ToString();
+		}
+
+		public static string ReadUntilMany(this StreamReader reader, char[] except, bool alwaysConsume = false) {
+			StringBuilder sb = new();
+			while (reader.TryReadExceptMany(except, out char read, alwaysConsume))
+				sb.Append(read);
+			return sb.ToString();
+		}
+
+		public static string PeekUntilMany(this StreamReader reader, char[] except, bool alwaysConsume = false) {
+			bool updateLine = StringExtensionsLinkedToSourceLines;
+			StringExtensionsLinkedToSourceLines = false;
+
+			string read = reader.ReadUntilMany(except, alwaysConsume);
+
+			StringExtensionsLinkedToSourceLines = updateLine;
+
+			return read;
+		}
+
+		public static string ReadUntilNonWhitespace(this StreamReader reader, bool alwaysConsume = false) {
+			StringBuilder sb = new();
+			while (reader.TryReadWhitespace(out char read, alwaysConsume))
+				sb.Append(read);
+			return sb.ToString();
+		}
+
+		public static string ReadUntilNewline(this StreamReader reader) {
+			StringBuilder sb = new();
+			while (reader.TryReadExcept('\n', out char read, alwaysConsume: true))
+				sb.Append(read);
+			return sb.ToString();
+		}
+
+		public static string PeekUntilNewline(this StreamReader reader) {
+			long pos = reader.BaseStream.Position;
+
+			bool updateLine = StringExtensionsLinkedToSourceLines;
+			StringExtensionsLinkedToSourceLines = false;
+
+			string read = reader.ReadUntilNewline();
+
+			StringExtensionsLinkedToSourceLines = updateLine;
+
+			reader.BaseStream.Position = pos;
+			return read;
+		}
+
+		public static string ReadWordsUntil(this StreamReader reader, int maxWords, bool terminateOnComment, params string[] except) {
+			StringBuilder sb = new();
+			int words = 0;
+
+			while (Array.IndexOf(except, reader.PeekWord(terminateOnComment)) == -1) {
+				if (sb.Length > 0)
+					sb.Append(' ');
+
+				sb.Append(reader.ReadWord(terminateOnComment));
+
+				if (maxWords > 0 && ++words >= maxWords)
+					break;
+			}
+
+			return sb.ToString();
 		}
 
 		public static bool TryReadExcept(this StreamReader reader, char except, out char read, bool alwaysConsume = false) {
-			if (reader.Peek() is int a and > 0 && a != except) {
+			int peek = reader.Peek();
+			if (peek >= 0 && peek != except) {
 				read = (char)reader.Read();
+
+				if (StringExtensionsLinkedToSourceLines && read == '\n')
+					ChipsCompiler.CompilingSourceLine++;
+
 				return true;
 			}
 
-			if (alwaysConsume)
-				reader.Read();
+			if (alwaysConsume && peek >= 0) {
+				read = (char)reader.Read();
 
-			read = default;
+				if (StringExtensionsLinkedToSourceLines && read == '\n')
+					ChipsCompiler.CompilingSourceLine++;
+			} else
+				read = default;
+
+			return false;
+		}
+
+		public static bool TryReadExceptMany(this StreamReader reader, char[] except, out char read, bool alwaysConsume = false) {
+			int peek = reader.Peek();
+			if (peek >= 0 && Array.IndexOf(except, (char)peek) == -1) {
+				read = (char)reader.Read();
+
+				if (StringExtensionsLinkedToSourceLines && read == '\n')
+					ChipsCompiler.CompilingSourceLine++;
+
+				return true;
+			}
+
+			if (alwaysConsume && peek >= 0) {
+				read = (char)reader.Read();
+
+				if (StringExtensionsLinkedToSourceLines && read == '\n')
+					ChipsCompiler.CompilingSourceLine++;
+			} else
+				read = default;
+
 			return false;
 		}
 
 		public static bool TryReadWhitespace(this StreamReader reader, out char read, bool alwaysConsume = false) {
-			if (reader.Peek() is int a and > 0 && char.IsWhiteSpace((char)a)) {
+			int peek = reader.Peek();
+			if (peek >= 0 && char.IsWhiteSpace((char)peek)) {
 				read = (char)reader.Read();
+
+				if (StringExtensionsLinkedToSourceLines && read == '\n')
+					ChipsCompiler.CompilingSourceLine++;
+
 				return true;
 			}
 
-			if (alwaysConsume)
-				reader.Read();
+			if (alwaysConsume && peek >= 0)
+				read = (char)reader.Read();
+			else 
+				read = default;
 
-			read = default;
 			return false;
 		}
 
 		public static bool TryReadExceptWhitespace(this StreamReader reader, out char read, bool alwaysConsume = false) {
-			if (reader.Peek() is int a and > 0 && !char.IsWhiteSpace((char)a)) {
+			int peek = reader.Peek();
+			if (peek >= 0 && !char.IsWhiteSpace((char)peek)) {
 				read = (char)reader.Read();
 				return true;
 			}
 
-			if (alwaysConsume)
-				reader.Read();
+			if (alwaysConsume && peek >= 0) {
+				read = (char)reader.Read();
 
-			read = default;
+				if (StringExtensionsLinkedToSourceLines && read == '\n')
+					ChipsCompiler.CompilingSourceLine++;
+			} else
+				read = default;
+
 			return false;
 		}
 	}

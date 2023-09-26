@@ -58,6 +58,10 @@ namespace Chips.Compiler.Utility {
 			return new(_heap, (int)token.Offset, token.Length);
 		}
 
+		public void Clear() {
+			_heap = Array.Empty<char>();
+		}
+
 		public void Serialize(BinaryWriter writer) {
 			writer.Write7BitEncodedInt(_heap.Length);
 			writer.Write(_heap);

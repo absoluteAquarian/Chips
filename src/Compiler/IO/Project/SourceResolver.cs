@@ -138,18 +138,18 @@ namespace Chips.Compiler.IO.Project {
 				return pathPrefix + name;
 			}
 
-			public IEnumerable<string> EnumerateIncludedFiles() {
+			public IEnumerable<ProjectSource> EnumerateIncludedFiles() {
 				if (!included)
 					yield break;
 
 				foreach (FileNode file in files) {
 					if (file.included)
-						yield return file.GetPath();
+						yield return file.GetProjectSource();
 				}
 
 				foreach (DirectoryNode child in children) {
 					if (child.included) {
-						foreach (string file in child.EnumerateIncludedFiles())
+						foreach (ProjectSource file in child.EnumerateIncludedFiles())
 							yield return file;
 					}
 				}
@@ -171,6 +171,10 @@ namespace Chips.Compiler.IO.Project {
 
 			public string GetPath() {
 				return Path.Combine(parent.GetPath(), name);
+			}
+
+			public ProjectSource GetProjectSource() {
+				return new(name, parent.info.FullName, info);
 			}
 		}
 
@@ -221,6 +225,20 @@ namespace Chips.Compiler.IO.Project {
 
 			// Step into the next directory
 			StepDirectory(searchPattern[(separatorIndex + 1)..], include, next);
+		}
+
+		public IEnumerable<ProjectSource> EnumerateFiles() => root.EnumerateIncludedFiles();
+	}
+
+	public readonly struct ProjectSource {
+		public readonly string file;
+		public readonly string directory;
+		public readonly FileInfo fileInfo;
+
+		public ProjectSource(string file, string directory, FileInfo fileInfo) {
+			this.file = file;
+			this.directory = directory;
+			this.fileInfo = fileInfo;
 		}
 	}
 }

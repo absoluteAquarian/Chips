@@ -1,47 +1,47 @@
 ﻿// Compiled bytecode from schema-reference.txt
 
 // <-- string heap -->
-//  System.RuntimeS
-// ampleProgramMain
-// argsHello World!
-// (100 + 15) / 3 *
-//  4 = N3(45.0 - 1
-// 5.25) * 13.5 = 
-5E 53 79 73 74 65 6D 2E 52 75 6E 74 69 6D 65 53
-61 6D 70 6C 65 50 72 6F 67 72 61 6D 4D 61 69 6E
-61 72 67 73 48 65 6C 6C 6F 20 57 6F 72 6C 64 21
-28 31 30 30 20 2B 20 31 35 29 20 2F 20 33 20 2A
-20 34 20 3D 20 4E 33 28 34 35 2E 30 20 2D 20 31
-35 2E 32 35 29 20 2A 20 31 33 2E 35 20 3D 20
+//  SystemSamplePro
+// gramMainargsHell
+// o World!(100 + 1
+// 5) / 3 * 4 = N3(
+// 45.0 - 15.25) * 
+// 13.5 = 
+56 53 79 73 74 65 6D 53 61 6D 70 6C 65 50 72 6F
+67 72 61 6D 4D 61 69 6E 61 72 67 73 48 65 6C 6C
+6F 20 57 6F 72 6C 64 21 28 31 30 30 20 2B 20 31
+35 29 20 2F 20 33 20 2A 20 34 20 3D 20 4E 33 28
+34 35 2E 30 20 2D 20 31 35 2E 32 35 29 20 2A 20
+31 33 2E 35 20 3D 20
 
-// .import System from System.Runtime
-05 00 06 00 0E
+// .import System
+05 00 06
 
 // .namespace Sample {
-00 0E 06
+00 06 06
 
 //	.type Program : class assembly static {
-01 14 07 80 10 00 00 01
+01 0C 07 80 10 00 00 00 00 00 00 61 00 00 02 01
 
 //		.method Main (args: string[]) public static -> void {
-03 1B 04 81 10 00 00 00 00 00 00 B7 01 00 02 01
-1F 04 7F 00 00 02 00 00
+03 13 04 81 10 00 00 00 00 00 00 B7 01 00 02 01
+17 04 00 00 00 00 7F 00 00 02 00 00
 
 //			; Print "Hello world!"
-//			ldcs "Hello world!"
-04 23 0C
-//			prntl
+//			ldc.s "Hello world!"
+04 2B 0C
+//			printl
 4F
 
 //			; Calculate something using &A, then print it
-//			ldci 100
-02 01 64 00 00 00
+//			ldc.i 100
+02 64 00 00 00
 //			add 15
-50 01 0F 00 00 00
+50 0F 00 00 00
 //			div 3
-53 01 03 00 00 00
+53 03 00 00 00
 //			mul 4
-52 01 04 00 00 00
+52 04 00 00 00
 //			push &A
 10 00
 //			tostr
@@ -49,31 +49,32 @@
 //			push &S
 10 02
 //			ldcs "(100 + 15) / 3 * 4 = "
-04 2F 15
+04 27 15
 //			cat
 36
-//			prntl
+//			printl
 4F
 
 //			; Calculate something using &I, then print it
-//			ldcf 45.0f
-03 00 00 00 34 42
-//			subf 15.25f
-71 00 00 00 74 41
+//			ldc.f 45.0f
+03 00 00 34 42
+//			sub.f 15.25f
+71 00 00 74 41
 //			; Multiplying by larger number type (double > float) will upcast to it
-//			mulf 13.5
-72 01 00 00 00 00 00 00 2B 40
+//			mul.f 13.5
+FD 32 00 00 00 00 00 00 2B 40
+   * COMPILATION NOTE: "mul.f" is converted to "mul.d"
 //			push &I
 10 01
 //			tostr "N3"
-2E 44 02
+2E 3C 02
 //			push &S
 10 02
-//			ldcs "(45.0 - 15.25) * 13.5 = "
-04 46 18
+//			ldc.s "(45.0 - 15.25) * 13.5 = "
+04 3E 18
 //			cat
 36
-//			prntl
+//			printl
 4F
 
 //			ret

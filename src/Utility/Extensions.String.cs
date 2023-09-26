@@ -19,6 +19,20 @@ namespace Chips.Utility {
 			['v'] = "\v",
 		};
 
+		private static readonly Dictionary<char, char> _unescapedCharacters = new() {
+		//	['\\'] = '\\',
+		//	['\''] = '\'',
+		//	['\"'] = '"',
+			['\0'] = '0',
+			['\a'] = 'a',
+			['\b'] = 'b',
+			['\f'] = 'f',
+			['\n'] = 'n',
+			['\r'] = 'r',
+			['\t'] = 't',
+			['\v'] = 'v',
+		};
+
 		public static string SanitizeString(this string str) {
 			if (string.IsNullOrWhiteSpace(str))
 				return str;
@@ -51,6 +65,21 @@ namespace Chips.Utility {
 			return sb.ToString();
 		}
 
+		public static string DesanitizeString(this string str) {
+			if (string.IsNullOrWhiteSpace(str))
+				return str;
+
+			StringBuilder sb = new();
+			foreach (char c in str) {
+				if (_unescapedCharacters.TryGetValue(c, out char value))
+					sb.Append('\\').Append(value);
+				else
+					sb.Append(c);
+			}
+
+			return sb.ToString();
+		}
+
 		public static byte[] EncodeToCPDB(this string str) {
 			if (string.IsNullOrWhiteSpace(str))
 				throw new ArgumentException("String cannot be null or whitespace", nameof(str));
@@ -78,6 +107,46 @@ namespace Chips.Utility {
 			}
 
 			return bytes;
+		}
+
+		public static int CountChars(this string str, char c) {
+			int count = 0;
+			foreach (char ch in str) {
+				if (ch == c)
+					count++;
+			}
+			return count;
+		}
+
+		public static int CountChars(this string str, char c1, char c2) {
+			int count = 0;
+			foreach (char ch in str) {
+				if (ch == c1 || ch == c2)
+					count++;
+			}
+			return count;
+		}
+
+		public static int CountChars(this string str, char c1, char c2, char c3) {
+			int count = 0;
+			foreach (char ch in str) {
+				if (ch == c1 || ch == c2 || ch == c3)
+					count++;
+			}
+			return count;
+		}
+
+		public static int CountChars(this string str, params char[] chars) {
+			int count = 0;
+			foreach (char ch in str) {
+				foreach (char c in chars) {
+					if (ch == c) {
+						count++;
+						break;
+					}
+				}
+			}
+			return count;
 		}
 	}
 }

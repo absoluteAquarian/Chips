@@ -1,6 +1,4 @@
 ﻿using Chips.Compiler.Utility;
-using Chips.Utility;
-using System;
 using System.IO;
 
 namespace Chips.Compiler.IO.PDB {
@@ -8,55 +6,54 @@ namespace Chips.Compiler.IO.PDB {
 		public readonly string parentMethod;
 		public readonly string name;
 
-		private readonly byte[] data;
-
-		public ReadOnlySpan<byte> Data => data;
-
-		public CPDBFileInfo(string parentMethod, string name, byte[] data) {
+		public CPDBFileInfo(string parentMethod, string name) {
 			this.parentMethod = parentMethod;
 			this.name = name;
-			this.data = data;
 		}
 
-		public void Write(BinaryWriter writer, StringHeap heap) {
-			heap.WriteString(writer, name);
-
-			writer.Write7BitEncodedInt(data.Length);
-			writer.Write(data);
-		}
-
-		public static byte[] Read(BinaryReader reader, StringHeap heap, out string name) {
-			name = heap.ReadString(reader);
-
-			int length = reader.Read7BitEncodedInt();
-			return reader.ReadBytes(length);
-		}
+		public abstract void Write(BinaryWriter writer, StringHeap heap);
 	}
 
 	internal class CPDBLocalVariable : CPDBFileInfo {
 		public readonly int variableIndex;
 
-		public CPDBLocalVariable(string parentMethod, string name, byte[] data) : base(parentMethod, name, data) {
-			int index = 0;
+		public CPDBLocalVariable(string parentMethod, string name, int index) : base(parentMethod, name) {
+			variableIndex = index;
+		}
 
-			variableIndex = data.Get7BitEncodedInt(index, out _);
+		public override void Write(BinaryWriter writer, StringHeap heap) {
+			heap.WriteString(writer, name);
+			writer.Write7BitEncodedInt(variableIndex);
+		}
+
+		public static CPDBLocalVariable Read(BinaryReader reader, StringHeap heap, string parentMethod) {
+			string name = heap.ReadString(reader);
+			int index = reader.Read7BitEncodedInt();
+			return new CPDBLocalVariable(parentMethod, name, index);
 		}
 	}
 
 	internal class CPDBFunctionLabel : CPDBFileInfo {
-		public readonly string labelName;
-
 		public readonly int labelIndex;
 
 		public readonly int opcodeOffset;
 
-		public CPDBFunctionLabel(string parentMethod, string name, byte[] data) : base(parentMethod, name, data) {
-			int index = 0;
+		public CPDBFunctionLabel(string parentMethod, string name, int index, int opcodeOffset) : base(parentMethod, name) {
+			labelIndex = index;
+			this.opcodeOffset = opcodeOffset;
+		}
 
-			labelIndex = data.Get7BitEncodedInt(index, out int bytesRead);
-			index += bytesRead;
+		public override void Write(BinaryWriter writer, StringHeap heap) {
+			heap.WriteString(writer, name);
+			writer.Write7BitEncodedInt(labelIndex);
+			writer.Write7BitEncodedInt(opcodeOffset);
+		}
 
-			opcodeOffset = data.Get7BitEncodedInt(index, out _);
+		public static CPDBFunctionLabel Read(BinaryReader reader, StringHeap heap, string parentMethod) {
+			string name = heap.ReadString(reader);
+			int index = reader.Read7BitEncodedInt();
+			int offset = reader.Read7BitEncodedInt();
+			return new CPDBFunctionLabel(parentMethod, name, index, offset);
 		}
 	}
 }
