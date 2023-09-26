@@ -31,7 +31,7 @@ namespace Chips.Compiler.IO {
 
 			Initialize(context);
 
-
+			throw new Exception("CIL writing has not been implemented yet");
 		}
 
 		private void Initialize(CompilationContext context) {
@@ -81,8 +81,10 @@ namespace Chips.Compiler.IO {
 
 			writer.Write(lastWriteTime.ToBinary());
 
-			foreach (BytecodeFileSegment segment in segments)
+			foreach (BytecodeFileSegment segment in segments) {
+				segment.WriteSegmentIdentifier(writer);
 				segment.WriteMember(context, writer);
+			}
 
 			_rawData = ms.ToArray();
 

@@ -5,6 +5,7 @@ using AsmResolver.DotNet.Signatures;
 using AsmResolver.PE.DotNet.Cil;
 using AsmResolver.PE.DotNet.Metadata.Tables.Rows;
 using Chips.Compiler;
+using Chips.Compiler.Compilation;
 using Chips.Compiler.IO;
 using Chips.Compiler.IO.Project;
 using Chips.Compiler.Utility;
@@ -98,6 +99,17 @@ namespace Chips {
 		private static List<IDelayedResolver> _delayedResolvers = new();
 
 		internal static void AddDelayedResolver(IDelayedResolver resolver) => _delayedResolvers.Add(resolver);
+
+		internal static BytecodeMethodSegment? FoundEntryPoint;
+
+		private static SignatureComparer _signatureComparer = new SignatureComparer(SignatureComparisonFlags.AcceptNewerVersions);
+
+		public static bool AreTypesEqual(ITypeDescriptor first, ITypeDescriptor second) {
+			ArgumentNullException.ThrowIfNull(first);
+			ArgumentNullException.ThrowIfNull(second);
+
+			return _signatureComparer.Equals(first.ToTypeSignature(), second.ToTypeSignature());
+		}
 
 		private static void Compile(ChipsProject project) {
 			// Compile the source files

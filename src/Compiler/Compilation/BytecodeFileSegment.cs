@@ -1,5 +1,6 @@
 ﻿using AsmResolver.DotNet;
 using AsmResolver.PE.DotNet.Metadata.Tables.Rows;
+using Chips.Compiler.Utility;
 using Chips.Utility;
 using System.Collections.Generic;
 using System.IO;
@@ -202,6 +203,8 @@ namespace Chips.Compiler.Compilation {
 		public readonly MethodAttributes attributes;
 		public readonly ITypeDefOrRef returnType;
 
+		public bool IsEntryPoint => object.ReferenceEquals(ChipsCompiler.FoundEntryPoint, this);
+
 		public readonly List<BytecodeVariableSegment> parameters = new();
 		public readonly List<BytecodeVariableSegment> locals = new();
 		public readonly BytecodeMethodBody body;
@@ -224,6 +227,15 @@ namespace Chips.Compiler.Compilation {
 			for (int i = 0; i < parameterCount; i++)
 				segment.parameters.Add(BytecodeVariableSegment.ReadMember(context, reader));
 
+			// Attempt to set the entry point
+			var factory = ChipsCompiler.ManifestModule.CorLibTypeFactory;
+			if (!ChipsCompiler.NoEntryPoint && name == "Main" && (ChipsCompiler.AreTypesEqual(returnType, factory.Void) || ChipsCompiler.AreTypesEqual(returnType, factory.Int32)) && (parameterCount == 0 || (parameterCount == 1 && ChipsCompiler.AreTypesEqual(segment.parameters[0].type, factory.String.MakeArrayType())))) {
+				if (ChipsCompiler.FoundEntryPoint is not null)
+					throw new InvalidDataException("Multiple entry points found");
+
+				ChipsCompiler.FoundEntryPoint = segment;
+			}
+
 			int localCount = reader.Read7BitEncodedInt();
 			for (int i = 0; i < localCount; i++)
 				segment.locals.Add(BytecodeVariableSegment.ReadMember(context, reader));
@@ -236,6 +248,13 @@ namespace Chips.Compiler.Compilation {
 			}
 
 			return segment;
+		}
+
+		public static bool IsValidEntryPointSignature(string name, ITypeDescriptor returnType) {
+			if (returnType is DelayedTypeResolver)
+				return false;
+
+			return name == "Main" && ChipsCompiler.AreTypesEqual(returnType, ChipsCompiler.ManifestModule.CorLibTypeFactory.Void);
 		}
 
 		public override void WriteMember(CompilationContext context, BinaryWriter writer) {
