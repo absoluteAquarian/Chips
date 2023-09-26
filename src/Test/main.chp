@@ -1,0 +1,38 @@
+﻿; This file serves as an example of how Chips code is structured
+.import System
+
+.namespace Sample {
+	.type Program : class assembly static {
+		.method Main (args: string[]) public static -> void {
+			; Print "Hello world!"
+			ldc.s "Hello world!"
+			printl
+
+			; Calculate something using &A, then print it
+			ldc.i 100
+			add 15
+			div 3
+			mul 4
+			push &A
+			tostr
+			push &S
+			ldc.s "(100 + 15) / 3 * 4 = "
+			cat
+			printl
+
+			; Calculate something using &I, then print it
+			ldc.f 45.0f
+			sub.f 15.25f
+			; Multiplying by larger number type (double > float) will upcast to it
+			mul.f 13.5
+			push &I
+			tostr "N3"
+			push &S
+			ldc.s "(45.0 - 15.25) * 13.5 = "
+			cat
+			printl
+
+			ret
+		}
+	}
+}
