@@ -123,10 +123,10 @@ namespace Chips.Compiler.Compilation {
 						segment.AddMember(ReadMember(context, reader, segment));
 						break;
 					case BytecodeMember.Field:
-						segment.AddMember(BytecodeFieldSegment.ReadMember(context, reader));
+						segment.AddMember(BytecodeFieldSegment.ReadMember(context, reader, segment));
 						break;
 					case BytecodeMember.Method:
-						segment.AddMember(BytecodeMethodSegment.ReadMember(context, reader));
+						segment.AddMember(BytecodeMethodSegment.ReadMember(context, reader, segment));
 						break;
 					default:
 						throw new InvalidDataException($"Invalid member type {memberType} in type \"{segment.FullName}\"");
@@ -177,18 +177,19 @@ namespace Chips.Compiler.Compilation {
 		public readonly ITypeDefOrRef type;
 		public readonly FieldAttributes attributes;
 
-		public BytecodeFieldSegment(string name, ITypeDefOrRef type, FieldAttributes attributes) : base(BytecodeMember.Field) {
+		public BytecodeFieldSegment(BytecodeTypeSegment declaringType, string name, ITypeDefOrRef type, FieldAttributes attributes) : base(BytecodeMember.Field) {
+			this.declaringType = declaringType;
 			this.name = name;
 			this.type = type;
 			this.attributes = attributes;
 		}
 
-		public static BytecodeFieldSegment ReadMember(CompilationContext context, BinaryReader reader) {
+		public static BytecodeFieldSegment ReadMember(CompilationContext context, BinaryReader reader, BytecodeTypeSegment declaringType) {
 			string name = context.heap.ReadString(reader);
 			ITypeDefOrRef type = reader.ReadTypeDefinition(context.resolver, context.heap);
 			FieldAttributes attributes = (FieldAttributes)reader.ReadUInt32();
 
-			return new BytecodeFieldSegment(name, type, attributes);
+			return new BytecodeFieldSegment(declaringType, name, type, attributes);
 		}
 
 		public override void WriteMember(CompilationContext context, BinaryWriter writer) {
@@ -199,6 +200,7 @@ namespace Chips.Compiler.Compilation {
 	}
 
 	internal sealed class BytecodeMethodSegment : BytecodeTypeMemberSegment {
+		public readonly BytecodeTypeSegment declaringType;
 		public readonly string name;
 		public readonly MethodAttributes attributes;
 		public readonly ITypeDefOrRef returnType;
@@ -209,19 +211,20 @@ namespace Chips.Compiler.Compilation {
 		public readonly List<BytecodeVariableSegment> locals = new();
 		public readonly BytecodeMethodBody body;
 
-		public BytecodeMethodSegment(string name, MethodAttributes attributes, ITypeDefOrRef returnType) : base(BytecodeMember.Method) {
+		public BytecodeMethodSegment(BytecodeTypeSegment declaringType, string name, MethodAttributes attributes, ITypeDefOrRef returnType) : base(BytecodeMember.Method) {
+			this.declaringType = declaringType;
 			this.name = name;
 			this.attributes = attributes;
 			this.returnType = returnType;
 			body = new(this);
 		}
 
-		public static BytecodeMethodSegment ReadMember(CompilationContext context, BinaryReader reader) {
+		public static BytecodeMethodSegment ReadMember(CompilationContext context, BinaryReader reader, BytecodeTypeSegment declaringType) {
 			string name = context.heap.ReadString(reader);
 			MethodAttributes attributes = (MethodAttributes)reader.ReadUInt32();
 			ITypeDefOrRef returnType = reader.ReadTypeDefinition(context.resolver, context.heap);
 
-			BytecodeMethodSegment segment = new(name, attributes, returnType);
+			BytecodeMethodSegment segment = new(declaringType, name, attributes, returnType);
 
 			int parameterCount = reader.Read7BitEncodedInt();
 			for (int i = 0; i < parameterCount; i++)

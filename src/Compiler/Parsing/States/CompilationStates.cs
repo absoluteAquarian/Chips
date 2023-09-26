@@ -14,7 +14,11 @@ using System.Linq;
 
 namespace Chips.Compiler.Parsing.States {
 	internal abstract class BaseState {
+		public event Action<BaseState> OnSuccess;
+
 		public BaseState? Previous { get; internal set; }
+
+		public void Success() => OnSuccess?.Invoke(this);
 
 		public abstract bool ParseNext(StreamReader reader, CompilationContext context, BytecodeFile code, out BaseState? next);
 	}
@@ -28,8 +32,13 @@ namespace Chips.Compiler.Parsing.States {
 			foreach (var state in EnumeratePossibleStates()) {
 				state.Previous = Previous;
 
-				if (state.ParseNext(reader, context, code, out next))
+				if (state.ParseNext(reader, context, code, out next)) {
+					if (next is null)
+						throw ChipsCompiler.ErrorAndThrow(new ParsingException($"State {state.GetType().Name} produced a null next state, defaulting to FileScope"));
+
+					state.Success();
 					return true;
+				}
 
 				reader.BaseStream.Position = pos;
 			}
@@ -426,8 +435,10 @@ namespace Chips.Compiler.Parsing.States {
 
 			TypeDefinition fieldType = StringSerialization.ParseTypeIdentifierArgument(context, typeName, false);
 
-			Segment = new BytecodeFieldSegment(Name, fieldType, attributes);
-			((TypeBody)Previous!).GetScope().Segment.AddMember(Segment);
+			var typeSegment = ((TypeBody)Previous!).GetScope().Segment;
+
+			Segment = new BytecodeFieldSegment(typeSegment, Name, fieldType, attributes);
+			typeSegment.AddMember(Segment);
 
 			// Go to the previous state
 			next = Previous;
@@ -496,15 +507,15 @@ namespace Chips.Compiler.Parsing.States {
 
 			TypeDefinition returnTypeDefinition = StringSerialization.ParseTypeIdentifierArgument(context, returnTypeResult.Value, false);
 
-			Segment = new BytecodeMethodSegment(Name, attributes, returnTypeDefinition);
+			var typeScope = ((TypeBody)Previous!).GetScope();
+
+			Segment = new BytecodeMethodSegment(typeScope.Segment, Name, attributes, returnTypeDefinition);
 
 			foreach (ParsedMethodVariable methodArg in parsedArgs) {
 				TypeDefinition argType = StringSerialization.ParseTypeIdentifierArgument(context, methodArg.type, true);
 
 				Segment.parameters.Add(new BytecodeVariableSegment(methodArg.name, argType));
 			}
-
-			var typeScope = ((TypeBody)Previous!).GetScope();
 
 			typeScope.Segment.AddMember(Segment);
 
@@ -565,6 +576,10 @@ namespace Chips.Compiler.Parsing.States {
 			}
 
 			next = Scope.Create(this, new LocalsList());
+			next.OnSuccess += static s => {
+				var method = ((s as Scope)?.body as LocalsList)?.GetMethod() ?? throw new NullReferenceException("Could not find method body");
+				method.hasDefinedLocals = true;
+			};
 			return true;
 		}
 

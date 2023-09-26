@@ -59,6 +59,8 @@ namespace Chips.Compiler.IO {
 
 			if (_rawDataCPDB is not null)
 				cpdbInfo = CPDBFile.FromStream(new MemoryStream(_rawDataCPDB));
+
+			_initialized = true;
 		}
 
 		// Compiler-implemented logic, not intended to be used elsewhere
