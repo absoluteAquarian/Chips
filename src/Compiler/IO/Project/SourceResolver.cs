@@ -178,7 +178,11 @@ namespace Chips.Compiler.IO.Project {
 			}
 		}
 
-		private readonly DirectoryNode root = new DirectoryNode(".", null) { info = new DirectoryInfo(".") };
+		private readonly DirectoryNode root;
+
+		public SourceResolver(string rootDirectory) {
+			root = new DirectoryNode(rootDirectory, null) { info = new DirectoryInfo(rootDirectory) };
+		}
 
 		public void AddFiles(string searchPattern, bool include) {
 			// If the search pattern is only "*", then include all files in the current directory and subdirectories

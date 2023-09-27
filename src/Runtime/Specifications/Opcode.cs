@@ -112,9 +112,17 @@ namespace Chips.Runtime.Specifications {
 
 		public sealed override OpcodeArgumentCollection? DeserializeArguments(BinaryReader reader, TypeResolver resolver, StringHeap heap) => null;
 
-		public sealed override OpcodeArgumentCollection? ParseArguments(CompilationContext context, string[] args) => null;
+		public sealed override OpcodeArgumentCollection? ParseArguments(CompilationContext context, string[] args)  {
+			if (args.Length != 0)
+				throw ChipsCompiler.ErrorAndThrow(new ArgumentException($"Opcode \"{Name}\" expects no arguments"));
 
-		public sealed override void SerializeArguments(BinaryWriter writer, OpcodeArgumentCollection args, TypeResolver resolver, StringHeap heap) { }
+			return null;
+		}
+
+		public sealed override void SerializeArguments(BinaryWriter writer, OpcodeArgumentCollection args, TypeResolver resolver, StringHeap heap)  {
+			if (args.Count != 0)
+				throw ChipsCompiler.ErrorAndThrow(new ArgumentException($"Opcode \"{Name}\" expects no arguments"));
+		}
 	}
 
 	/// <summary>
@@ -164,8 +172,7 @@ namespace Chips.Runtime.Specifications {
 		protected abstract object? ParseArgument(CompilationContext context, string arg);
 
 		public sealed override void SerializeArguments(BinaryWriter writer, OpcodeArgumentCollection args, TypeResolver resolver, StringHeap heap) {
-			if (typeof(Registers).RetrieveStaticField<Register>(Register) is not Register register)
-				throw ChipsCompiler.ErrorAndThrow(new InvalidOperationException($"Register \"{Register}\" does not exist"));
+			Register register = typeof(Registers).RetrieveStaticField<Register>(Register)!;
 
 			if (args.Count != 1)
 				throw ChipsCompiler.ErrorAndThrow(new ArgumentException($"Opcode \"{Name}\" expected one argument, received {args.Count}"));
@@ -182,6 +189,22 @@ namespace Chips.Runtime.Specifications {
 		}
 
 		protected abstract void SerializeArgument(BinaryWriter writer, object? arg);
+	}
+
+	/// <summary>
+	/// An implementation of <see cref="Opcode"/> which represents an instruction that loads a "zero" to a register
+	/// </summary>
+	public abstract class LoadZeroOpcode : BasicOpcode {
+		public abstract string Register { get; }
+
+		protected bool ValidateArgumentAndEmitNumberRegisterAccess(CompilationContext context, OpcodeArgumentCollection args) {
+			if (args.Count != 0)
+				throw ChipsCompiler.ErrorAndThrow(new ArgumentException($"Opcode \"{Name}\" expects no arguments"));
+
+			context.Instructions.Add(CilOpCodes.Ldsfld, context.importer.ImportField(typeof(Registers).GetCachedField(Register)!));
+
+			return true;
+		}
 	}
 
 	/// <summary>

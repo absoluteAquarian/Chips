@@ -13,13 +13,13 @@ namespace Chips.Utility {
 			if (type.Module?.Assembly is null)
 				throw new ArgumentException("Type must be defined in an assembly", nameof(type));
 			
-			heap.WriteString(writer, type.FullName);
+			heap.WriteString(writer, type.FullName.AttemptCoreTypeAlias());
 		}
 
 		public static DelayedTypeResolver ReadTypeDefinition(this BinaryReader reader, TypeResolver resolver, StringHeap heap) {
 			string fullName = heap.ReadString(reader);
 
-			return new DelayedTypeResolver(resolver, fullName);
+			return new DelayedTypeResolver(resolver, fullName, false);
 		}
 
 		public static void Write(this BinaryWriter writer, IFieldDescriptor field, StringHeap heap) {

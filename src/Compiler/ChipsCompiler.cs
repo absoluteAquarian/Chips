@@ -54,7 +54,14 @@ namespace Chips {
 		}
 
 		public static void Main(string[] args) {
-			// Expected arguments: source-files [-out output-file]
+			// Test case
+			#if DEBUG
+			if (System.Diagnostics.Debugger.IsAttached) {
+				args = new string[] { "Test/test.chpproj" };
+			//	System.Diagnostics.Debugger.Break();
+			}
+			#endif
+
 			if (args.Length == 0) {
 				Logging.Error("No input files were specified.");
 				return;
@@ -94,7 +101,7 @@ namespace Chips {
 		internal static AssemblyReference DotNetAssembly => KnownCorLibs.SystemPrivateCoreLib_v7_0_0_0;
 
 		private static AssemblyDefinition _dotNetAssembly;
-		internal static AssemblyDefinition DotNetAssemblyDefinition => _dotNetAssembly ??= DotNetAssembly.Resolve()!;
+		internal static AssemblyDefinition DotNetAssemblyDefinition => _dotNetAssembly ??= DotNetAssembly.ImportWith(ManifestModule.DefaultImporter).Resolve() ?? throw new NullReferenceException("Could not resolve .NET assembly");
 
 		private static List<IDelayedResolver> _delayedResolvers = new();
 
@@ -113,14 +120,14 @@ namespace Chips {
 
 		private static void Compile(ChipsProject project) {
 			// Compile the source files
-			CompileSourceFiles(project, out var context);
+			CompileSourceFiles(project);
 
 			// Compile the binary files into CIL objects
-			CompileBinaryFiles(project, context);
+			CompileBinaryFiles(project);
 
 			// Resolve any delayed resolvers
 			foreach (IDelayedResolver resolver in _delayedResolvers)
-				resolver.Resolve(context);
+				resolver.Resolve(project.context);
 
 			// Report all errors if there were any, then exit
 			if (exceptions.Count > 0) {
@@ -150,7 +157,7 @@ namespace Chips {
 			}
 		}
 
-		private static void CompileSourceFiles(ChipsProject project, out CompilationContext context) {
+		private static void CompileSourceFiles(ChipsProject project) {
 			string name = buildOptions["out"];
 
 			AssemblyDefinition assembly = new AssemblyDefinition(Path.GetFileNameWithoutExtension(name), ChipsVersion);
@@ -166,8 +173,7 @@ namespace Chips {
 
 			Utility.Extensions.StringExtensionsLinkedToSourceLines = true;
 
-			context = new CompilationContext(ManifestModule.DefaultImporter);
-			project.SetupReferences(context.resolver);
+			project.SetupReferences();
 
 			// Assemble the binary object files
 			foreach (ProjectSource source in project.EnumerateSources()) {
@@ -196,7 +202,7 @@ namespace Chips {
 				}
 
 				var src = new SourceFile(source.fileInfo.FullName);
-				var code = src.CompileToBytecode(context, source.fileInfo.LastWriteTime, path);
+				var code = src.CompileToBytecode(project.context, source.fileInfo.LastWriteTime, path);
 
 				using (BinaryWriter writer = new BinaryWriter(File.Create(path)))
 					writer.Write(code._rawData);
@@ -212,7 +218,9 @@ namespace Chips {
 			Utility.Extensions.StringExtensionsLinkedToSourceLines = false;
 		}
 
-		private static void CompileBinaryFiles(ChipsProject project, CompilationContext context) {
+		private static void CompileBinaryFiles(ChipsProject project) {
+			project.SetupReferences();
+
 			foreach (string file in project.EnumerateCompiledFiles()) {
 				byte[] _rawData;
 				byte[]? _rawDataCPDB;
@@ -226,7 +234,7 @@ namespace Chips {
 					_rawDataCPDB = null;
 
 				BytecodeFile code = new BytecodeFile(file, _rawData, _rawDataCPDB);
-				code.CompileToCIL(context);
+				code.CompileToCIL(project.context);
 			}
 		}
 

@@ -328,7 +328,7 @@ namespace Chips.Compiler.Utility {
 			};
 
 			if (signature is not null) {
-				type = signature.Resolve()!;
+				type = signature.ImportWith(ChipsCompiler.ManifestModule.DefaultImporter).Resolve()!;
 				sourceAssembly = ChipsCompiler.DotNetAssemblyDefinition;
 				return true;
 			}

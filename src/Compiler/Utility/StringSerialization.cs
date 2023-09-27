@@ -248,10 +248,7 @@ namespace Chips.Compiler.Utility {
 		}
 
 		public static void ExtractFieldInformation(string arg, out string typeFullDefinition, out string fieldName) {
-			if (ParsingSequences.FieldAccess.TryParse(arg) is not IResult<string> { WasSuccessful: true } result)
-				throw ChipsCompiler.ErrorAndThrow(new InvalidDataException($"Field indicator \"{arg.DesanitizeString()}\" is malformed"));
-
-			if (!fieldParseResultRegex.IsMatch(result.Value))
+			if (ParsingSequences.FieldAccess.TryParse(arg) is not IResult<string> { WasSuccessful: true })
 				throw ChipsCompiler.ErrorAndThrow(new InvalidDataException($"Field indicator \"{arg.DesanitizeString()}\" is malformed"));
 
 			// Data is ignored, just split on "::"

@@ -27,20 +27,21 @@ namespace Chips.Compiler.Parsing.States {
 		protected abstract IEnumerable<BaseState> EnumeratePossibleStates();
 
 		public override bool ParseNext(StreamReader reader, CompilationContext context, BytecodeFile code, out BaseState? next) {
-			long pos = reader.BaseStream.Position;
+			int pos = reader.GetActualPosition();
 
 			foreach (var state in EnumeratePossibleStates()) {
-				state.Previous = Previous;
+				state.Previous = this;
 
 				if (state.ParseNext(reader, context, code, out next)) {
 					if (next is null)
 						throw ChipsCompiler.ErrorAndThrow(new ParsingException($"State {state.GetType().Name} produced a null next state, defaulting to FileScope"));
 
-					state.Success();
+					if (!object.ReferenceEquals(state, next))
+						state.Success();
 					return true;
 				}
 
-				reader.BaseStream.Position = pos;
+				reader.SetActualPosition(pos);
 			}
 
 			next = null;
@@ -85,16 +86,16 @@ namespace Chips.Compiler.Parsing.States {
 		}
 	}
 
-	internal sealed class Scope : BaseState {
+	internal sealed class ScopeOpen : BaseState {
 		public readonly BaseState body;
 
-		private Scope(BaseState body) {
+		private ScopeOpen(BaseState body) {
 			ArgumentNullException.ThrowIfNull(body);
 			this.body = body;
 		}
 
-		public static Scope Create(BaseState parent, BaseState body) {
-			return new Scope(body) { Previous = parent.Previous };
+		public static ScopeOpen Create(BaseState parent, BaseState body) {
+			return new ScopeOpen(body) { Previous = parent };
 		}
 
 		public override bool ParseNext(StreamReader reader, CompilationContext context, BytecodeFile code, out BaseState? next) {
@@ -105,19 +106,33 @@ namespace Chips.Compiler.Parsing.States {
 			}
 
 			bool ret = true;
+			int pos = reader.GetActualPosition();
 			try {
-				long pos = reader.BaseStream.Position;
 				body.Previous = Previous;
 				if (!body.ParseNext(reader, context, code, out next)) {
 					// Allow the body parsing to fail gracefully, since it can be empty
-					reader.BaseStream.Position = pos;
+					reader.SetActualPosition(pos);
 				}
 			} catch {
 				// Exceptions mean the body parsing failed
 				ret = false;
 				next = null;
+				reader.SetActualPosition(pos);
 			}
 
+			// Parse was successful
+			return ret;
+		}
+	}
+
+	internal sealed class ScopeClose : BaseState {
+		private ScopeClose() { }
+
+		public static ScopeClose Create(BaseState parent) {
+			return new ScopeClose() { Previous = parent.Previous?.Previous };
+		}
+
+		public override bool ParseNext(StreamReader reader, CompilationContext context, BytecodeFile code, out BaseState? next) {
 			// Parse the scope closing
 			// In case any characters appeared between the current location and the closing bracket, consume them
 			if (!reader.ReadUntil('}', alwaysConsume: true).EndsWith('}')) {
@@ -125,8 +140,8 @@ namespace Chips.Compiler.Parsing.States {
 				return false;
 			}
 
-			// Parse was successful
-			return ret;
+			next = Previous;
+			return true;
 		}
 	}
 
@@ -148,6 +163,8 @@ namespace Chips.Compiler.Parsing.States {
 
 			if (Previous is not FileScope)
 				throw ChipsCompiler.ErrorAndThrow(new ParsingException("Namespace imports must be declared outside of any scope"));
+
+			ChipsCompiler.CompilingSourceLineOverride = null;
 
 			next = Previous;
 			return true;
@@ -185,6 +202,8 @@ namespace Chips.Compiler.Parsing.States {
 			if (Previous is not FileScope)
 				throw ChipsCompiler.ErrorAndThrow(new ParsingException("Type aliases must be declared outside of any scope"));
 
+			ChipsCompiler.CompilingSourceLineOverride = null;
+
 			next = Previous;
 			return true;
 		}
@@ -220,7 +239,9 @@ namespace Chips.Compiler.Parsing.States {
 
 			NamespaceSymbol = code.CPDBMembers.AddNamespace(full);
 
-			next = Scope.Create(this, new NamespaceBody());
+			ChipsCompiler.CompilingSourceLineOverride = null;
+
+			next = ScopeOpen.Create(this, new NamespaceBody());
 			return true;
 		}
 
@@ -231,6 +252,8 @@ namespace Chips.Compiler.Parsing.States {
 		protected override IEnumerable<BaseState> EnumeratePossibleStates() {
 			yield return new Comment();
 			yield return new TypeIdentifier();
+			yield return new Empty();
+			yield return ScopeClose.Create(this);
 		}
 
 		public override bool ParseNext(StreamReader reader, CompilationContext context, BytecodeFile code, out BaseState? next) {
@@ -282,9 +305,9 @@ namespace Chips.Compiler.Parsing.States {
 			switch (word) {
 				case ":":
 					// Accessibility modifiers were specified
-					// Max modifier length: public static
-					// Max modifier length (nested): derived assembly static
-					string access = reader.ReadWordsUntil(Previous is TypeIdentifier ? 3 : 2, true, "->", "{", "{}");
+					// Max modifier length: class public static
+					// Max modifier length (nested): class derived assembly static
+					string access = reader.ReadWordsUntil(Previous is TypeIdentifier ? 4 : 3, true, "->", "{", "{}");
 
 					var parser = Previous is TypeIdentifier ? ParsingSequences.NestedTypeClassificationAndAttributes : ParsingSequences.TypeClassificationAndAttributes;
 					if (parser.TryParse(access) is not IResult<ParsedType> { WasSuccessful: true } accessResult)
@@ -303,9 +326,9 @@ namespace Chips.Compiler.Parsing.States {
 						goto case "->";
 					} else if (word == "{" || word == "{}") {
 						if (word == "{}")
-							next = Scope.Create(this, new Empty());  // Type definition is empty
+							next = ScopeOpen.Create(this, new Empty());  // Type definition is empty
 						else
-							next = Scope.Create(this, new TypeBody());
+							next = ScopeOpen.Create(this, new TypeBody());
 					} else {
 						ChipsCompiler.CompilingSourceLineOverride = ChipsCompiler.CompilingSourceLine;
 
@@ -340,6 +363,8 @@ namespace Chips.Compiler.Parsing.States {
 
 			TypeSymbol = ns.NamespaceSymbol.AddType(GetFullNestedName());
 
+			ChipsCompiler.CompilingSourceLineOverride = null;
+
 			return true;
 		}
 
@@ -360,15 +385,13 @@ namespace Chips.Compiler.Parsing.States {
 			yield return new MethodIdentifier();
 			yield return new TypeIdentifier();
 			yield return new Empty();
+			yield return ScopeClose.Create(this);
 		}
 
 		public override bool ParseNext(StreamReader reader, CompilationContext context, BytecodeFile code, out BaseState? next) {
-			bool success = base.ParseNext(reader, context, code, out _);
+			bool success = base.ParseNext(reader, context, code, out next);
 
-			if (success) {
-				// Attempt to parse more things in this state
-				next = this;
-			} else {
+			if (!success) {
 				// Go to the previous state
 				next = Previous;
 			}
@@ -440,6 +463,8 @@ namespace Chips.Compiler.Parsing.States {
 			Segment = new BytecodeFieldSegment(typeSegment, Name, fieldType, attributes);
 			typeSegment.AddMember(Segment);
 
+			ChipsCompiler.CompilingSourceLineOverride = null;
+
 			// Go to the previous state
 			next = Previous;
 			return true;
@@ -480,7 +505,7 @@ namespace Chips.Compiler.Parsing.States {
 			if (index < 0)
 				throw ChipsCompiler.ErrorAndThrow(new ParsingException($"Function arguments were malformed, could not parse: {args.DesanitizeString()}"));
 
-			string argTypes = args[..index];
+			string argTypes = args[..(index + 1)];
 			string methodAttributes = args[(index + 1)..];
 
 			if (ParsingSequences.FunctionArguments.TryParse(argTypes) is not IResult<ParsedMethodVariable[]> { WasSuccessful: true } argsResult)
@@ -502,26 +527,23 @@ namespace Chips.Compiler.Parsing.States {
 			ChipsCompiler.CompilingSourceLineOverride = ChipsCompiler.CompilingSourceLine;
 
 			string returnType = reader.ReadUntil('{');
-			if (ParsingSequences.VariableType.TryParse(returnType) is not IResult<string> { WasSuccessful: true } returnTypeResult)
+			if (ParsingSequences.TokenizedVariableType.TryParse(returnType) is not IResult<string> { WasSuccessful: true } returnTypeResult)
 				throw ChipsCompiler.ErrorAndThrow(new ParsingException($"Invalid return type: {returnType.DesanitizeString()}"));
-
-			TypeDefinition returnTypeDefinition = StringSerialization.ParseTypeIdentifierArgument(context, returnTypeResult.Value, false);
 
 			var typeScope = ((TypeBody)Previous!).GetScope();
 
-			Segment = new BytecodeMethodSegment(typeScope.Segment, Name, attributes, returnTypeDefinition);
+			Segment = new BytecodeMethodSegment(typeScope.Segment, Name, attributes, new DelayedTypeResolver(context.resolver, returnTypeResult.Value, true));
 
-			foreach (ParsedMethodVariable methodArg in parsedArgs) {
-				TypeDefinition argType = StringSerialization.ParseTypeIdentifierArgument(context, methodArg.type, true);
-
-				Segment.parameters.Add(new BytecodeVariableSegment(methodArg.name, argType));
-			}
+			foreach (ParsedMethodVariable methodArg in parsedArgs)
+				Segment.parameters.Add(new BytecodeVariableSegment(methodArg.name, new DelayedTypeResolver(context.resolver, methodArg.type, true)));
 
 			typeScope.Segment.AddMember(Segment);
 
 			MethodSymbol = typeScope.TypeSymbol.AddMethod(Name);
 
-			next = Scope.Create(this, new MethodBody());
+			ChipsCompiler.CompilingSourceLineOverride = null;
+
+			next = ScopeOpen.Create(this, new MethodBody());
 			return true;
 		}
 	}
@@ -532,27 +554,21 @@ namespace Chips.Compiler.Parsing.States {
 		protected override IEnumerable<BaseState> EnumeratePossibleStates() {
 			var method = GetMethod();
 
-			if (!method.hasDefinedLocals) {
-				yield return new Comment();
+			yield return new Comment();
+
+			if (!method.hasDefinedLocals)
 				yield return new LocalsListIdentifier();
-				yield return new LabelIdentifier();
-				yield return new InstructionIdentifier();
-				yield return new Empty();
-			} else {
-				yield return new Comment();
-				yield return new LabelIdentifier();
-				yield return new InstructionIdentifier();
-				yield return new Empty();
-			}
+
+			yield return new LabelIdentifier();
+			yield return new InstructionIdentifier();
+			yield return new Empty();
+			yield return ScopeClose.Create(this);
 		}
 
 		public override bool ParseNext(StreamReader reader, CompilationContext context, BytecodeFile code, out BaseState? next) {
-			bool success = base.ParseNext(reader, context, code, out _);
+			bool success = base.ParseNext(reader, context, code, out next);
 
-			if (success) {
-				// Attempt to parse more things in this state
-				next = this;
-			} else {
+			if (!success) {
 				if (activeLabel)
 					throw ChipsCompiler.ErrorAndThrow(new ParsingException("Method body ended with a label identifier, but no instruction was found after it"));
 
@@ -575,9 +591,11 @@ namespace Chips.Compiler.Parsing.States {
 				return false;
 			}
 
-			next = Scope.Create(this, new LocalsList());
+			ChipsCompiler.CompilingSourceLineOverride = null;
+
+			next = ScopeOpen.Create(this, new LocalsList());
 			next.OnSuccess += static s => {
-				var method = ((s as Scope)?.body as LocalsList)?.GetMethod() ?? throw new NullReferenceException("Could not find method body");
+				var method = ((s as ScopeOpen)?.body as LocalsList)?.GetMethod() ?? throw new NullReferenceException("Could not find method body");
 				method.hasDefinedLocals = true;
 			};
 			return true;
@@ -594,6 +612,7 @@ namespace Chips.Compiler.Parsing.States {
 			yield return new Comment();
 			yield return new LocalIdentifier();
 			yield return new Empty();
+			yield return ScopeClose.Create(this);
 		}
 
 		public override bool ParseNext(StreamReader reader, CompilationContext context, BytecodeFile code, out BaseState? next) {
@@ -639,12 +658,12 @@ namespace Chips.Compiler.Parsing.States {
 
 			ParsedMethodVariable parsedVariable = result.Value;
 
-			TypeDefinition localType = StringSerialization.ParseTypeIdentifierArgument(context, parsedVariable.type, true);
-
 			var method = GetMethod();
-			method.Segment.locals.Add(new BytecodeVariableSegment(parsedVariable.name, localType));
+			method.Segment.locals.Add(new BytecodeVariableSegment(parsedVariable.name, new DelayedTypeResolver(context.resolver, parsedVariable.type, true)));
 
 			list.definedLocals++;
+
+			ChipsCompiler.CompilingSourceLineOverride = null;
 
 			next = Previous;
 			return true;
@@ -657,7 +676,16 @@ namespace Chips.Compiler.Parsing.States {
 
 	internal class LabelIdentifier : BaseState {
 		public override bool ParseNext(StreamReader reader, CompilationContext context, BytecodeFile code, out BaseState? next) {
-			string identifier = reader.ReadUntil(':', alwaysConsume: true);
+			string identifier = reader.ReadWord();
+
+			if (!identifier.EndsWith(':') && reader.PeekFirstNonWhitespaceChar() != ':') {
+				// Was not an identifier string
+				next = null;
+				return false;
+			}
+
+			if (identifier.EndsWith(':'))
+				identifier = identifier[..^1];
 
 			if (ParsingSequences.IdentifierString.TryParse(identifier) is not IResult<string> { WasSuccessful: true } result)
 				throw ChipsCompiler.ErrorAndThrow(new ParsingException($"Invalid label identifier: {identifier.DesanitizeString()}"));
@@ -673,6 +701,8 @@ namespace Chips.Compiler.Parsing.States {
 			label.OpcodeOffset = scope.Segment.body.Instructions.Count;
 
 			scope.MethodSymbol.AddLabel(scope.Name, label);
+
+			ChipsCompiler.CompilingSourceLineOverride = null;
 
 			next = Previous;
 			return true;
@@ -696,8 +726,8 @@ namespace Chips.Compiler.Parsing.States {
 				throw ChipsCompiler.ErrorAndThrow(new ParsingException($"Unknown opcode: {opcode.DesanitizeString()}"));
 
 			string[] arguments = reader.ReadManyWordsOrQuotedStrings(preprocessEscapedQuotes: true, terminateOnComment: true)
-				.Select(static p => p.wasQuoted ? $"\"{p.text}\"" : p.text)
-				.ToArray();
+				.Select(static p => p.text == "null" ? (p.wasQuoted ? "\"null\"" : null) : p.text)
+				.ToArray()!;
 
 			var method = GetMethod();
 			var scope = method.GetMethod();
@@ -721,6 +751,8 @@ namespace Chips.Compiler.Parsing.States {
 
 			if (!anySuccess)
 				throw ChipsCompiler.ErrorAndThrow(new ParsingException($"No definition of opcode \"{opcode}\" could parse the provided arguments"));
+
+			ChipsCompiler.CompilingSourceLineOverride = null;
 
 			next = Previous;
 			return true;

@@ -22,7 +22,16 @@ namespace Chips.Compiler.Compilation {
 
 		public bool Write(BinaryWriter writer, TypeResolver resolver, StringHeap heap) {
 			try {
-				writer.Write((byte)Opcode);
+				ushort code = (ushort)Opcode;
+				if (code <= byte.MaxValue) {
+					// Not an extended opcode
+					writer.Write((byte)code);
+				} else {
+					// High byte first, then low byte
+					writer.Write((byte)(code >> 8));
+					writer.Write((byte)code);
+				}
+
 				ChipsCompiler.opcodes[Opcode].SerializeArguments(writer, Operands, resolver, heap);
 				return true;
 			} catch {

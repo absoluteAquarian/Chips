@@ -65,16 +65,20 @@ namespace Chips.Compiler.Utility {
 	}
 
 	public sealed class DelayedTypeResolver : BaseDelayedMetadataResolver<TypeDefinition>, ITypeDefOrRef {
+		private readonly bool wasMetadataAlreadyParsed;
+
 		private DelayedTypeResolver(TypeDefinition def) : base(def) { }
 
-		public DelayedTypeResolver(TypeResolver resolver, string metadata) : base(resolver, metadata) { }
+		public DelayedTypeResolver(TypeResolver resolver, string metadata, bool wasMetadataAlreadyParsed) : base(resolver, metadata) {
+			this.wasMetadataAlreadyParsed = wasMetadataAlreadyParsed;
+		}
 
 		public static DelayedTypeResolver FromKnownDefinition(TypeDefinition def) {
 			return new(def);
 		}
 
 		protected override TypeDefinition ResolveMember(CompilationContext context) {
-			return StringSerialization.ParseTypeIdentifierArgument(context, metadata, false);
+			return StringSerialization.ParseTypeIdentifierArgument(context, metadata, wasMetadataAlreadyParsed);
 		}
 
 		#region ITypeDefOrRef
@@ -221,7 +225,7 @@ namespace Chips.Compiler.Utility {
 	internal static class DelayedResolverExtensions {
 		public static void WriteFullName(this IFieldDescriptor field, BinaryWriter writer, StringHeap heap) {
 			if (field is DelayedFieldResolver resolver) {
-				heap.WriteString(writer, resolver.typeMetadata);
+				heap.WriteString(writer, resolver.typeMetadata.AttemptCoreTypeAlias());
 				heap.WriteString(writer, resolver.fieldMetadata);
 			} else {
 				if (field.Module?.Assembly is null)
@@ -231,7 +235,7 @@ namespace Chips.Compiler.Utility {
 				if (field.Name is null)
 					throw new ArgumentException("Field must have a name", nameof(field));
 
-				heap.WriteString(writer, field.DeclaringType.FullName);
+				heap.WriteString(writer, field.DeclaringType.FullName.AttemptCoreTypeAlias());
 				heap.WriteString(writer, field.Name);
 			}
 		}

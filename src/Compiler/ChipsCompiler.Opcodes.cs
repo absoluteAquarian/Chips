@@ -13,6 +13,13 @@ namespace Chips {
 			[OpcodeID.Ldfs] = new OpcodeLdfs(),
 			[OpcodeID.Ldrg] = new OpcodeLdrg(),
 			[OpcodeID.Ldlc] = new OpcodeLdlc(),
+			// ldmtd
+			// ldz.s
+			// ldel
+			// comp
+			// is
+			// conv
+			// kbrdy
 		};
 
 		private static string RemapOpcodeName(string code) {

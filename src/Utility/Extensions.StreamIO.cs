@@ -1,5 +1,5 @@
-﻿using Chips.Compiler;
-using Chips.Compiler.Parsing;
+﻿using Chips.Compiler.Parsing;
+using Chips.Runtime.Utility;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -9,6 +9,10 @@ namespace Chips.Utility {
 	partial class Extensions {
 		internal static bool StringExtensionsLinkedToSourceLines { get; set; }
 
+		public static int GetActualPosition(this StreamReader reader) => typeof(StreamReader).RetrieveField<int>("_charPos", reader);
+
+		public static void SetActualPosition(this StreamReader reader, int position) => typeof(StreamReader).AssignField("_charPos", reader, position);
+
 		public static string ReadWord(this StreamReader reader, bool terminateOnComment = false) {
 			// Read until we find a non-whitespace character
 			reader.ReadUntilNonWhitespace();
@@ -16,14 +20,14 @@ namespace Chips.Utility {
 			// Read until the next whitespace character
 			StringBuilder word = new();
 
-			while (reader.TryReadExceptWhitespace(out char read))
+			while (reader.TryReadExceptWhitespace(out char read) && (!terminateOnComment || read != ';'))
 				word.Append(read);
 
 			return word.ToString();
 		}
 
 		public static string PeekWord(this StreamReader reader, bool terminateOnComment = false) {
-			long pos = reader.BaseStream.Position;
+			int pos = reader.GetActualPosition();
 
 			bool updateLine = StringExtensionsLinkedToSourceLines;
 			StringExtensionsLinkedToSourceLines = false;
@@ -32,7 +36,7 @@ namespace Chips.Utility {
 
 			StringExtensionsLinkedToSourceLines = updateLine;
 
-			reader.BaseStream.Position = pos;
+			reader.SetActualPosition(pos);
 			return word;
 		}
 
@@ -42,7 +46,7 @@ namespace Chips.Utility {
 		}
 
 		public static char PeekFirstNonWhitespaceChar(this StreamReader reader) {
-			long pos = reader.BaseStream.Position;
+			int pos = reader.GetActualPosition();
 
 			bool updateLine = StringExtensionsLinkedToSourceLines;
 			StringExtensionsLinkedToSourceLines = false;
@@ -51,7 +55,7 @@ namespace Chips.Utility {
 
 			StringExtensionsLinkedToSourceLines = updateLine;
 
-			reader.BaseStream.Position = pos;
+			reader.SetActualPosition(pos);
 			return read;
 		}
 
@@ -116,7 +120,7 @@ namespace Chips.Utility {
 				words.Add(new(word, wasQuoted));
 
 				afterArg = reader.PeekUntilMany(new char[] { ',', '\n' }, alwaysConsume: true);
-			} while (afterArg.Length > 0);
+			} while (afterArg.Length > 0 && !afterArg.EndsWith('\r'));
 
 			return words;
 		}
@@ -136,6 +140,8 @@ namespace Chips.Utility {
 		}
 
 		public static string PeekUntilMany(this StreamReader reader, char[] except, bool alwaysConsume = false) {
+			int pos = reader.GetActualPosition();
+
 			bool updateLine = StringExtensionsLinkedToSourceLines;
 			StringExtensionsLinkedToSourceLines = false;
 
@@ -143,6 +149,7 @@ namespace Chips.Utility {
 
 			StringExtensionsLinkedToSourceLines = updateLine;
 
+			reader.SetActualPosition(pos);
 			return read;
 		}
 
@@ -161,7 +168,7 @@ namespace Chips.Utility {
 		}
 
 		public static string PeekUntilNewline(this StreamReader reader) {
-			long pos = reader.BaseStream.Position;
+			int pos = reader.GetActualPosition();
 
 			bool updateLine = StringExtensionsLinkedToSourceLines;
 			StringExtensionsLinkedToSourceLines = false;
@@ -170,7 +177,7 @@ namespace Chips.Utility {
 
 			StringExtensionsLinkedToSourceLines = updateLine;
 
-			reader.BaseStream.Position = pos;
+			reader.SetActualPosition(pos);
 			return read;
 		}
 

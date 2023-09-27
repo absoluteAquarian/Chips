@@ -170,6 +170,9 @@ namespace Chips.Runtime.Specifications {
 		}
 
 		protected override object? ParseArgument(CompilationContext context, string arg) {
+			if (arg is null)
+				throw ChipsCompiler.ErrorAndThrow(new ParsingException("Use \"ldz.s\" to load null into the &S register"));
+
 			// Convert escape sequences to the actual characters
 			return context.heap.GetOrAdd(arg.SanitizeString());
 		}
@@ -269,4 +272,32 @@ namespace Chips.Runtime.Specifications {
 			writer.Write((ushort)args[0]!);
 		}
 	}
+
+	// ldmtd
+
+	public sealed class OpcodeLdzs : LoadZeroOpcode {
+		public override string Register => nameof(Registers.S);
+
+		public override OpcodeID Code => OpcodeID.Ldzs;
+
+		public override bool Compile(CompilationContext context, OpcodeArgumentCollection args) {
+			if (!ValidateArgumentAndEmitNumberRegisterAccess(context, args))
+				return false;
+
+			context.Instructions.Add(CilOpCodes.Ldnull);
+			context.Instructions.Add(CilOpCodes.Call, context.importer.ImportMethod(typeof(StringRegister).GetCachedProperty("Value")!.SetMethod!));
+
+			return true;
+		}
+	}
+
+	// ldel
+
+	// comp
+
+	// is
+
+	// conv
+
+	// kbrdy
 }

@@ -104,7 +104,8 @@ namespace Chips.Compiler.Compilation {
 		public static BytecodeTypeSegment ReadMember(CompilationContext context, BinaryReader reader, object? state) {
 			string name = context.heap.ReadString(reader);
 			TypeAttributes attributes = (TypeAttributes)reader.ReadUInt32();
-			ITypeDefOrRef baseType = reader.ReadTypeDefinition(context.resolver, context.heap);
+			DelayedTypeResolver baseType = reader.ReadTypeDefinition(context.resolver, context.heap);
+			ChipsCompiler.AddDelayedResolver(baseType);
 
 			BytecodeNamespaceSegment enclosingNamespace = state switch {
 				BytecodeNamespaceSegment ns => ns,
@@ -186,7 +187,8 @@ namespace Chips.Compiler.Compilation {
 
 		public static BytecodeFieldSegment ReadMember(CompilationContext context, BinaryReader reader, BytecodeTypeSegment declaringType) {
 			string name = context.heap.ReadString(reader);
-			ITypeDefOrRef type = reader.ReadTypeDefinition(context.resolver, context.heap);
+			DelayedTypeResolver type = reader.ReadTypeDefinition(context.resolver, context.heap);
+			ChipsCompiler.AddDelayedResolver(type);
 			FieldAttributes attributes = (FieldAttributes)reader.ReadUInt32();
 
 			return new BytecodeFieldSegment(declaringType, name, type, attributes);
@@ -222,7 +224,8 @@ namespace Chips.Compiler.Compilation {
 		public static BytecodeMethodSegment ReadMember(CompilationContext context, BinaryReader reader, BytecodeTypeSegment declaringType) {
 			string name = context.heap.ReadString(reader);
 			MethodAttributes attributes = (MethodAttributes)reader.ReadUInt32();
-			ITypeDefOrRef returnType = reader.ReadTypeDefinition(context.resolver, context.heap);
+			DelayedTypeResolver returnType = reader.ReadTypeDefinition(context.resolver, context.heap);
+			ChipsCompiler.AddDelayedResolver(returnType);
 
 			BytecodeMethodSegment segment = new(declaringType, name, attributes, returnType);
 
@@ -232,7 +235,8 @@ namespace Chips.Compiler.Compilation {
 
 			// Attempt to set the entry point
 			var factory = ChipsCompiler.ManifestModule.CorLibTypeFactory;
-			if (!ChipsCompiler.NoEntryPoint && name == "Main" && (ChipsCompiler.AreTypesEqual(returnType, factory.Void) || ChipsCompiler.AreTypesEqual(returnType, factory.Int32)) && (parameterCount == 0 || (parameterCount == 1 && ChipsCompiler.AreTypesEqual(segment.parameters[0].type, factory.String.MakeArrayType())))) {
+			var returnTypeName = (returnType as IFullNameProvider).FullName;
+			if (!ChipsCompiler.NoEntryPoint && name == "Main" && (returnTypeName == factory.Void.FullName || returnTypeName == "void" || returnTypeName == factory.Int32.FullName || returnTypeName == "int") && (parameterCount == 0 || (parameterCount == 1 && segment.parameters[0].type.FullName == factory.String.MakeArrayType().FullName))) {
 				if (ChipsCompiler.FoundEntryPoint is not null)
 					throw new InvalidDataException("Multiple entry points found");
 
@@ -250,14 +254,11 @@ namespace Chips.Compiler.Compilation {
 				segment.body.Labels.Add(label);
 			}
 
+			int instructionCount = reader.Read7BitEncodedInt();
+			for (int i = 0; i < instructionCount; i++)
+				segment.body.Instructions.Add(ChipsInstruction.Read(reader, context.resolver, context.heap));
+
 			return segment;
-		}
-
-		public static bool IsValidEntryPointSignature(string name, ITypeDescriptor returnType) {
-			if (returnType is DelayedTypeResolver)
-				return false;
-
-			return name == "Main" && ChipsCompiler.AreTypesEqual(returnType, ChipsCompiler.ManifestModule.CorLibTypeFactory.Void);
 		}
 
 		public override void WriteMember(CompilationContext context, BinaryWriter writer) {
@@ -276,6 +277,10 @@ namespace Chips.Compiler.Compilation {
 			writer.Write7BitEncodedInt(body.Labels.Count);
 			foreach (var label in body.Labels)
 				label.WriteMember(writer);
+
+			writer.Write7BitEncodedInt(body.Instructions.Count);
+			foreach (var instruction in body.Instructions)
+				instruction.Write(writer, context.resolver, context.heap);
 		}
 	}
 
@@ -290,7 +295,8 @@ namespace Chips.Compiler.Compilation {
 
 		public static BytecodeVariableSegment ReadMember(CompilationContext context, BinaryReader reader) {
 			string name = context.heap.ReadString(reader);
-			ITypeDefOrRef type = reader.ReadTypeDefinition(context.resolver, context.heap);
+			DelayedTypeResolver type = reader.ReadTypeDefinition(context.resolver, context.heap);
+			ChipsCompiler.AddDelayedResolver(type);
 
 			return new BytecodeVariableSegment(name, type);
 		}
@@ -312,7 +318,8 @@ namespace Chips.Compiler.Compilation {
 
 		public static BytecodeTypeAliasSegment ReadMember(CompilationContext context, BinaryReader reader) {
 			string alias = context.heap.ReadString(reader);
-			ITypeDefOrRef resolvedAlias = reader.ReadTypeDefinition(context.resolver, context.heap);
+			DelayedTypeResolver resolvedAlias = reader.ReadTypeDefinition(context.resolver, context.heap);
+			ChipsCompiler.AddDelayedResolver(resolvedAlias);
 
 			return new BytecodeTypeAliasSegment(alias, resolvedAlias);
 		}

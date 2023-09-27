@@ -148,5 +148,29 @@ namespace Chips.Utility {
 			}
 			return count;
 		}
+
+		public static string AttemptCoreTypeAlias(this string type) {
+			return type switch {
+				"System.SByte" => "sbyte",
+				"System.Byte" => "byte",
+				"System.Int16" => "short",
+				"System.UInt16" => "ushort",
+				"System.Int32" => "int",
+				"System.UInt32" => "uint",
+				"System.Int64" => "long",
+				"System.UInt64" => "ulong",
+				"System.IntPtr" => "nint",
+				"System.UIntPtr" => "nuint",
+				"System.Single" => "float",
+				"System.Double" => "double",
+				"System.Boolean" => "bool",
+				"System.Char" => "char",
+				"System.String" => "string",
+				"System.Object" => "object",
+				"System.Void" => "void",
+				"System.Decimal" => "decimal",
+				_ => type
+			};
+		}
 	}
 }

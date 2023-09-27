@@ -13,7 +13,7 @@ namespace Chips.Compiler.IO {
 
 		public BytecodeFile CompileToBytecode(CompilationContext context, DateTime lastWriteTime, string codeFilePath) {
 			ChipsCompiler.CompilingSourceFile = file;
-			ChipsCompiler.CompilingSourceLine = 0;
+			ChipsCompiler.CompilingSourceLine = 1;
 
 			context.heap.Clear();
 			context.resolver.Clear();
@@ -35,9 +35,10 @@ namespace Chips.Compiler.IO {
 							throw ChipsCompiler.ErrorAndThrow(new ParsingException($"State {state.GetType().Name} produced a null next state, defaulting to FileScope"));
 						}
 
-						state.Success();
-
-						next.Previous ??= state;  // Some states manually set their previous state, so don't overwrite it
+						if (!object.ReferenceEquals(state, next)) {
+							state.Success();
+							next.Previous ??= state;  // Some states manually set their previous state, so don't overwrite it
+						}
 
 						state = next;
 					} else {

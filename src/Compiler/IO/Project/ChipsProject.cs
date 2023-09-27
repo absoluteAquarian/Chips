@@ -1,12 +1,13 @@
 ﻿using AsmResolver.DotNet;
 using Chips.Compiler.Utility;
 using Chips.Utility;
+using System;
 using System.Collections.Generic;
 using System.IO;
 
 namespace Chips.Compiler.IO.Project {
 	internal class ChipsProject {
-		private readonly SourceResolver sources = new();
+		private readonly SourceResolver sources;
 		private readonly List<string> assemblies = new();
 
 		private readonly List<string> bytecodeFiles = new();
@@ -17,17 +18,18 @@ namespace Chips.Compiler.IO.Project {
 
 		private ChipsProject(string? file) {
 			this.file = file;
+			sources = new(file is null ? "." : new FileInfo(file).DirectoryName ?? throw new ArgumentException($"Source file \"{file}\" does not exist"));
 		}
 
 		public IEnumerable<ProjectSource> EnumerateSources() => sources.EnumerateFiles();
 
 		public IEnumerable<string> EnumerateCompiledFiles() => bytecodeFiles;
 
-		public void SetupReferences(TypeResolver resolver) {
-			resolver.Clear(clearAssemblies: true);
+		public void SetupReferences() {
+			context.resolver.Clear(clearAssemblies: true);
 
 			foreach (string assembly in assemblies)
-				resolver.AddAssembly(AssemblyDefinition.FromFile(assembly));
+				context.resolver.AddAssembly(AssemblyDefinition.FromFile(assembly));
 		}
 
 		public void AddCompiledFile(string path) {
