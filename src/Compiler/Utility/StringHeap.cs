@@ -1,65 +1,65 @@
-﻿using System;
+﻿using Chips.Utility;
+using System;
 using System.IO;
+using System.Text;
 
 namespace Chips.Compiler.Utility {
 	/// <summary>
 	/// An object representing a heap of strings
 	/// </summary>
 	public sealed class StringHeap {
-		private char[] _heap = Array.Empty<char>();
+		private byte[] _heap = Array.Empty<byte>();
 
 		/// <summary>
 		/// Adds a string to the heap if it isn't already present, then returns its index in the heap
 		/// </summary>
 		public StringMetadata GetOrAdd(string str) {
+			int size = str.GetHeapSize();
+			Span<byte> bytes = size < 1024 * 4 ? stackalloc byte[size] : new byte[size];
+			str.EncodeToHeap(bytes);
+
 			// Check if the string is already in the heap
-			ReadOnlySpan<char> incoming = str;
-			ReadOnlySpan<char> heap = _heap;
+			ReadOnlySpan<byte> incoming = bytes;
+			ReadOnlySpan<byte> heap = _heap;
 
-			int index = heap.IndexOf(incoming, StringComparison.Ordinal);
+			int index = heap.IndexOf(incoming);
 			if (index < 0) {
-				// Check if part of the end of the heap is the same as the beginning of the string
-				// If so, we can just add the rest of the string to the heap
-				int overlap = 0;
-				for (int i = 1; i <= heap.Length; i++) {
-					if (incoming.StartsWith(heap[^i..]))
-						overlap = i;
-				}
+				// Add the full string to the heap
+				index = heap.Length;
+				Array.Resize(ref _heap, index + incoming.Length);
 
-				Span<char> resizedHeap;
-				if (overlap > 0) {
-					// Add the remaning part of the string to the heap
-					index = heap.Length - overlap;
-					Array.Resize(ref _heap, index + incoming.Length);
-
-					// Copy the string to the heap using Span
-					resizedHeap = _heap;
-					incoming[overlap..].CopyTo(resizedHeap[overlap..]);
-				} else {
-					// Add the full string to the heap
-					index = heap.Length;
-					Array.Resize(ref _heap, index + incoming.Length);
-
-					// Copy the string to the heap using Span
-					resizedHeap = _heap;
-					incoming.CopyTo(resizedHeap[index..]);
-				}
+				// Copy the string to the heap using Span
+				Span<byte> resizedHeap = _heap;
+				incoming.CopyTo(resizedHeap[index..]);
 			}
 
 			// Return the index of the string in the heap
-			return new StringMetadata((uint)index, str.Length);
+			return new StringMetadata(index);
 		}
 
 		public string GetString(StringMetadata token) {
 			// Throw if out of bounds
-			if (token.Offset + token.Length > _heap.Length)
+			if (token.Offset >= _heap.Length)
 				throw new ArgumentOutOfRangeException();
 
-			return new(_heap, (int)token.Offset, token.Length);
+			// Get the length of the string at the offset as a 7-bit encoded int
+			ReadOnlySpan<byte> heap = _heap;
+			int length = heap.Extract7BitEncodedInt(token.Offset, out int bytesRead);
+
+			// Extract the string from the heap
+			ReadOnlySpan<byte> heapedStr = heap.Slice(token.Offset + bytesRead, length);
+
+			// Check if the next byte is the null terminator
+			int terminatorIndex = token.Offset + bytesRead + length;
+			if (terminatorIndex >= heap.Length || heap[terminatorIndex] != 0)
+				throw new InvalidOperationException("String heap is corrupted");
+
+			// Decode the string from the heap
+			return Encoding.UTF8.GetString(heapedStr);
 		}
 
 		public void Clear() {
-			_heap = Array.Empty<char>();
+			_heap = Array.Empty<byte>();
 		}
 
 		public void Serialize(BinaryWriter writer) {
@@ -69,7 +69,7 @@ namespace Chips.Compiler.Utility {
 
 		public void Deserialize(BinaryReader reader) {
 			int length = reader.Read7BitEncodedInt();
-			_heap = reader.ReadChars(length);
+			_heap = reader.ReadBytes(length);
 		}
 
 		public void WriteString(BinaryWriter writer, string str) {
@@ -84,23 +84,19 @@ namespace Chips.Compiler.Utility {
 	}
 
 	public readonly struct StringMetadata {
-		public readonly uint Offset;
-		public readonly int Length;
+		public readonly int Offset;
 
-		public StringMetadata(uint offset, int length) {
+		public StringMetadata(int offset) {
 			Offset = offset;
-			Length = length;
 		}
 
 		public void Serialize(BinaryWriter writer) {
-			writer.Write7BitEncodedInt((int)Offset);
-			writer.Write7BitEncodedInt(Length);
+			writer.Write(Offset);
 		}
 
 		public static StringMetadata Deserialize(BinaryReader reader) {
-			uint offset = (uint)reader.Read7BitEncodedInt();
-			int length = reader.Read7BitEncodedInt();
-			return new(offset, length);
+			int offset = reader.ReadInt32();
+			return new(offset);
 		}
 	}
 }

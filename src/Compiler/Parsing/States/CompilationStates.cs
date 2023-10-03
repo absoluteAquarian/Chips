@@ -729,11 +729,16 @@ namespace Chips.Compiler.Parsing.States {
 				.Select(static p => p.text == "null" ? (p.wasQuoted ? "\"null\"" : null) : p.text)
 				.ToArray()!;
 
+			int argCount = arguments.Length;
+			if (!possibleOpcodes.Any(o => o.ExpectedArgumentCount == argCount))
+				throw ChipsCompiler.ErrorAndThrow(new ParsingException($"No definition for opcode \"{opcode}\" expects {argCount} arguments"));
+
 			var method = GetMethod();
 			var scope = method.GetMethod();
 			var body = scope.Segment.body.Instructions;
 
 			bool anySuccess = false;
+			List<CompilationException> caughtExceptions = new();
 			foreach (Opcode possibleOpcode in possibleOpcodes) {
 				int count = ChipsCompiler.ErrorCount;
 				try {
@@ -745,12 +750,15 @@ namespace Chips.Compiler.Parsing.States {
 					break;
 				} catch {
 					// Consume the error
-					ChipsCompiler.RestoreExceptionState(count);
+					var caught = ChipsCompiler.RestoreExceptionState(count);
+					caughtExceptions.AddRange(caught);
 				}
 			}
 
-			if (!anySuccess)
-				throw ChipsCompiler.ErrorAndThrow(new ParsingException($"No definition of opcode \"{opcode}\" could parse the provided arguments"));
+			if (!anySuccess) {
+				string innerExceptions = string.Join("\n  -->", caughtExceptions.Select(static e => e.Reason));
+				throw ChipsCompiler.ErrorAndThrow(new ParsingException($"No definition of opcode \"{opcode}\" could parse the provided arguments\n  --> {innerExceptions}"));
+			}
 
 			ChipsCompiler.CompilingSourceLineOverride = null;
 

@@ -39,7 +39,7 @@ namespace Chips.Runtime.Types {
 		}
 
 		public override bool AcceptsValue(object? value) {
-			return ValueConverter.BoxToUnderlyingType(value) is IInteger;
+			return TypeTracking.IsInteger(value);
 		}
 
 		public void Set(sbyte value) => Value = value.CastToSByte_T();
@@ -64,7 +64,7 @@ namespace Chips.Runtime.Types {
 		}
 
 		public override bool AcceptsValue(object? value) {
-			return ValueConverter.BoxToUnderlyingType(value) is IFloat;
+			return TypeTracking.IsFloatingPoint(value);
 		}
 
 		public void Set(float value) => Value = value.CastToSingle_T();

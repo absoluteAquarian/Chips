@@ -103,9 +103,12 @@ namespace Chips {
 		private static AssemblyDefinition _dotNetAssembly;
 		internal static AssemblyDefinition DotNetAssemblyDefinition => _dotNetAssembly ??= DotNetAssembly.ImportWith(ManifestModule.DefaultImporter).Resolve() ?? throw new NullReferenceException("Could not resolve .NET assembly");
 
-		private static List<IDelayedResolver> _delayedResolvers = new();
+		private static List<IDelayedSourceResolver> _delayedSourceResolvers = new();
+		private static List<IDelayedInstructionResolver> _delayedInstructionResolvers = new();
 
-		internal static void AddDelayedResolver(IDelayedResolver resolver) => _delayedResolvers.Add(resolver);
+		internal static void AddDelayedResolver(IDelayedSourceResolver resolver) => _delayedSourceResolvers.Add(resolver);
+
+		internal static void AddDelayedResolver(IDelayedInstructionResolver resolver) => _delayedInstructionResolvers.Add(resolver);
 
 		internal static BytecodeMethodSegment? FoundEntryPoint;
 
@@ -126,13 +129,37 @@ namespace Chips {
 			CompileBinaryFiles(project);
 
 			// Resolve any delayed resolvers
-			foreach (IDelayedResolver resolver in _delayedResolvers)
+			foreach (IDelayedSourceResolver resolver in _delayedSourceResolvers)
 				resolver.Resolve(project.context);
+
+			// Resolve any delayed instructions
+			foreach (var resolvers in _delayedInstructionResolvers.GroupBy(static i => i.Body.Owner.MetadataToken.ToUInt32())) {
+				StrictEvaluationStackSimulator? stack = null;
+				int lastIndex = -1;
+
+				foreach (IDelayedInstructionResolver resolver in resolvers.OrderBy(static i => i.InstructionIndex)) {
+					if (stack is null)
+						stack = resolver.Body.GetStackUpTo(resolver.InstructionIndex);
+					else
+						stack.ModifyStack(resolver.Body, lastIndex, resolver.InstructionIndex);
+
+					try {
+						resolver.Resolve(stack);
+						lastIndex = resolver.InstructionIndex;
+					} catch (Exception ex) {
+						// Add the error to the error list
+						CompilingSourceFile = $"$CIL_method {resolver.Body.Owner.FullName}";
+						CompilingSourceLine = -1;
+						CompilingSourceLineOverride = null;
+						ErrorAndThrow(ex);
+					}
+				}
+			}
 
 			// Report all errors if there were any, then exit
 			if (exceptions.Count > 0) {
 				foreach (CompilationException exception in exceptions.OrderBy(static e => e.SourceFile, OrderedFiles.Instance).ThenBy(static e => e.SourceLine))
-					Logging.Error($"{exception.Reason} at {exception.SourceFile}{(exception.SourceLine >= 0 ? $" on line {exception.SourceLine + 1}" : "")}");
+					Logging.Error(exception);
 
 				Environment.Exit(-1);
 				return;
@@ -146,10 +173,19 @@ namespace Chips {
 			public static OrderedFiles Instance { get; } = new();
 
 			public int Compare(string? x, string? y) {
-				// Always sort .bchp files after .chp files
-				if (Path.GetExtension(x) == ".bchp" && Path.GetExtension(y) == ".chp")
+				// Make CIL errors appear last
+				if (x?.StartsWith("$CIL_method ") is true && y?.StartsWith("$CIL_method ") is false)
 					return 1;
-				if (Path.GetExtension(x) == ".chp" && Path.GetExtension(y) == ".bchp")
+				else if (x?.StartsWith("$CIL_method ") is false && y?.StartsWith("$CIL_method ") is true)
+					return -1;
+
+				// Always sort .bchp files after .chp files
+				string? xExt = Path.GetExtension(x);
+				string? yExt = Path.GetExtension(y);
+
+				if (xExt == ".bchp" && yExt == ".chp")
+					return 1;
+				else if (xExt == ".chp" && yExt == ".bchp")
 					return -1;
 
 				// Else, default to string comparison
@@ -251,8 +287,10 @@ namespace Chips {
 
 		internal static int ErrorCount => exceptions.Count;
 
-		internal static void RestoreExceptionState(int count) {
+		internal static List<CompilationException> RestoreExceptionState(int count) {
+			List<CompilationException> removedExceptions = exceptions.GetRange(count, exceptions.Count - count);
 			exceptions.RemoveRange(count, exceptions.Count - count);
+			return removedExceptions;
 		}
 
 		public static bool OpcodeIsDefined(string code) {

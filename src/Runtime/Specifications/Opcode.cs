@@ -2,17 +2,13 @@
 using AsmResolver.PE.DotNet.Cil;
 using Chips.Compiler;
 using Chips.Compiler.Utility;
-using Chips.Compiler.Parsing;
 using Chips.Runtime.Types;
 using Chips.Runtime.Types.NumberProcessing;
 using Chips.Runtime.Utility;
 using Chips.Utility;
 using Chips.Utility.Reflection;
-using Sprache;
 using System;
-using System.Diagnostics.CodeAnalysis;
 using System.IO;
-using System.Linq;
 
 namespace Chips.Runtime.Specifications {
 	/// <summary>
@@ -41,9 +37,14 @@ namespace Chips.Runtime.Specifications {
 		public virtual nint Method => nint.Zero;
 
 		/// <summary>
-		/// The expected evaluation stack behavior for this Chips instruction
+		/// The expected stack behavior for this Chips instruction
 		/// </summary>
 		public abstract StackBehavior StackBehavior { get; }
+
+		/// <summary>
+		/// The expected number of arguments to be given to this instructino
+		/// </summary>
+		public abstract int ExpectedArgumentCount { get; }
 
 		/// <summary>
 		/// Add the CIL instructions used when transpiling this Chips instruction here
@@ -51,7 +52,7 @@ namespace Chips.Runtime.Specifications {
 		/// <param name="context">An object containing information about the current method being compiled</param>
 		/// <param name="args">The arguments used for this instruction</param>
 		/// <remarks>If no instructions are added, the default implementation of loading the static opcode field and calling its function is used instead</remarks>
-		public virtual bool Compile(CompilationContext context, OpcodeArgumentCollection args) => true;
+		public virtual void Compile(CompilationContext context, OpcodeArgumentCollection args) { }
 
 		/// <summary>
 		/// Gets the return type and parameter types used for this Chips instruction's method.<br/>
@@ -110,85 +111,79 @@ namespace Chips.Runtime.Specifications {
 	public abstract class BasicOpcode : Opcode {
 		public sealed override StackBehavior StackBehavior => StackBehavior.None;
 
+		public sealed override int ExpectedArgumentCount => 0;
+
 		public sealed override OpcodeArgumentCollection? DeserializeArguments(BinaryReader reader, TypeResolver resolver, StringHeap heap) => null;
 
-		public sealed override OpcodeArgumentCollection? ParseArguments(CompilationContext context, string[] args)  {
-			if (args.Length != 0)
-				throw ChipsCompiler.ErrorAndThrow(new ArgumentException($"Opcode \"{Name}\" expects no arguments"));
+		public sealed override OpcodeArgumentCollection? ParseArguments(CompilationContext context, string[] args) => null;
 
-			return null;
-		}
-
-		public sealed override void SerializeArguments(BinaryWriter writer, OpcodeArgumentCollection args, TypeResolver resolver, StringHeap heap)  {
-			if (args.Count != 0)
-				throw ChipsCompiler.ErrorAndThrow(new ArgumentException($"Opcode \"{Name}\" expects no arguments"));
-		}
+		public sealed override void SerializeArguments(BinaryWriter writer, OpcodeArgumentCollection args, TypeResolver resolver, StringHeap heap) { }
 	}
 
 	/// <summary>
 	/// An implementation of <see cref="Opcode"/> which represents an instruction that loads a constant value to a register
 	/// </summary>
-	public abstract class LoadConstantOpcode : Opcode {
+	public abstract class LoadConstantOpcode<T> : Opcode {
 		public abstract string Register { get; }
 
 		public sealed override StackBehavior StackBehavior => StackBehavior.None;
 
-		protected bool ValidateArgumentAndEmitNumberRegisterAccess<T>(CompilationContext context, OpcodeArgumentCollection args, [NotNullWhen(true)] out T? arg, string expectedArgument) where T : INumber {
-			if (args.Count != 1)
-				throw ChipsCompiler.ErrorAndThrow(new ArgumentException($"Opcode \"{Name}\" expects one argument"));
+		public sealed override int ExpectedArgumentCount => 1;
 
-			if (ValueConverter.BoxToUnderlyingType(args[0]) is not T argAsType)
-				throw ChipsCompiler.ErrorAndThrow(new ArgumentException($"Opcode \"{Name}\" expects {expectedArgument} argument"));
+		private T ValidateArgument(OpcodeArgumentCollection args) {
+			if (args[0] is not T arg)
+				throw ChipsCompiler.ErrorAndThrow(new ArgumentException($"Opcode \"{Name}\" expects a {typeof(T).GetSimplifiedGenericTypeName()} argument, received \"{args[0]?.GetType().GetSimplifiedGenericTypeName() ?? "null"}\" instead"));
 
-			context.Instructions.Add(CilOpCodes.Ldsfld, context.importer.ImportField(typeof(Registers).GetCachedField(Register)!));
+			return arg;
+		}
 
-			arg = argAsType;
-			return true;
+		protected void EmitRegisterAccess(CompilationContext context, OpcodeArgumentCollection args, out T arg) {
+			arg = ValidateArgument(args);
+
+			context.EmitRegisterLoad(Register);
 		}
 
 		public sealed override OpcodeArgumentCollection? DeserializeArguments(BinaryReader reader, TypeResolver resolver, StringHeap heap) {
 			try {
 				return new OpcodeArgumentCollection()
-					.Add(DeserializeArgument(reader));
+					.Add(DeserializeArgument(reader, resolver, heap));
 			} catch (Exception ex) {
-				throw ChipsCompiler.ErrorAndThrow(ex);
+				ChipsCompiler.ErrorAndThrow(ex);
+				throw;
 			}
 		}
 
-		protected abstract object? DeserializeArgument(BinaryReader reader);
+		protected abstract T DeserializeArgument(BinaryReader reader, TypeResolver resolver, StringHeap heap);
 
 		public sealed override OpcodeArgumentCollection? ParseArguments(CompilationContext context, string[] args) {
-			if (args.Length != 1)
-				throw ChipsCompiler.ErrorAndThrow(new ArgumentException($"Opcode \"{Name}\" expects one argument"));
-
 			try {
 				return new OpcodeArgumentCollection()
 					.Add(ParseArgument(context, args[0]));
 			} catch (Exception ex) {
-				throw ChipsCompiler.ErrorAndThrow(ex);
+				ChipsCompiler.ErrorAndThrow(ex);
+				throw;
 			}
 		}
 
-		protected abstract object? ParseArgument(CompilationContext context, string arg);
+		protected abstract T ParseArgument(CompilationContext context, string arg);
 
 		public sealed override void SerializeArguments(BinaryWriter writer, OpcodeArgumentCollection args, TypeResolver resolver, StringHeap heap) {
 			Register register = typeof(Registers).RetrieveStaticField<Register>(Register)!;
 
-			if (args.Count != 1)
-				throw ChipsCompiler.ErrorAndThrow(new ArgumentException($"Opcode \"{Name}\" expected one argument, received {args.Count}"));
-
-			var arg = args[0];
+			var arg = ValidateArgument(args);
+			
 			if (!register.AcceptsValue(arg))
 				throw ChipsCompiler.ErrorAndThrow(new ArgumentException($"Register \"{Register}\" does not accept values of type \"{arg?.GetType().GetSimplifiedGenericTypeName() ?? "null"}\""));
 
 			try {
-				SerializeArgument(writer, arg);
+				SerializeArgument(writer, arg, resolver, heap);
 			} catch (Exception ex) {
-				throw ChipsCompiler.ErrorAndThrow(ex);
+				ChipsCompiler.ErrorAndThrow(ex);
+				throw;
 			}
 		}
 
-		protected abstract void SerializeArgument(BinaryWriter writer, object? arg);
+		protected abstract void SerializeArgument(BinaryWriter writer, T arg, TypeResolver resolver, StringHeap heap);
 	}
 
 	/// <summary>
@@ -197,13 +192,8 @@ namespace Chips.Runtime.Specifications {
 	public abstract class LoadZeroOpcode : BasicOpcode {
 		public abstract string Register { get; }
 
-		protected bool ValidateArgumentAndEmitNumberRegisterAccess(CompilationContext context, OpcodeArgumentCollection args) {
-			if (args.Count != 0)
-				throw ChipsCompiler.ErrorAndThrow(new ArgumentException($"Opcode \"{Name}\" expects no arguments"));
-
-			context.Instructions.Add(CilOpCodes.Ldsfld, context.importer.ImportField(typeof(Registers).GetCachedField(Register)!));
-
-			return true;
+		protected void EmitRegisterAccess(CompilationContext context) {
+			context.EmitRegisterLoad(Register);
 		}
 	}
 
@@ -217,36 +207,36 @@ namespace Chips.Runtime.Specifications {
 
 		public sealed override StackBehavior StackBehavior => LoadsStaticField ? StackBehavior.PushOne : StackBehavior.PopOne | StackBehavior.PushOne;
 
-		public override bool Compile(CompilationContext context, OpcodeArgumentCollection args) {
-			return ValidateArgumentsAndEmitFieldAccess(context, args, out _);
-		}
+		public sealed override int ExpectedArgumentCount => 1;
 
-		protected bool ValidateArgumentsAndEmitFieldAccess(CompilationContext context, OpcodeArgumentCollection args, [NotNullWhen(true)] out FieldDefinition? field) {
-			if (args.Count != 1)
-				throw ChipsCompiler.ErrorAndThrow(new ArgumentException($"Opcode \"{Name}\" expects one argument"));
-
-			if (args[0] is not FieldDefinition fieldDefinition)
+		public sealed override void Compile(CompilationContext context, OpcodeArgumentCollection args) {
+			FieldDefinition fieldDefinition;
+			if (args[0] is DelayedFieldResolver delayed)
+				fieldDefinition = delayed.Member ?? throw ChipsCompiler.ErrorAndThrow(new ArgumentException($"Opcode \"{Name}\" could not evaluate its argument"));
+			else if (args[0] is FieldDefinition def)
+				fieldDefinition = def;
+			else
 				throw ChipsCompiler.ErrorAndThrow(new ArgumentException($"Opcode \"{Name}\" could not evaluate its argument"));
 
 			// Field is static, but opcode expects an instance field or vice versa
 			if (fieldDefinition.IsStatic != LoadsStaticField)
 				throw ChipsCompiler.ErrorAndThrow(new ArgumentException($"Opcode \"{Name}\" expects an identifier for {(LoadsStaticField ? "a static" : "an instance")} field.  Field \"{fieldDefinition.Name}\" in type \"{fieldDefinition.DeclaringType!.Name}\" is {(fieldDefinition.IsStatic ? "a static" : "an instance")} field"));
 
-			// Emit the field access
-			if (LoadsStaticField) {
-				if (LoadsAddress)
-					context.Instructions.Add(CilOpCodes.Ldsflda, context.importer.ImportField(fieldDefinition));
-				else
-					context.Instructions.Add(CilOpCodes.Ldsfld, context.importer.ImportField(fieldDefinition));
-			} else {
-				if (LoadsAddress)
-					context.Instructions.Add(CilOpCodes.Ldflda, context.importer.ImportField(fieldDefinition));
-				else
-					context.Instructions.Add(CilOpCodes.Ldfld, context.importer.ImportField(fieldDefinition));
+			if (!LoadsStaticField) {
+				var obj = context.stack.Pop();
+				if (obj != StackObject.Object)
+					throw ChipsCompiler.ErrorAndThrow(new ArgumentException($"Opcode \"{Name}\" expects an object on the stack, received \"{obj}\" instead"));
 			}
 
-			field = fieldDefinition;
-			return true;
+			// Emit the field access
+			var importedField = context.importer.ImportField(fieldDefinition);
+
+			if (LoadsStaticField)
+				context.Instructions.Add(LoadsAddress ? CilOpCodes.Ldsflda : CilOpCodes.Ldsfld, importedField);
+			else
+				context.Instructions.Add(LoadsAddress ? CilOpCodes.Ldflda : CilOpCodes.Ldfld, importedField);
+
+			context.stack.Push(LoadsAddress ? StackObject.Address : StackObject.Object);
 		}
 
 		public sealed override OpcodeArgumentCollection? DeserializeArguments(BinaryReader reader, TypeResolver resolver, StringHeap heap) {
@@ -278,5 +268,118 @@ namespace Chips.Runtime.Specifications {
 
 			writer.Write(field, heap);
 		}
+	}
+
+	public abstract class LoadMethodVariableOpcode : Opcode {
+		public abstract bool LoadsAddress { get; }
+
+		public abstract bool LoadsLocal { get; }
+
+		public sealed override StackBehavior StackBehavior => StackBehavior.PushOne;
+
+		public sealed override int ExpectedArgumentCount => 1;
+
+		public sealed override void Compile(CompilationContext context, OpcodeArgumentCollection args) {
+			if (args[0] is not ushort arg)
+				throw ChipsCompiler.ErrorAndThrow(new ArgumentException($"Opcode \"{Name}\" expects an unsigned 16-bit integer as the argument"));
+
+			if (LoadsLocal)
+				context.Instructions.Add(LoadsAddress ? CilOpCodes.Ldloca : CilOpCodes.Ldloc, arg);
+			else
+				context.Instructions.Add(LoadsAddress ? CilOpCodes.Ldarga : CilOpCodes.Ldarg, arg);
+
+			context.stack.Push(LoadsAddress ? StackObject.Address : StackObject.Object);
+		}
+
+		public sealed override OpcodeArgumentCollection? DeserializeArguments(BinaryReader reader, TypeResolver resolver, StringHeap heap) {
+			return new OpcodeArgumentCollection()
+				.Add(reader.ReadUInt16());
+		}
+
+		public sealed override OpcodeArgumentCollection? ParseArguments(CompilationContext context, string[] args) {
+			return new OpcodeArgumentCollection()
+				.Add(StringSerialization.ParseSimpleSmallIntegerArgument(context, args[0]));
+		}
+
+		public sealed override void SerializeArguments(BinaryWriter writer, OpcodeArgumentCollection args, TypeResolver resolver, StringHeap heap) {
+			writer.Write((ushort)args[0]!);
+		}
+	}
+
+	public abstract class LoadElementInArrayOpcode : Opcode {
+		public abstract bool LoadsAddress { get; }
+
+		public abstract bool IndexWithXRegister { get; }
+
+		public sealed override StackBehavior StackBehavior => StackBehavior.PushOne | StackBehavior.PopOne;
+
+		public sealed override int ExpectedArgumentCount => 1;
+
+		public sealed override void Compile(CompilationContext context, OpcodeArgumentCollection args) {
+			StackObject obj = context.stack.Pop();
+
+			if (obj is not StackObject.Object)
+				throw ChipsCompiler.ErrorAndThrow(new ArgumentException($"Opcode \"{Name}\" expects an object on the stack, received \"{obj}\" instead"));
+
+			if (IndexWithXRegister)
+				context.EmitRegisterLoad("X");
+			else
+				context.EmitRegisterLoad("Y");
+
+			context.EmitRegisterValueRetrieval<IntegerRegister>();
+			context.EmitCastTo<IntPtr_T>();
+			context.EmitUnderlyingTypeValueRetrieval<IntPtr_T>();
+
+			// Instruction will be delayed in order to ensure that the stack is set up properly for later instructions
+			// Variable capturing
+			bool loadsAddress = LoadsAddress;
+			context.EmitDelayedResolver((body, index) => loadsAddress ? new DelayedArrayLoadAddressResolver(body, index) : new DelayedArrayLoadResolver(body, index));
+
+			context.stack.Push(LoadsAddress ? StackObject.Address : StackObject.Object);
+		}
+
+		public sealed override OpcodeArgumentCollection? DeserializeArguments(BinaryReader reader, TypeResolver resolver, StringHeap heap) => null;
+
+		public sealed override OpcodeArgumentCollection? ParseArguments(CompilationContext context, string[] args) {
+			Register register = StringSerialization.ParseRegisterArgument(context, args[0]);
+
+			if (IndexWithXRegister && !object.ReferenceEquals(register, Registers.X))
+				throw ChipsCompiler.ErrorAndThrow(new ArgumentException($"Opcode \"{Name}\" expects register &X as the argument"));
+			else if (!IndexWithXRegister && !object.ReferenceEquals(register, Registers.Y))
+				throw ChipsCompiler.ErrorAndThrow(new ArgumentException($"Opcode \"{Name}\" expects register &Y as the argument"));
+
+			// No arguments need to be saved
+			return null;
+		}
+
+		public sealed override void SerializeArguments(BinaryWriter writer, OpcodeArgumentCollection args, TypeResolver resolver, StringHeap heap) { }
+	}
+
+	public abstract class ModifyFlagsRegisterOpcode : Opcode {
+		public abstract bool SetsFlag { get; }
+
+		public abstract bool FlagValue { get; }
+
+		public abstract string Flag { get; }
+
+		public sealed override StackBehavior StackBehavior => SetsFlag ? StackBehavior.None : StackBehavior.PushOne;
+
+		public sealed override int ExpectedArgumentCount => 0;
+
+		public sealed override void Compile(CompilationContext context, OpcodeArgumentCollection args) {
+			if (SetsFlag)
+				context.EmitFlagAssignment(Flag, FlagValue);
+			else {
+				context.EmitFlagRetrieval(Flag);
+
+				context.stack.Push(StackObject.Boolean);
+			}
+		}
+
+		public sealed override OpcodeArgumentCollection? DeserializeArguments(BinaryReader reader, TypeResolver resolver, StringHeap heap) => null;
+
+		public sealed override OpcodeArgumentCollection? ParseArguments(CompilationContext context, string[] args) => null;
+
+		public sealed override void SerializeArguments(BinaryWriter writer, OpcodeArgumentCollection args, TypeResolver resolver, StringHeap heap) { }
 	}
 }

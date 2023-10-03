@@ -5,16 +5,22 @@ using System;
 #pragma warning disable CS0162
 namespace Chips.Runtime.Types.NumberProcessing {
 	[TextTemplateGenerated]
-	public struct SByte_T : IInteger {
+	public struct SByte_T : IInteger, INumberConstants<SByte_T> {
 		private SByte value;
 
-		public object Value => value;
+		public readonly object Value => value;
 
-		public SByte ActualValue => value;
+		public readonly SByte ActualValue => value;
 
-		public bool IsZero => value == 0;
+		public readonly bool IsZero => value == 0;
 
-		public bool IsNegative => value < 0;
+		public readonly bool IsNegative => value < 0;
+
+		public readonly int NumericSize => sizeof(SByte);
+
+		public static SByte_T Zero => new SByte_T((SByte)0);
+
+		public static SByte_T One => new SByte_T((SByte)1);
 
 		public SByte_T(SByte value) {
 			this.value = value;
@@ -24,7 +30,11 @@ namespace Chips.Runtime.Types.NumberProcessing {
 			this.value = (SByte)value;
 		}
 
-		public INumber Abs() {
+		public readonly INumber Upcast(INumber number) {
+			return TypeTracking.ShouldUpcast(number, this) ? ValueConverter.CastToSByte_T(number) : number;
+		}
+
+		public readonly INumber Abs() {
 			if (value == SByte.MinValue) {
 				Registers.F.Overflow = true;
 				return new SByte_T(SByte.MaxValue);
@@ -33,14 +43,14 @@ namespace Chips.Runtime.Types.NumberProcessing {
 			return new SByte_T(Math.Abs(value));
 		}
 
-		public INumber Add(INumber number) {
+		public readonly INumber Add(INumber number) {
 			//For sizes larger than int, this block should be removed by the compiler
 			if (sizeof(SByte) < sizeof(int)) {
 				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
 				return upcast.Add(number);
 			}
 
-			if (TypeTracking.GetSizeFromNumericType(number.Value.GetType()) > sizeof(SByte))
+			if (TypeTracking.ShouldUpcast(this, number))
 				return number.Add(this);
 
 			SByte_T convert = ValueConverter.CastToSByte_T(number);
@@ -53,27 +63,24 @@ namespace Chips.Runtime.Types.NumberProcessing {
 			return new SByte_T(unchecked(value + convert.value));
 		}
 
-		public IInteger And(IInteger number) {
+		public readonly IInteger And(IInteger number) {
 			//For sizes larger than int, this block should be removed by the compiler
 			if (sizeof(SByte) < sizeof(int)) {
 				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
-				return (upcast as IInteger)!.And(number);
+				return ((IInteger)upcast!).And(number);
 			}
-
-			if (number is not INumber iNum)
-				throw new Exception("Internal Chips Error: IInteger instance was not an INumber");
 
 			if (number is IFloat)
 				throw new Exception("Cannot perform bitwise-AND operations with non-integer values");
 
-			if (TypeTracking.GetSizeFromNumericType(iNum.Value.GetType()) > sizeof(SByte))
+			if (TypeTracking.ShouldUpcast(this, number))
 				return number.And(this);
 
-			SByte_T convert = ValueConverter.CastToSByte_T(iNum);
+			SByte_T convert = ValueConverter.CastToSByte_T(number);
 			return new SByte_T(value & convert.value);
 		}
 
-		public IInteger ArithmeticRotateLeft() {
+		public readonly IInteger ArithmeticRotateLeft() {
 			bool carry = Registers.F.Carry;
 			Registers.F.Carry = unchecked(value & (SByte)((SByte)1 << (8 * sizeof(SByte) - 1))) != 0;
 			
@@ -84,7 +91,7 @@ namespace Chips.Runtime.Types.NumberProcessing {
 			return i;
 		}
 
-		public IInteger ArithmeticRotateRight() {
+		public readonly IInteger ArithmeticRotateRight() {
 			bool carry = Registers.F.Carry;
 			Registers.F.Carry = (value & 1) != 0;
 			
@@ -95,54 +102,80 @@ namespace Chips.Runtime.Types.NumberProcessing {
 			return i;
 		}
 
-		public IInteger ArithmeticShiftLeft()
+		public readonly IInteger ArithmeticShiftLeft()
 			=> new SByte_T(value << 1);
 
-		public IInteger ArithmeticShiftRight()
+		public readonly IInteger ArithmeticShiftRight()
 			=> new SByte_T(value >> 1);
 
-		public string BinaryRepresentation(bool leadingZeroes) {
-			string bin = Convert.ToString(value, 2);
-			if (leadingZeroes)
-				bin = bin.PadLeft(sizeof(SByte) * 8, '0');
-			return bin;
+		public readonly void Compare(INumber number) {
+			//For sizes larger than int, this block should be removed by the compiler
+			if (sizeof(SByte) < sizeof(int)) {
+				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
+				upcast.Compare(number);
+				return;
+			}
+
+			if (TypeTracking.ShouldUpcast(this, number)) {
+				number.Upcast(this).Compare(number);
+				return;
+			}
+
+			INumber sub = this.Subtract(number);
+
+			Registers.F.Negative = sub.IsNegative;
+			Registers.F.Zero = sub.IsZero;
 		}
 
-		public INumber Decrement()
+		public readonly INumber Decrement()
 			=> new SByte_T(unchecked(value - 1));
 
-		public INumber Divide(INumber number, bool inverseLogic = false) {
+		public readonly INumber Divide(INumber number) {
 			//For sizes larger than int, this block should be removed by the compiler
 			if (sizeof(SByte) < sizeof(int)) {
 				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
 				return upcast.Divide(number);
 			}
 
-			if (TypeTracking.GetSizeFromNumericType(number.Value.GetType()) > sizeof(SByte))
-				return number.Divide(this, true);
+			if (TypeTracking.ShouldUpcast(this, number))
+				return number.Upcast(this).Divide(number);
 
 			SByte_T convert = ValueConverter.CastToSByte_T(number);
-			return new SByte_T(!inverseLogic ? value / convert.value : convert.value / value);
+			return new SByte_T(value / convert.value);
 		}
 
-		public INumber Increment()
+		public readonly INumber Increment()
 			=> new SByte_T(unchecked(value + 1));
 
-		public INumber Multiply(INumber number) {
+		public readonly INumber Modulus(INumber number) {
+			//For sizes larger than int, this block should be removed by the compiler
+			if (sizeof(SByte) < sizeof(int)) {
+				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
+				return upcast.Modulus(number);
+			}
+
+			if (TypeTracking.ShouldUpcast(this, number))
+				return number.Upcast(this).Modulus(number);
+
+			SByte_T convert = ValueConverter.CastToSByte_T(number);
+			return new SByte_T(value % convert.value);
+		}
+
+		public readonly INumber Multiply(INumber number) {
 			//For sizes larger than int, this block should be removed by the compiler
 			if (sizeof(SByte) < sizeof(int)) {
 				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
 				return upcast.Multiply(number);
 			}
 
-			if (TypeTracking.GetSizeFromNumericType(number.Value.GetType()) > sizeof(SByte))
+			if (TypeTracking.ShouldUpcast(this, number))
 				return number.Multiply(this);
 
 			SByte_T convert = ValueConverter.CastToSByte_T(number);
 			return new SByte_T(unchecked(value * convert.value));
 		}
 
-		public INumber Negate() {
+		public readonly INumber Negate() {
 			//For sizes larger than int, this block should be removed by the compiler
 			if (sizeof(SByte) < sizeof(int)) {
 				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
@@ -152,96 +185,82 @@ namespace Chips.Runtime.Types.NumberProcessing {
 			return new SByte_T(-value);
 		}
 
-		public IInteger Not() {
+		public readonly IInteger Not() {
 			//For sizes larger than int, this block should be removed by the compiler
 			if (sizeof(SByte) < sizeof(int)) {
 				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
-				return (upcast as IInteger)!.Not();
+				return ((IInteger)upcast!).Not();
 			}
 
 			return new SByte_T(~value);
 		}
 
-		public IInteger Or(IInteger number) {
+		public readonly IInteger Or(IInteger number) {
 			//For sizes larger than int, this block should be removed by the compiler
 			if (sizeof(SByte) < sizeof(int)) {
 				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
-				return (upcast as IInteger)!.Or(number);
+				return ((IInteger)upcast!).Or(number);
 			}
-
-			if (number is not INumber iNum)
-				throw new Exception("Internal Chips Error: IInteger instance was not an INumber");
 
 			if (number is IFloat)
 				throw new Exception("Cannot perform bitwise-OR operations with non-integer values");
 
-			if (TypeTracking.GetSizeFromNumericType(iNum.Value.GetType()) > sizeof(SByte))
+			if (TypeTracking.ShouldUpcast(this, number))
 				return number.Or(this);
 
-			SByte_T convert = ValueConverter.CastToSByte_T(iNum);
+			SByte_T convert = ValueConverter.CastToSByte_T(number);
 			return new SByte_T(value | convert.value);
 		}
 
-		public INumber Remainder(INumber number) {
-			//For sizes larger than int, this block should be removed by the compiler
-			if (sizeof(SByte) < sizeof(int)) {
-				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
-				return upcast.Remainder(number);
-			}
-
-			if (TypeTracking.GetSizeFromNumericType(number.Value.GetType()) > sizeof(SByte))
-				return number.Remainder(this);
-
-			SByte_T convert = ValueConverter.CastToSByte_T(number);
-			return new SByte_T(value % convert.value);
-		}
-
-		public INumber Subtract(INumber number) {
+		public readonly INumber Subtract(INumber number) {
 			//For sizes larger than int, this block should be removed by the compiler
 			if (sizeof(SByte) < sizeof(int)) {
 				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
 				return upcast.Subtract(number);
 			}
 
-			if (TypeTracking.GetSizeFromNumericType(number.Value.GetType()) > sizeof(SByte))
-				return number.Negate().Subtract(this.Negate());
+			if (TypeTracking.ShouldUpcast(this, number))
+				return number.Upcast(this).Subtract(number);
 
 			SByte_T convert = ValueConverter.CastToSByte_T(number);
 			return new SByte_T(unchecked(value - convert.value));
 		}
 
-		public IInteger Xor(IInteger number) {
+		public readonly IInteger Xor(IInteger number) {
 			//For sizes larger than int, this block should be removed by the compiler
 			if (sizeof(SByte) < sizeof(int)) {
 				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
-				return (upcast as IInteger)!.And(number);
+				return ((IInteger)upcast!).Xor(number);
 			}
-
-			if (number is not INumber iNum)
-				throw new Exception("Internal Chips Error: IInteger instance was not an INumber");
 
 			if (number is IFloat)
 				throw new Exception("Cannot perform bitwise-XOR operations with non-integer values");
 
-			if (TypeTracking.GetSizeFromNumericType(iNum.Value.GetType()) > sizeof(SByte))
+			if (TypeTracking.ShouldUpcast(this, number))
 				return number.Xor(this);
 
-			SByte_T convert = ValueConverter.CastToSByte_T(iNum);
+			SByte_T convert = ValueConverter.CastToSByte_T(number);
 			return new SByte_T(value ^ convert.value);
 		}
 	}
 
 	[TextTemplateGenerated]
-	public struct Int16_T : IInteger {
+	public struct Int16_T : IInteger, INumberConstants<Int16_T> {
 		private Int16 value;
 
-		public object Value => value;
+		public readonly object Value => value;
 
-		public Int16 ActualValue => value;
+		public readonly Int16 ActualValue => value;
 
-		public bool IsZero => value == 0;
+		public readonly bool IsZero => value == 0;
 
-		public bool IsNegative => value < 0;
+		public readonly bool IsNegative => value < 0;
+
+		public readonly int NumericSize => sizeof(Int16);
+
+		public static Int16_T Zero => new Int16_T((Int16)0);
+
+		public static Int16_T One => new Int16_T((Int16)1);
 
 		public Int16_T(Int16 value) {
 			this.value = value;
@@ -251,7 +270,11 @@ namespace Chips.Runtime.Types.NumberProcessing {
 			this.value = (Int16)value;
 		}
 
-		public INumber Abs() {
+		public readonly INumber Upcast(INumber number) {
+			return TypeTracking.ShouldUpcast(number, this) ? ValueConverter.CastToInt16_T(number) : number;
+		}
+
+		public readonly INumber Abs() {
 			if (value == Int16.MinValue) {
 				Registers.F.Overflow = true;
 				return new Int16_T(Int16.MaxValue);
@@ -260,14 +283,14 @@ namespace Chips.Runtime.Types.NumberProcessing {
 			return new Int16_T(Math.Abs(value));
 		}
 
-		public INumber Add(INumber number) {
+		public readonly INumber Add(INumber number) {
 			//For sizes larger than int, this block should be removed by the compiler
 			if (sizeof(Int16) < sizeof(int)) {
 				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
 				return upcast.Add(number);
 			}
 
-			if (TypeTracking.GetSizeFromNumericType(number.Value.GetType()) > sizeof(Int16))
+			if (TypeTracking.ShouldUpcast(this, number))
 				return number.Add(this);
 
 			Int16_T convert = ValueConverter.CastToInt16_T(number);
@@ -280,27 +303,24 @@ namespace Chips.Runtime.Types.NumberProcessing {
 			return new Int16_T(unchecked(value + convert.value));
 		}
 
-		public IInteger And(IInteger number) {
+		public readonly IInteger And(IInteger number) {
 			//For sizes larger than int, this block should be removed by the compiler
 			if (sizeof(Int16) < sizeof(int)) {
 				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
-				return (upcast as IInteger)!.And(number);
+				return ((IInteger)upcast!).And(number);
 			}
-
-			if (number is not INumber iNum)
-				throw new Exception("Internal Chips Error: IInteger instance was not an INumber");
 
 			if (number is IFloat)
 				throw new Exception("Cannot perform bitwise-AND operations with non-integer values");
 
-			if (TypeTracking.GetSizeFromNumericType(iNum.Value.GetType()) > sizeof(Int16))
+			if (TypeTracking.ShouldUpcast(this, number))
 				return number.And(this);
 
-			Int16_T convert = ValueConverter.CastToInt16_T(iNum);
+			Int16_T convert = ValueConverter.CastToInt16_T(number);
 			return new Int16_T(value & convert.value);
 		}
 
-		public IInteger ArithmeticRotateLeft() {
+		public readonly IInteger ArithmeticRotateLeft() {
 			bool carry = Registers.F.Carry;
 			Registers.F.Carry = unchecked(value & (Int16)((Int16)1 << (8 * sizeof(Int16) - 1))) != 0;
 			
@@ -311,7 +331,7 @@ namespace Chips.Runtime.Types.NumberProcessing {
 			return i;
 		}
 
-		public IInteger ArithmeticRotateRight() {
+		public readonly IInteger ArithmeticRotateRight() {
 			bool carry = Registers.F.Carry;
 			Registers.F.Carry = (value & 1) != 0;
 			
@@ -322,54 +342,80 @@ namespace Chips.Runtime.Types.NumberProcessing {
 			return i;
 		}
 
-		public IInteger ArithmeticShiftLeft()
+		public readonly IInteger ArithmeticShiftLeft()
 			=> new Int16_T(value << 1);
 
-		public IInteger ArithmeticShiftRight()
+		public readonly IInteger ArithmeticShiftRight()
 			=> new Int16_T(value >> 1);
 
-		public string BinaryRepresentation(bool leadingZeroes) {
-			string bin = Convert.ToString(value, 2);
-			if (leadingZeroes)
-				bin = bin.PadLeft(sizeof(Int16) * 8, '0');
-			return bin;
+		public readonly void Compare(INumber number) {
+			//For sizes larger than int, this block should be removed by the compiler
+			if (sizeof(Int16) < sizeof(int)) {
+				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
+				upcast.Compare(number);
+				return;
+			}
+
+			if (TypeTracking.ShouldUpcast(this, number)) {
+				number.Upcast(this).Compare(number);
+				return;
+			}
+
+			INumber sub = this.Subtract(number);
+
+			Registers.F.Negative = sub.IsNegative;
+			Registers.F.Zero = sub.IsZero;
 		}
 
-		public INumber Decrement()
+		public readonly INumber Decrement()
 			=> new Int16_T(unchecked(value - 1));
 
-		public INumber Divide(INumber number, bool inverseLogic = false) {
+		public readonly INumber Divide(INumber number) {
 			//For sizes larger than int, this block should be removed by the compiler
 			if (sizeof(Int16) < sizeof(int)) {
 				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
 				return upcast.Divide(number);
 			}
 
-			if (TypeTracking.GetSizeFromNumericType(number.Value.GetType()) > sizeof(Int16))
-				return number.Divide(this, true);
+			if (TypeTracking.ShouldUpcast(this, number))
+				return number.Upcast(this).Divide(number);
 
 			Int16_T convert = ValueConverter.CastToInt16_T(number);
-			return new Int16_T(!inverseLogic ? value / convert.value : convert.value / value);
+			return new Int16_T(value / convert.value);
 		}
 
-		public INumber Increment()
+		public readonly INumber Increment()
 			=> new Int16_T(unchecked(value + 1));
 
-		public INumber Multiply(INumber number) {
+		public readonly INumber Modulus(INumber number) {
+			//For sizes larger than int, this block should be removed by the compiler
+			if (sizeof(Int16) < sizeof(int)) {
+				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
+				return upcast.Modulus(number);
+			}
+
+			if (TypeTracking.ShouldUpcast(this, number))
+				return number.Upcast(this).Modulus(number);
+
+			Int16_T convert = ValueConverter.CastToInt16_T(number);
+			return new Int16_T(value % convert.value);
+		}
+
+		public readonly INumber Multiply(INumber number) {
 			//For sizes larger than int, this block should be removed by the compiler
 			if (sizeof(Int16) < sizeof(int)) {
 				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
 				return upcast.Multiply(number);
 			}
 
-			if (TypeTracking.GetSizeFromNumericType(number.Value.GetType()) > sizeof(Int16))
+			if (TypeTracking.ShouldUpcast(this, number))
 				return number.Multiply(this);
 
 			Int16_T convert = ValueConverter.CastToInt16_T(number);
 			return new Int16_T(unchecked(value * convert.value));
 		}
 
-		public INumber Negate() {
+		public readonly INumber Negate() {
 			//For sizes larger than int, this block should be removed by the compiler
 			if (sizeof(Int16) < sizeof(int)) {
 				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
@@ -379,103 +425,93 @@ namespace Chips.Runtime.Types.NumberProcessing {
 			return new Int16_T(-value);
 		}
 
-		public IInteger Not() {
+		public readonly IInteger Not() {
 			//For sizes larger than int, this block should be removed by the compiler
 			if (sizeof(Int16) < sizeof(int)) {
 				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
-				return (upcast as IInteger)!.Not();
+				return ((IInteger)upcast!).Not();
 			}
 
 			return new Int16_T(~value);
 		}
 
-		public IInteger Or(IInteger number) {
+		public readonly IInteger Or(IInteger number) {
 			//For sizes larger than int, this block should be removed by the compiler
 			if (sizeof(Int16) < sizeof(int)) {
 				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
-				return (upcast as IInteger)!.Or(number);
+				return ((IInteger)upcast!).Or(number);
 			}
-
-			if (number is not INumber iNum)
-				throw new Exception("Internal Chips Error: IInteger instance was not an INumber");
 
 			if (number is IFloat)
 				throw new Exception("Cannot perform bitwise-OR operations with non-integer values");
 
-			if (TypeTracking.GetSizeFromNumericType(iNum.Value.GetType()) > sizeof(Int16))
+			if (TypeTracking.ShouldUpcast(this, number))
 				return number.Or(this);
 
-			Int16_T convert = ValueConverter.CastToInt16_T(iNum);
+			Int16_T convert = ValueConverter.CastToInt16_T(number);
 			return new Int16_T(value | convert.value);
 		}
 
-		public INumber Remainder(INumber number) {
-			//For sizes larger than int, this block should be removed by the compiler
-			if (sizeof(Int16) < sizeof(int)) {
-				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
-				return upcast.Remainder(number);
-			}
-
-			if (TypeTracking.GetSizeFromNumericType(number.Value.GetType()) > sizeof(Int16))
-				return number.Remainder(this);
-
-			Int16_T convert = ValueConverter.CastToInt16_T(number);
-			return new Int16_T(value % convert.value);
-		}
-
-		public INumber Subtract(INumber number) {
+		public readonly INumber Subtract(INumber number) {
 			//For sizes larger than int, this block should be removed by the compiler
 			if (sizeof(Int16) < sizeof(int)) {
 				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
 				return upcast.Subtract(number);
 			}
 
-			if (TypeTracking.GetSizeFromNumericType(number.Value.GetType()) > sizeof(Int16))
-				return number.Negate().Subtract(this.Negate());
+			if (TypeTracking.ShouldUpcast(this, number))
+				return number.Upcast(this).Subtract(number);
 
 			Int16_T convert = ValueConverter.CastToInt16_T(number);
 			return new Int16_T(unchecked(value - convert.value));
 		}
 
-		public IInteger Xor(IInteger number) {
+		public readonly IInteger Xor(IInteger number) {
 			//For sizes larger than int, this block should be removed by the compiler
 			if (sizeof(Int16) < sizeof(int)) {
 				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
-				return (upcast as IInteger)!.And(number);
+				return ((IInteger)upcast!).Xor(number);
 			}
-
-			if (number is not INumber iNum)
-				throw new Exception("Internal Chips Error: IInteger instance was not an INumber");
 
 			if (number is IFloat)
 				throw new Exception("Cannot perform bitwise-XOR operations with non-integer values");
 
-			if (TypeTracking.GetSizeFromNumericType(iNum.Value.GetType()) > sizeof(Int16))
+			if (TypeTracking.ShouldUpcast(this, number))
 				return number.Xor(this);
 
-			Int16_T convert = ValueConverter.CastToInt16_T(iNum);
+			Int16_T convert = ValueConverter.CastToInt16_T(number);
 			return new Int16_T(value ^ convert.value);
 		}
 	}
 
 	[TextTemplateGenerated]
-	public struct Int32_T : IInteger {
+	public struct Int32_T : IInteger, INumberConstants<Int32_T> {
 		private Int32 value;
 
-		public object Value => value;
+		public readonly object Value => value;
 
-		public Int32 ActualValue => value;
+		public readonly Int32 ActualValue => value;
 
-		public bool IsZero => value == 0;
+		public readonly bool IsZero => value == 0;
 
-		public bool IsNegative => value < 0;
+		public readonly bool IsNegative => value < 0;
+
+		public readonly int NumericSize => sizeof(Int32);
+
+		public static Int32_T Zero => new Int32_T((Int32)0);
+
+		public static Int32_T One => new Int32_T((Int32)1);
 
 		public Int32_T(Int32 value) {
 			this.value = value;
 		}
 
 
-		public INumber Abs() {
+		public readonly INumber Upcast(INumber number) {
+			return TypeTracking.ShouldUpcast(number, this) ? ValueConverter.CastToInt32_T(number) : number;
+		}
+
+		public readonly INumber Abs() {
 			if (value == Int32.MinValue) {
 				Registers.F.Overflow = true;
 				return new Int32_T(Int32.MaxValue);
@@ -484,14 +520,14 @@ namespace Chips.Runtime.Types.NumberProcessing {
 			return new Int32_T(Math.Abs(value));
 		}
 
-		public INumber Add(INumber number) {
+		public readonly INumber Add(INumber number) {
 			//For sizes larger than int, this block should be removed by the compiler
 			if (sizeof(Int32) < sizeof(int)) {
 				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
 				return upcast.Add(number);
 			}
 
-			if (TypeTracking.GetSizeFromNumericType(number.Value.GetType()) > sizeof(Int32))
+			if (TypeTracking.ShouldUpcast(this, number))
 				return number.Add(this);
 
 			Int32_T convert = ValueConverter.CastToInt32_T(number);
@@ -504,27 +540,24 @@ namespace Chips.Runtime.Types.NumberProcessing {
 			return new Int32_T(unchecked(value + convert.value));
 		}
 
-		public IInteger And(IInteger number) {
+		public readonly IInteger And(IInteger number) {
 			//For sizes larger than int, this block should be removed by the compiler
 			if (sizeof(Int32) < sizeof(int)) {
 				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
-				return (upcast as IInteger)!.And(number);
+				return ((IInteger)upcast!).And(number);
 			}
-
-			if (number is not INumber iNum)
-				throw new Exception("Internal Chips Error: IInteger instance was not an INumber");
 
 			if (number is IFloat)
 				throw new Exception("Cannot perform bitwise-AND operations with non-integer values");
 
-			if (TypeTracking.GetSizeFromNumericType(iNum.Value.GetType()) > sizeof(Int32))
+			if (TypeTracking.ShouldUpcast(this, number))
 				return number.And(this);
 
-			Int32_T convert = ValueConverter.CastToInt32_T(iNum);
+			Int32_T convert = ValueConverter.CastToInt32_T(number);
 			return new Int32_T(value & convert.value);
 		}
 
-		public IInteger ArithmeticRotateLeft() {
+		public readonly IInteger ArithmeticRotateLeft() {
 			bool carry = Registers.F.Carry;
 			Registers.F.Carry = unchecked(value & (Int32)((Int32)1 << (8 * sizeof(Int32) - 1))) != 0;
 			
@@ -535,7 +568,7 @@ namespace Chips.Runtime.Types.NumberProcessing {
 			return i;
 		}
 
-		public IInteger ArithmeticRotateRight() {
+		public readonly IInteger ArithmeticRotateRight() {
 			bool carry = Registers.F.Carry;
 			Registers.F.Carry = (value & 1) != 0;
 			
@@ -546,54 +579,80 @@ namespace Chips.Runtime.Types.NumberProcessing {
 			return i;
 		}
 
-		public IInteger ArithmeticShiftLeft()
+		public readonly IInteger ArithmeticShiftLeft()
 			=> new Int32_T(value << 1);
 
-		public IInteger ArithmeticShiftRight()
+		public readonly IInteger ArithmeticShiftRight()
 			=> new Int32_T(value >> 1);
 
-		public string BinaryRepresentation(bool leadingZeroes) {
-			string bin = Convert.ToString(value, 2);
-			if (leadingZeroes)
-				bin = bin.PadLeft(sizeof(Int32) * 8, '0');
-			return bin;
+		public readonly void Compare(INumber number) {
+			//For sizes larger than int, this block should be removed by the compiler
+			if (sizeof(Int32) < sizeof(int)) {
+				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
+				upcast.Compare(number);
+				return;
+			}
+
+			if (TypeTracking.ShouldUpcast(this, number)) {
+				number.Upcast(this).Compare(number);
+				return;
+			}
+
+			INumber sub = this.Subtract(number);
+
+			Registers.F.Negative = sub.IsNegative;
+			Registers.F.Zero = sub.IsZero;
 		}
 
-		public INumber Decrement()
+		public readonly INumber Decrement()
 			=> new Int32_T(unchecked(value - 1));
 
-		public INumber Divide(INumber number, bool inverseLogic = false) {
+		public readonly INumber Divide(INumber number) {
 			//For sizes larger than int, this block should be removed by the compiler
 			if (sizeof(Int32) < sizeof(int)) {
 				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
 				return upcast.Divide(number);
 			}
 
-			if (TypeTracking.GetSizeFromNumericType(number.Value.GetType()) > sizeof(Int32))
-				return number.Divide(this, true);
+			if (TypeTracking.ShouldUpcast(this, number))
+				return number.Upcast(this).Divide(number);
 
 			Int32_T convert = ValueConverter.CastToInt32_T(number);
-			return new Int32_T(!inverseLogic ? value / convert.value : convert.value / value);
+			return new Int32_T(value / convert.value);
 		}
 
-		public INumber Increment()
+		public readonly INumber Increment()
 			=> new Int32_T(unchecked(value + 1));
 
-		public INumber Multiply(INumber number) {
+		public readonly INumber Modulus(INumber number) {
+			//For sizes larger than int, this block should be removed by the compiler
+			if (sizeof(Int32) < sizeof(int)) {
+				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
+				return upcast.Modulus(number);
+			}
+
+			if (TypeTracking.ShouldUpcast(this, number))
+				return number.Upcast(this).Modulus(number);
+
+			Int32_T convert = ValueConverter.CastToInt32_T(number);
+			return new Int32_T(value % convert.value);
+		}
+
+		public readonly INumber Multiply(INumber number) {
 			//For sizes larger than int, this block should be removed by the compiler
 			if (sizeof(Int32) < sizeof(int)) {
 				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
 				return upcast.Multiply(number);
 			}
 
-			if (TypeTracking.GetSizeFromNumericType(number.Value.GetType()) > sizeof(Int32))
+			if (TypeTracking.ShouldUpcast(this, number))
 				return number.Multiply(this);
 
 			Int32_T convert = ValueConverter.CastToInt32_T(number);
 			return new Int32_T(unchecked(value * convert.value));
 		}
 
-		public INumber Negate() {
+		public readonly INumber Negate() {
 			//For sizes larger than int, this block should be removed by the compiler
 			if (sizeof(Int32) < sizeof(int)) {
 				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
@@ -603,96 +662,82 @@ namespace Chips.Runtime.Types.NumberProcessing {
 			return new Int32_T(-value);
 		}
 
-		public IInteger Not() {
+		public readonly IInteger Not() {
 			//For sizes larger than int, this block should be removed by the compiler
 			if (sizeof(Int32) < sizeof(int)) {
 				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
-				return (upcast as IInteger)!.Not();
+				return ((IInteger)upcast!).Not();
 			}
 
 			return new Int32_T(~value);
 		}
 
-		public IInteger Or(IInteger number) {
+		public readonly IInteger Or(IInteger number) {
 			//For sizes larger than int, this block should be removed by the compiler
 			if (sizeof(Int32) < sizeof(int)) {
 				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
-				return (upcast as IInteger)!.Or(number);
+				return ((IInteger)upcast!).Or(number);
 			}
-
-			if (number is not INumber iNum)
-				throw new Exception("Internal Chips Error: IInteger instance was not an INumber");
 
 			if (number is IFloat)
 				throw new Exception("Cannot perform bitwise-OR operations with non-integer values");
 
-			if (TypeTracking.GetSizeFromNumericType(iNum.Value.GetType()) > sizeof(Int32))
+			if (TypeTracking.ShouldUpcast(this, number))
 				return number.Or(this);
 
-			Int32_T convert = ValueConverter.CastToInt32_T(iNum);
+			Int32_T convert = ValueConverter.CastToInt32_T(number);
 			return new Int32_T(value | convert.value);
 		}
 
-		public INumber Remainder(INumber number) {
-			//For sizes larger than int, this block should be removed by the compiler
-			if (sizeof(Int32) < sizeof(int)) {
-				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
-				return upcast.Remainder(number);
-			}
-
-			if (TypeTracking.GetSizeFromNumericType(number.Value.GetType()) > sizeof(Int32))
-				return number.Remainder(this);
-
-			Int32_T convert = ValueConverter.CastToInt32_T(number);
-			return new Int32_T(value % convert.value);
-		}
-
-		public INumber Subtract(INumber number) {
+		public readonly INumber Subtract(INumber number) {
 			//For sizes larger than int, this block should be removed by the compiler
 			if (sizeof(Int32) < sizeof(int)) {
 				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
 				return upcast.Subtract(number);
 			}
 
-			if (TypeTracking.GetSizeFromNumericType(number.Value.GetType()) > sizeof(Int32))
-				return number.Negate().Subtract(this.Negate());
+			if (TypeTracking.ShouldUpcast(this, number))
+				return number.Upcast(this).Subtract(number);
 
 			Int32_T convert = ValueConverter.CastToInt32_T(number);
 			return new Int32_T(unchecked(value - convert.value));
 		}
 
-		public IInteger Xor(IInteger number) {
+		public readonly IInteger Xor(IInteger number) {
 			//For sizes larger than int, this block should be removed by the compiler
 			if (sizeof(Int32) < sizeof(int)) {
 				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
-				return (upcast as IInteger)!.And(number);
+				return ((IInteger)upcast!).Xor(number);
 			}
-
-			if (number is not INumber iNum)
-				throw new Exception("Internal Chips Error: IInteger instance was not an INumber");
 
 			if (number is IFloat)
 				throw new Exception("Cannot perform bitwise-XOR operations with non-integer values");
 
-			if (TypeTracking.GetSizeFromNumericType(iNum.Value.GetType()) > sizeof(Int32))
+			if (TypeTracking.ShouldUpcast(this, number))
 				return number.Xor(this);
 
-			Int32_T convert = ValueConverter.CastToInt32_T(iNum);
+			Int32_T convert = ValueConverter.CastToInt32_T(number);
 			return new Int32_T(value ^ convert.value);
 		}
 	}
 
 	[TextTemplateGenerated]
-	public struct Int64_T : IInteger {
+	public struct Int64_T : IInteger, INumberConstants<Int64_T> {
 		private Int64 value;
 
-		public object Value => value;
+		public readonly object Value => value;
 
-		public Int64 ActualValue => value;
+		public readonly Int64 ActualValue => value;
 
-		public bool IsZero => value == 0;
+		public readonly bool IsZero => value == 0;
 
-		public bool IsNegative => value < 0;
+		public readonly bool IsNegative => value < 0;
+
+		public readonly int NumericSize => sizeof(Int64);
+
+		public static Int64_T Zero => new Int64_T((Int64)0);
+
+		public static Int64_T One => new Int64_T((Int64)1);
 
 		public Int64_T(Int64 value) {
 			this.value = value;
@@ -702,7 +747,11 @@ namespace Chips.Runtime.Types.NumberProcessing {
 			this.value = (Int64)value;
 		}
 
-		public INumber Abs() {
+		public readonly INumber Upcast(INumber number) {
+			return TypeTracking.ShouldUpcast(number, this) ? ValueConverter.CastToInt64_T(number) : number;
+		}
+
+		public readonly INumber Abs() {
 			if (value == Int64.MinValue) {
 				Registers.F.Overflow = true;
 				return new Int64_T(Int64.MaxValue);
@@ -711,14 +760,14 @@ namespace Chips.Runtime.Types.NumberProcessing {
 			return new Int64_T(Math.Abs(value));
 		}
 
-		public INumber Add(INumber number) {
+		public readonly INumber Add(INumber number) {
 			//For sizes larger than int, this block should be removed by the compiler
 			if (sizeof(Int64) < sizeof(int)) {
 				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
 				return upcast.Add(number);
 			}
 
-			if (TypeTracking.GetSizeFromNumericType(number.Value.GetType()) > sizeof(Int64))
+			if (TypeTracking.ShouldUpcast(this, number))
 				return number.Add(this);
 
 			Int64_T convert = ValueConverter.CastToInt64_T(number);
@@ -731,27 +780,24 @@ namespace Chips.Runtime.Types.NumberProcessing {
 			return new Int64_T(unchecked(value + convert.value));
 		}
 
-		public IInteger And(IInteger number) {
+		public readonly IInteger And(IInteger number) {
 			//For sizes larger than int, this block should be removed by the compiler
 			if (sizeof(Int64) < sizeof(int)) {
 				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
-				return (upcast as IInteger)!.And(number);
+				return ((IInteger)upcast!).And(number);
 			}
-
-			if (number is not INumber iNum)
-				throw new Exception("Internal Chips Error: IInteger instance was not an INumber");
 
 			if (number is IFloat)
 				throw new Exception("Cannot perform bitwise-AND operations with non-integer values");
 
-			if (TypeTracking.GetSizeFromNumericType(iNum.Value.GetType()) > sizeof(Int64))
+			if (TypeTracking.ShouldUpcast(this, number))
 				return number.And(this);
 
-			Int64_T convert = ValueConverter.CastToInt64_T(iNum);
+			Int64_T convert = ValueConverter.CastToInt64_T(number);
 			return new Int64_T(value & convert.value);
 		}
 
-		public IInteger ArithmeticRotateLeft() {
+		public readonly IInteger ArithmeticRotateLeft() {
 			bool carry = Registers.F.Carry;
 			Registers.F.Carry = unchecked(value & (Int64)((Int64)1 << (8 * sizeof(Int64) - 1))) != 0;
 			
@@ -762,7 +808,7 @@ namespace Chips.Runtime.Types.NumberProcessing {
 			return i;
 		}
 
-		public IInteger ArithmeticRotateRight() {
+		public readonly IInteger ArithmeticRotateRight() {
 			bool carry = Registers.F.Carry;
 			Registers.F.Carry = (value & 1) != 0;
 			
@@ -773,54 +819,80 @@ namespace Chips.Runtime.Types.NumberProcessing {
 			return i;
 		}
 
-		public IInteger ArithmeticShiftLeft()
+		public readonly IInteger ArithmeticShiftLeft()
 			=> new Int64_T(value << 1);
 
-		public IInteger ArithmeticShiftRight()
+		public readonly IInteger ArithmeticShiftRight()
 			=> new Int64_T(value >> 1);
 
-		public string BinaryRepresentation(bool leadingZeroes) {
-			string bin = Convert.ToString(value, 2);
-			if (leadingZeroes)
-				bin = bin.PadLeft(sizeof(Int64) * 8, '0');
-			return bin;
+		public readonly void Compare(INumber number) {
+			//For sizes larger than int, this block should be removed by the compiler
+			if (sizeof(Int64) < sizeof(int)) {
+				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
+				upcast.Compare(number);
+				return;
+			}
+
+			if (TypeTracking.ShouldUpcast(this, number)) {
+				number.Upcast(this).Compare(number);
+				return;
+			}
+
+			INumber sub = this.Subtract(number);
+
+			Registers.F.Negative = sub.IsNegative;
+			Registers.F.Zero = sub.IsZero;
 		}
 
-		public INumber Decrement()
+		public readonly INumber Decrement()
 			=> new Int64_T(unchecked(value - 1));
 
-		public INumber Divide(INumber number, bool inverseLogic = false) {
+		public readonly INumber Divide(INumber number) {
 			//For sizes larger than int, this block should be removed by the compiler
 			if (sizeof(Int64) < sizeof(int)) {
 				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
 				return upcast.Divide(number);
 			}
 
-			if (TypeTracking.GetSizeFromNumericType(number.Value.GetType()) > sizeof(Int64))
-				return number.Divide(this, true);
+			if (TypeTracking.ShouldUpcast(this, number))
+				return number.Upcast(this).Divide(number);
 
 			Int64_T convert = ValueConverter.CastToInt64_T(number);
-			return new Int64_T(!inverseLogic ? value / convert.value : convert.value / value);
+			return new Int64_T(value / convert.value);
 		}
 
-		public INumber Increment()
+		public readonly INumber Increment()
 			=> new Int64_T(unchecked(value + 1));
 
-		public INumber Multiply(INumber number) {
+		public readonly INumber Modulus(INumber number) {
+			//For sizes larger than int, this block should be removed by the compiler
+			if (sizeof(Int64) < sizeof(int)) {
+				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
+				return upcast.Modulus(number);
+			}
+
+			if (TypeTracking.ShouldUpcast(this, number))
+				return number.Upcast(this).Modulus(number);
+
+			Int64_T convert = ValueConverter.CastToInt64_T(number);
+			return new Int64_T(value % convert.value);
+		}
+
+		public readonly INumber Multiply(INumber number) {
 			//For sizes larger than int, this block should be removed by the compiler
 			if (sizeof(Int64) < sizeof(int)) {
 				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
 				return upcast.Multiply(number);
 			}
 
-			if (TypeTracking.GetSizeFromNumericType(number.Value.GetType()) > sizeof(Int64))
+			if (TypeTracking.ShouldUpcast(this, number))
 				return number.Multiply(this);
 
 			Int64_T convert = ValueConverter.CastToInt64_T(number);
 			return new Int64_T(unchecked(value * convert.value));
 		}
 
-		public INumber Negate() {
+		public readonly INumber Negate() {
 			//For sizes larger than int, this block should be removed by the compiler
 			if (sizeof(Int64) < sizeof(int)) {
 				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
@@ -830,96 +902,82 @@ namespace Chips.Runtime.Types.NumberProcessing {
 			return new Int64_T(-value);
 		}
 
-		public IInteger Not() {
+		public readonly IInteger Not() {
 			//For sizes larger than int, this block should be removed by the compiler
 			if (sizeof(Int64) < sizeof(int)) {
 				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
-				return (upcast as IInteger)!.Not();
+				return ((IInteger)upcast!).Not();
 			}
 
 			return new Int64_T(~value);
 		}
 
-		public IInteger Or(IInteger number) {
+		public readonly IInteger Or(IInteger number) {
 			//For sizes larger than int, this block should be removed by the compiler
 			if (sizeof(Int64) < sizeof(int)) {
 				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
-				return (upcast as IInteger)!.Or(number);
+				return ((IInteger)upcast!).Or(number);
 			}
-
-			if (number is not INumber iNum)
-				throw new Exception("Internal Chips Error: IInteger instance was not an INumber");
 
 			if (number is IFloat)
 				throw new Exception("Cannot perform bitwise-OR operations with non-integer values");
 
-			if (TypeTracking.GetSizeFromNumericType(iNum.Value.GetType()) > sizeof(Int64))
+			if (TypeTracking.ShouldUpcast(this, number))
 				return number.Or(this);
 
-			Int64_T convert = ValueConverter.CastToInt64_T(iNum);
+			Int64_T convert = ValueConverter.CastToInt64_T(number);
 			return new Int64_T(value | convert.value);
 		}
 
-		public INumber Remainder(INumber number) {
-			//For sizes larger than int, this block should be removed by the compiler
-			if (sizeof(Int64) < sizeof(int)) {
-				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
-				return upcast.Remainder(number);
-			}
-
-			if (TypeTracking.GetSizeFromNumericType(number.Value.GetType()) > sizeof(Int64))
-				return number.Remainder(this);
-
-			Int64_T convert = ValueConverter.CastToInt64_T(number);
-			return new Int64_T(value % convert.value);
-		}
-
-		public INumber Subtract(INumber number) {
+		public readonly INumber Subtract(INumber number) {
 			//For sizes larger than int, this block should be removed by the compiler
 			if (sizeof(Int64) < sizeof(int)) {
 				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
 				return upcast.Subtract(number);
 			}
 
-			if (TypeTracking.GetSizeFromNumericType(number.Value.GetType()) > sizeof(Int64))
-				return number.Negate().Subtract(this.Negate());
+			if (TypeTracking.ShouldUpcast(this, number))
+				return number.Upcast(this).Subtract(number);
 
 			Int64_T convert = ValueConverter.CastToInt64_T(number);
 			return new Int64_T(unchecked(value - convert.value));
 		}
 
-		public IInteger Xor(IInteger number) {
+		public readonly IInteger Xor(IInteger number) {
 			//For sizes larger than int, this block should be removed by the compiler
 			if (sizeof(Int64) < sizeof(int)) {
 				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
-				return (upcast as IInteger)!.And(number);
+				return ((IInteger)upcast!).Xor(number);
 			}
-
-			if (number is not INumber iNum)
-				throw new Exception("Internal Chips Error: IInteger instance was not an INumber");
 
 			if (number is IFloat)
 				throw new Exception("Cannot perform bitwise-XOR operations with non-integer values");
 
-			if (TypeTracking.GetSizeFromNumericType(iNum.Value.GetType()) > sizeof(Int64))
+			if (TypeTracking.ShouldUpcast(this, number))
 				return number.Xor(this);
 
-			Int64_T convert = ValueConverter.CastToInt64_T(iNum);
+			Int64_T convert = ValueConverter.CastToInt64_T(number);
 			return new Int64_T(value ^ convert.value);
 		}
 	}
 
 	[TextTemplateGenerated]
-	public struct Byte_T : IInteger {
+	public struct Byte_T : IInteger, INumberConstants<Byte_T> {
 		private Byte value;
 
-		public object Value => value;
+		public readonly object Value => value;
 
-		public Byte ActualValue => value;
+		public readonly Byte ActualValue => value;
 
-		public bool IsZero => value == 0;
+		public readonly bool IsZero => value == 0;
 
-		public bool IsNegative => value < 0;
+		public readonly bool IsNegative => false;
+
+		public readonly int NumericSize => sizeof(Byte);
+
+		public static Byte_T Zero => new Byte_T((Byte)0);
+
+		public static Byte_T One => new Byte_T((Byte)1);
 
 		public Byte_T(Byte value) {
 			this.value = value;
@@ -929,56 +987,51 @@ namespace Chips.Runtime.Types.NumberProcessing {
 			this.value = (Byte)value;
 		}
 
-		public INumber Abs() {
-			if (value == Byte.MinValue) {
-				Registers.F.Overflow = true;
-				return new Byte_T(Byte.MaxValue);
-			}
-
-			return new Byte_T(Math.Abs(value));
+		public readonly INumber Upcast(INumber number) {
+			return TypeTracking.ShouldUpcast(number, this) ? ValueConverter.CastToByte_T(number) : number;
 		}
 
-		public INumber Add(INumber number) {
+		public readonly INumber Abs()
+			=> new Byte_T(value);
+
+		public readonly INumber Add(INumber number) {
 			//For sizes larger than int, this block should be removed by the compiler
 			if (sizeof(Byte) < sizeof(int)) {
 				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
 				return upcast.Add(number);
 			}
 
-			if (TypeTracking.GetSizeFromNumericType(number.Value.GetType()) > sizeof(Byte))
+			if (TypeTracking.ShouldUpcast(this, number))
 				return number.Add(this);
 
 			Byte_T convert = ValueConverter.CastToByte_T(number);
 
-			if ((value < 0 && convert.value < 0 && value + convert.value > 0) || (value > 0 && convert.value > 0 && value + convert.value < 0)) {
+			if (value + convert.value < value) {
 				Registers.F.Overflow = true;
-				return new Byte_T(value < 0 ? Byte.MinValue : Byte.MaxValue);
+				return new Byte_T(Byte.MaxValue);
 			}
 
 			return new Byte_T(unchecked(value + convert.value));
 		}
 
-		public IInteger And(IInteger number) {
+		public readonly IInteger And(IInteger number) {
 			//For sizes larger than int, this block should be removed by the compiler
 			if (sizeof(Byte) < sizeof(int)) {
 				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
-				return (upcast as IInteger)!.And(number);
+				return ((IInteger)upcast!).And(number);
 			}
-
-			if (number is not INumber iNum)
-				throw new Exception("Internal Chips Error: IInteger instance was not an INumber");
 
 			if (number is IFloat)
 				throw new Exception("Cannot perform bitwise-AND operations with non-integer values");
 
-			if (TypeTracking.GetSizeFromNumericType(iNum.Value.GetType()) > sizeof(Byte))
+			if (TypeTracking.ShouldUpcast(this, number))
 				return number.And(this);
 
-			Byte_T convert = ValueConverter.CastToByte_T(iNum);
+			Byte_T convert = ValueConverter.CastToByte_T(number);
 			return new Byte_T(value & convert.value);
 		}
 
-		public IInteger ArithmeticRotateLeft() {
+		public readonly IInteger ArithmeticRotateLeft() {
 			bool carry = Registers.F.Carry;
 			Registers.F.Carry = unchecked(value & (Byte)((Byte)1 << (8 * sizeof(Byte) - 1))) != 0;
 			
@@ -989,7 +1042,7 @@ namespace Chips.Runtime.Types.NumberProcessing {
 			return i;
 		}
 
-		public IInteger ArithmeticRotateRight() {
+		public readonly IInteger ArithmeticRotateRight() {
 			bool carry = Registers.F.Carry;
 			Registers.F.Carry = (value & 1) != 0;
 			
@@ -1000,153 +1053,159 @@ namespace Chips.Runtime.Types.NumberProcessing {
 			return i;
 		}
 
-		public IInteger ArithmeticShiftLeft()
+		public readonly IInteger ArithmeticShiftLeft()
 			=> new Byte_T(value << 1);
 
-		public IInteger ArithmeticShiftRight()
+		public readonly IInteger ArithmeticShiftRight()
 			=> new Byte_T(value >> 1);
 
-		public string BinaryRepresentation(bool leadingZeroes) {
-			string bin = Convert.ToString(value, 2);
-			if (leadingZeroes)
-				bin = bin.PadLeft(sizeof(Byte) * 8, '0');
-			return bin;
+		public readonly void Compare(INumber number) {
+			//For sizes larger than int, this block should be removed by the compiler
+			if (sizeof(Byte) < sizeof(int)) {
+				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
+				upcast.Compare(number);
+				return;
+			}
+
+			if (TypeTracking.ShouldUpcast(this, number)) {
+				number.Upcast(this).Compare(number);
+				return;
+			}
+
+			INumber sub = this.Subtract(number);
+
+			Registers.F.Negative = sub.Divide(this).IsZero;  // If (this - number) is less than this, then (sub / this) will be 0 due to integer division
+			Registers.F.Zero = sub.IsZero;
 		}
 
-		public INumber Decrement()
+		public readonly INumber Decrement()
 			=> new Byte_T(unchecked(value - 1));
 
-		public INumber Divide(INumber number, bool inverseLogic = false) {
+		public readonly INumber Divide(INumber number) {
 			//For sizes larger than int, this block should be removed by the compiler
 			if (sizeof(Byte) < sizeof(int)) {
 				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
 				return upcast.Divide(number);
 			}
 
-			if (TypeTracking.GetSizeFromNumericType(number.Value.GetType()) > sizeof(Byte))
-				return number.Divide(this, true);
+			if (TypeTracking.ShouldUpcast(this, number))
+				return number.Upcast(this).Divide(number);
 
 			Byte_T convert = ValueConverter.CastToByte_T(number);
-			return new Byte_T(!inverseLogic ? value / convert.value : convert.value / value);
+			return new Byte_T(value / convert.value);
 		}
 
-		public INumber Increment()
+		public readonly INumber Increment()
 			=> new Byte_T(unchecked(value + 1));
 
-		public INumber Multiply(INumber number) {
+		public readonly INumber Modulus(INumber number) {
+			//For sizes larger than int, this block should be removed by the compiler
+			if (sizeof(Byte) < sizeof(int)) {
+				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
+				return upcast.Modulus(number);
+			}
+
+			if (TypeTracking.ShouldUpcast(this, number))
+				return number.Upcast(this).Modulus(number);
+
+			Byte_T convert = ValueConverter.CastToByte_T(number);
+			return new Byte_T(value % convert.value);
+		}
+
+		public readonly INumber Multiply(INumber number) {
 			//For sizes larger than int, this block should be removed by the compiler
 			if (sizeof(Byte) < sizeof(int)) {
 				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
 				return upcast.Multiply(number);
 			}
 
-			if (TypeTracking.GetSizeFromNumericType(number.Value.GetType()) > sizeof(Byte))
+			if (TypeTracking.ShouldUpcast(this, number))
 				return number.Multiply(this);
 
 			Byte_T convert = ValueConverter.CastToByte_T(number);
 			return new Byte_T(unchecked(value * convert.value));
 		}
 
-		public INumber Negate() {
-			//For sizes larger than int, this block should be removed by the compiler
-			if (sizeof(Byte) < sizeof(int)) {
-				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
-				return upcast.Negate();
-			}
-
-			return new Byte_T(-value);
+		public readonly INumber Negate() {
+			throw new InvalidOperationException("Negation cannot be performed on unsigned integers");
 		}
 
-		public IInteger Not() {
+		public readonly IInteger Not() {
 			//For sizes larger than int, this block should be removed by the compiler
 			if (sizeof(Byte) < sizeof(int)) {
 				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
-				return (upcast as IInteger)!.Not();
+				return ((IInteger)upcast!).Not();
 			}
 
 			return new Byte_T(~value);
 		}
 
-		public IInteger Or(IInteger number) {
+		public readonly IInteger Or(IInteger number) {
 			//For sizes larger than int, this block should be removed by the compiler
 			if (sizeof(Byte) < sizeof(int)) {
 				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
-				return (upcast as IInteger)!.Or(number);
+				return ((IInteger)upcast!).Or(number);
 			}
-
-			if (number is not INumber iNum)
-				throw new Exception("Internal Chips Error: IInteger instance was not an INumber");
 
 			if (number is IFloat)
 				throw new Exception("Cannot perform bitwise-OR operations with non-integer values");
 
-			if (TypeTracking.GetSizeFromNumericType(iNum.Value.GetType()) > sizeof(Byte))
+			if (TypeTracking.ShouldUpcast(this, number))
 				return number.Or(this);
 
-			Byte_T convert = ValueConverter.CastToByte_T(iNum);
+			Byte_T convert = ValueConverter.CastToByte_T(number);
 			return new Byte_T(value | convert.value);
 		}
 
-		public INumber Remainder(INumber number) {
-			//For sizes larger than int, this block should be removed by the compiler
-			if (sizeof(Byte) < sizeof(int)) {
-				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
-				return upcast.Remainder(number);
-			}
-
-			if (TypeTracking.GetSizeFromNumericType(number.Value.GetType()) > sizeof(Byte))
-				return number.Remainder(this);
-
-			Byte_T convert = ValueConverter.CastToByte_T(number);
-			return new Byte_T(value % convert.value);
-		}
-
-		public INumber Subtract(INumber number) {
+		public readonly INumber Subtract(INumber number) {
 			//For sizes larger than int, this block should be removed by the compiler
 			if (sizeof(Byte) < sizeof(int)) {
 				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
 				return upcast.Subtract(number);
 			}
 
-			if (TypeTracking.GetSizeFromNumericType(number.Value.GetType()) > sizeof(Byte))
-				return number.Negate().Subtract(this.Negate());
+			if (TypeTracking.ShouldUpcast(this, number))
+				return number.Upcast(this).Subtract(number);
 
 			Byte_T convert = ValueConverter.CastToByte_T(number);
 			return new Byte_T(unchecked(value - convert.value));
 		}
 
-		public IInteger Xor(IInteger number) {
+		public readonly IInteger Xor(IInteger number) {
 			//For sizes larger than int, this block should be removed by the compiler
 			if (sizeof(Byte) < sizeof(int)) {
 				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
-				return (upcast as IInteger)!.And(number);
+				return ((IInteger)upcast!).Xor(number);
 			}
-
-			if (number is not INumber iNum)
-				throw new Exception("Internal Chips Error: IInteger instance was not an INumber");
 
 			if (number is IFloat)
 				throw new Exception("Cannot perform bitwise-XOR operations with non-integer values");
 
-			if (TypeTracking.GetSizeFromNumericType(iNum.Value.GetType()) > sizeof(Byte))
+			if (TypeTracking.ShouldUpcast(this, number))
 				return number.Xor(this);
 
-			Byte_T convert = ValueConverter.CastToByte_T(iNum);
+			Byte_T convert = ValueConverter.CastToByte_T(number);
 			return new Byte_T(value ^ convert.value);
 		}
 	}
 
 	[TextTemplateGenerated]
-	public struct UInt16_T : IInteger {
+	public struct UInt16_T : IInteger, INumberConstants<UInt16_T> {
 		private UInt16 value;
 
-		public object Value => value;
+		public readonly object Value => value;
 
-		public UInt16 ActualValue => value;
+		public readonly UInt16 ActualValue => value;
 
-		public bool IsZero => value == 0;
+		public readonly bool IsZero => value == 0;
 
-		public bool IsNegative => false;
+		public readonly bool IsNegative => false;
+
+		public readonly int NumericSize => sizeof(UInt16);
+
+		public static UInt16_T Zero => new UInt16_T((UInt16)0);
+
+		public static UInt16_T One => new UInt16_T((UInt16)1);
 
 		public UInt16_T(UInt16 value) {
 			this.value = value;
@@ -1156,17 +1215,21 @@ namespace Chips.Runtime.Types.NumberProcessing {
 			this.value = (UInt16)value;
 		}
 
-		public INumber Abs()
+		public readonly INumber Upcast(INumber number) {
+			return TypeTracking.ShouldUpcast(number, this) ? ValueConverter.CastToUInt16_T(number) : number;
+		}
+
+		public readonly INumber Abs()
 			=> new UInt16_T(value);
 
-		public INumber Add(INumber number) {
+		public readonly INumber Add(INumber number) {
 			//For sizes larger than int, this block should be removed by the compiler
 			if (sizeof(UInt16) < sizeof(int)) {
 				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
 				return upcast.Add(number);
 			}
 
-			if (TypeTracking.GetSizeFromNumericType(number.Value.GetType()) > sizeof(UInt16))
+			if (TypeTracking.ShouldUpcast(this, number))
 				return number.Add(this);
 
 			UInt16_T convert = ValueConverter.CastToUInt16_T(number);
@@ -1179,27 +1242,24 @@ namespace Chips.Runtime.Types.NumberProcessing {
 			return new UInt16_T(unchecked(value + convert.value));
 		}
 
-		public IInteger And(IInteger number) {
+		public readonly IInteger And(IInteger number) {
 			//For sizes larger than int, this block should be removed by the compiler
 			if (sizeof(UInt16) < sizeof(int)) {
 				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
-				return (upcast as IInteger)!.And(number);
+				return ((IInteger)upcast!).And(number);
 			}
-
-			if (number is not INumber iNum)
-				throw new Exception("Internal Chips Error: IInteger instance was not an INumber");
 
 			if (number is IFloat)
 				throw new Exception("Cannot perform bitwise-AND operations with non-integer values");
 
-			if (TypeTracking.GetSizeFromNumericType(iNum.Value.GetType()) > sizeof(UInt16))
+			if (TypeTracking.ShouldUpcast(this, number))
 				return number.And(this);
 
-			UInt16_T convert = ValueConverter.CastToUInt16_T(iNum);
+			UInt16_T convert = ValueConverter.CastToUInt16_T(number);
 			return new UInt16_T(value & convert.value);
 		}
 
-		public IInteger ArithmeticRotateLeft() {
+		public readonly IInteger ArithmeticRotateLeft() {
 			bool carry = Registers.F.Carry;
 			Registers.F.Carry = unchecked(value & (UInt16)((UInt16)1 << (8 * sizeof(UInt16) - 1))) != 0;
 			
@@ -1210,7 +1270,7 @@ namespace Chips.Runtime.Types.NumberProcessing {
 			return i;
 		}
 
-		public IInteger ArithmeticRotateRight() {
+		public readonly IInteger ArithmeticRotateRight() {
 			bool carry = Registers.F.Carry;
 			Registers.F.Carry = (value & 1) != 0;
 			
@@ -1221,147 +1281,159 @@ namespace Chips.Runtime.Types.NumberProcessing {
 			return i;
 		}
 
-		public IInteger ArithmeticShiftLeft()
+		public readonly IInteger ArithmeticShiftLeft()
 			=> new UInt16_T(value << 1);
 
-		public IInteger ArithmeticShiftRight()
+		public readonly IInteger ArithmeticShiftRight()
 			=> new UInt16_T(value >> 1);
 
-		public string BinaryRepresentation(bool leadingZeroes) {
-			string bin = Convert.ToString(value, 2);
-			if (leadingZeroes)
-				bin = bin.PadLeft(sizeof(UInt16) * 8, '0');
-			return bin;
+		public readonly void Compare(INumber number) {
+			//For sizes larger than int, this block should be removed by the compiler
+			if (sizeof(UInt16) < sizeof(int)) {
+				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
+				upcast.Compare(number);
+				return;
+			}
+
+			if (TypeTracking.ShouldUpcast(this, number)) {
+				number.Upcast(this).Compare(number);
+				return;
+			}
+
+			INumber sub = this.Subtract(number);
+
+			Registers.F.Negative = sub.Divide(this).IsZero;  // If (this - number) is less than this, then (sub / this) will be 0 due to integer division
+			Registers.F.Zero = sub.IsZero;
 		}
 
-		public INumber Decrement()
+		public readonly INumber Decrement()
 			=> new UInt16_T(unchecked(value - 1));
 
-		public INumber Divide(INumber number, bool inverseLogic = false) {
+		public readonly INumber Divide(INumber number) {
 			//For sizes larger than int, this block should be removed by the compiler
 			if (sizeof(UInt16) < sizeof(int)) {
 				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
 				return upcast.Divide(number);
 			}
 
-			if (TypeTracking.GetSizeFromNumericType(number.Value.GetType()) > sizeof(UInt16))
-				return number.Divide(this, true);
+			if (TypeTracking.ShouldUpcast(this, number))
+				return number.Upcast(this).Divide(number);
 
 			UInt16_T convert = ValueConverter.CastToUInt16_T(number);
-			return new UInt16_T(!inverseLogic ? value / convert.value : convert.value / value);
+			return new UInt16_T(value / convert.value);
 		}
 
-		public INumber Increment()
+		public readonly INumber Increment()
 			=> new UInt16_T(unchecked(value + 1));
 
-		public INumber Multiply(INumber number) {
+		public readonly INumber Modulus(INumber number) {
+			//For sizes larger than int, this block should be removed by the compiler
+			if (sizeof(UInt16) < sizeof(int)) {
+				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
+				return upcast.Modulus(number);
+			}
+
+			if (TypeTracking.ShouldUpcast(this, number))
+				return number.Upcast(this).Modulus(number);
+
+			UInt16_T convert = ValueConverter.CastToUInt16_T(number);
+			return new UInt16_T(value % convert.value);
+		}
+
+		public readonly INumber Multiply(INumber number) {
 			//For sizes larger than int, this block should be removed by the compiler
 			if (sizeof(UInt16) < sizeof(int)) {
 				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
 				return upcast.Multiply(number);
 			}
 
-			if (TypeTracking.GetSizeFromNumericType(number.Value.GetType()) > sizeof(UInt16))
+			if (TypeTracking.ShouldUpcast(this, number))
 				return number.Multiply(this);
 
 			UInt16_T convert = ValueConverter.CastToUInt16_T(number);
 			return new UInt16_T(unchecked(value * convert.value));
 		}
 
-		public INumber Negate() {
+		public readonly INumber Negate() {
 			throw new InvalidOperationException("Negation cannot be performed on unsigned integers");
 		}
 
-		public IInteger Not() {
+		public readonly IInteger Not() {
 			//For sizes larger than int, this block should be removed by the compiler
 			if (sizeof(UInt16) < sizeof(int)) {
 				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
-				return (upcast as IInteger)!.Not();
+				return ((IInteger)upcast!).Not();
 			}
 
 			return new UInt16_T(~value);
 		}
 
-		public IInteger Or(IInteger number) {
+		public readonly IInteger Or(IInteger number) {
 			//For sizes larger than int, this block should be removed by the compiler
 			if (sizeof(UInt16) < sizeof(int)) {
 				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
-				return (upcast as IInteger)!.Or(number);
+				return ((IInteger)upcast!).Or(number);
 			}
-
-			if (number is not INumber iNum)
-				throw new Exception("Internal Chips Error: IInteger instance was not an INumber");
 
 			if (number is IFloat)
 				throw new Exception("Cannot perform bitwise-OR operations with non-integer values");
 
-			if (TypeTracking.GetSizeFromNumericType(iNum.Value.GetType()) > sizeof(UInt16))
+			if (TypeTracking.ShouldUpcast(this, number))
 				return number.Or(this);
 
-			UInt16_T convert = ValueConverter.CastToUInt16_T(iNum);
+			UInt16_T convert = ValueConverter.CastToUInt16_T(number);
 			return new UInt16_T(value | convert.value);
 		}
 
-		public INumber Remainder(INumber number) {
-			//For sizes larger than int, this block should be removed by the compiler
-			if (sizeof(UInt16) < sizeof(int)) {
-				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
-				return upcast.Remainder(number);
-			}
-
-			if (TypeTracking.GetSizeFromNumericType(number.Value.GetType()) > sizeof(UInt16))
-				return number.Remainder(this);
-
-			UInt16_T convert = ValueConverter.CastToUInt16_T(number);
-			return new UInt16_T(value % convert.value);
-		}
-
-		public INumber Subtract(INumber number) {
+		public readonly INumber Subtract(INumber number) {
 			//For sizes larger than int, this block should be removed by the compiler
 			if (sizeof(UInt16) < sizeof(int)) {
 				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
 				return upcast.Subtract(number);
 			}
 
-			if (TypeTracking.GetSizeFromNumericType(number.Value.GetType()) > sizeof(UInt16))
-				return number.Negate().Subtract(this.Negate());
+			if (TypeTracking.ShouldUpcast(this, number))
+				return number.Upcast(this).Subtract(number);
 
 			UInt16_T convert = ValueConverter.CastToUInt16_T(number);
 			return new UInt16_T(unchecked(value - convert.value));
 		}
 
-		public IInteger Xor(IInteger number) {
+		public readonly IInteger Xor(IInteger number) {
 			//For sizes larger than int, this block should be removed by the compiler
 			if (sizeof(UInt16) < sizeof(int)) {
 				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
-				return (upcast as IInteger)!.And(number);
+				return ((IInteger)upcast!).Xor(number);
 			}
-
-			if (number is not INumber iNum)
-				throw new Exception("Internal Chips Error: IInteger instance was not an INumber");
 
 			if (number is IFloat)
 				throw new Exception("Cannot perform bitwise-XOR operations with non-integer values");
 
-			if (TypeTracking.GetSizeFromNumericType(iNum.Value.GetType()) > sizeof(UInt16))
+			if (TypeTracking.ShouldUpcast(this, number))
 				return number.Xor(this);
 
-			UInt16_T convert = ValueConverter.CastToUInt16_T(iNum);
+			UInt16_T convert = ValueConverter.CastToUInt16_T(number);
 			return new UInt16_T(value ^ convert.value);
 		}
 	}
 
 	[TextTemplateGenerated]
-	public struct UInt32_T : IInteger {
+	public struct UInt32_T : IInteger, INumberConstants<UInt32_T> {
 		private UInt32 value;
 
-		public object Value => value;
+		public readonly object Value => value;
 
-		public UInt32 ActualValue => value;
+		public readonly UInt32 ActualValue => value;
 
-		public bool IsZero => value == 0;
+		public readonly bool IsZero => value == 0;
 
-		public bool IsNegative => false;
+		public readonly bool IsNegative => false;
+
+		public readonly int NumericSize => sizeof(UInt32);
+
+		public static UInt32_T Zero => new UInt32_T((UInt32)0);
+
+		public static UInt32_T One => new UInt32_T((UInt32)1);
 
 		public UInt32_T(UInt32 value) {
 			this.value = value;
@@ -1371,17 +1443,21 @@ namespace Chips.Runtime.Types.NumberProcessing {
 			this.value = (UInt32)value;
 		}
 
-		public INumber Abs()
+		public readonly INumber Upcast(INumber number) {
+			return TypeTracking.ShouldUpcast(number, this) ? ValueConverter.CastToUInt32_T(number) : number;
+		}
+
+		public readonly INumber Abs()
 			=> new UInt32_T(value);
 
-		public INumber Add(INumber number) {
+		public readonly INumber Add(INumber number) {
 			//For sizes larger than int, this block should be removed by the compiler
 			if (sizeof(UInt32) < sizeof(int)) {
 				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
 				return upcast.Add(number);
 			}
 
-			if (TypeTracking.GetSizeFromNumericType(number.Value.GetType()) > sizeof(UInt32))
+			if (TypeTracking.ShouldUpcast(this, number))
 				return number.Add(this);
 
 			UInt32_T convert = ValueConverter.CastToUInt32_T(number);
@@ -1394,27 +1470,24 @@ namespace Chips.Runtime.Types.NumberProcessing {
 			return new UInt32_T(unchecked(value + convert.value));
 		}
 
-		public IInteger And(IInteger number) {
+		public readonly IInteger And(IInteger number) {
 			//For sizes larger than int, this block should be removed by the compiler
 			if (sizeof(UInt32) < sizeof(int)) {
 				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
-				return (upcast as IInteger)!.And(number);
+				return ((IInteger)upcast!).And(number);
 			}
-
-			if (number is not INumber iNum)
-				throw new Exception("Internal Chips Error: IInteger instance was not an INumber");
 
 			if (number is IFloat)
 				throw new Exception("Cannot perform bitwise-AND operations with non-integer values");
 
-			if (TypeTracking.GetSizeFromNumericType(iNum.Value.GetType()) > sizeof(UInt32))
+			if (TypeTracking.ShouldUpcast(this, number))
 				return number.And(this);
 
-			UInt32_T convert = ValueConverter.CastToUInt32_T(iNum);
+			UInt32_T convert = ValueConverter.CastToUInt32_T(number);
 			return new UInt32_T(value & convert.value);
 		}
 
-		public IInteger ArithmeticRotateLeft() {
+		public readonly IInteger ArithmeticRotateLeft() {
 			bool carry = Registers.F.Carry;
 			Registers.F.Carry = unchecked(value & (UInt32)((UInt32)1 << (8 * sizeof(UInt32) - 1))) != 0;
 			
@@ -1425,7 +1498,7 @@ namespace Chips.Runtime.Types.NumberProcessing {
 			return i;
 		}
 
-		public IInteger ArithmeticRotateRight() {
+		public readonly IInteger ArithmeticRotateRight() {
 			bool carry = Registers.F.Carry;
 			Registers.F.Carry = (value & 1) != 0;
 			
@@ -1436,147 +1509,159 @@ namespace Chips.Runtime.Types.NumberProcessing {
 			return i;
 		}
 
-		public IInteger ArithmeticShiftLeft()
+		public readonly IInteger ArithmeticShiftLeft()
 			=> new UInt32_T(value << 1);
 
-		public IInteger ArithmeticShiftRight()
+		public readonly IInteger ArithmeticShiftRight()
 			=> new UInt32_T(value >> 1);
 
-		public string BinaryRepresentation(bool leadingZeroes) {
-			string bin = Convert.ToString(value, 2);
-			if (leadingZeroes)
-				bin = bin.PadLeft(sizeof(UInt32) * 8, '0');
-			return bin;
+		public readonly void Compare(INumber number) {
+			//For sizes larger than int, this block should be removed by the compiler
+			if (sizeof(UInt32) < sizeof(int)) {
+				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
+				upcast.Compare(number);
+				return;
+			}
+
+			if (TypeTracking.ShouldUpcast(this, number)) {
+				number.Upcast(this).Compare(number);
+				return;
+			}
+
+			INumber sub = this.Subtract(number);
+
+			Registers.F.Negative = sub.Divide(this).IsZero;  // If (this - number) is less than this, then (sub / this) will be 0 due to integer division
+			Registers.F.Zero = sub.IsZero;
 		}
 
-		public INumber Decrement()
+		public readonly INumber Decrement()
 			=> new UInt32_T(unchecked(value - 1));
 
-		public INumber Divide(INumber number, bool inverseLogic = false) {
+		public readonly INumber Divide(INumber number) {
 			//For sizes larger than int, this block should be removed by the compiler
 			if (sizeof(UInt32) < sizeof(int)) {
 				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
 				return upcast.Divide(number);
 			}
 
-			if (TypeTracking.GetSizeFromNumericType(number.Value.GetType()) > sizeof(UInt32))
-				return number.Divide(this, true);
+			if (TypeTracking.ShouldUpcast(this, number))
+				return number.Upcast(this).Divide(number);
 
 			UInt32_T convert = ValueConverter.CastToUInt32_T(number);
-			return new UInt32_T(!inverseLogic ? value / convert.value : convert.value / value);
+			return new UInt32_T(value / convert.value);
 		}
 
-		public INumber Increment()
+		public readonly INumber Increment()
 			=> new UInt32_T(unchecked(value + 1));
 
-		public INumber Multiply(INumber number) {
+		public readonly INumber Modulus(INumber number) {
+			//For sizes larger than int, this block should be removed by the compiler
+			if (sizeof(UInt32) < sizeof(int)) {
+				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
+				return upcast.Modulus(number);
+			}
+
+			if (TypeTracking.ShouldUpcast(this, number))
+				return number.Upcast(this).Modulus(number);
+
+			UInt32_T convert = ValueConverter.CastToUInt32_T(number);
+			return new UInt32_T(value % convert.value);
+		}
+
+		public readonly INumber Multiply(INumber number) {
 			//For sizes larger than int, this block should be removed by the compiler
 			if (sizeof(UInt32) < sizeof(int)) {
 				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
 				return upcast.Multiply(number);
 			}
 
-			if (TypeTracking.GetSizeFromNumericType(number.Value.GetType()) > sizeof(UInt32))
+			if (TypeTracking.ShouldUpcast(this, number))
 				return number.Multiply(this);
 
 			UInt32_T convert = ValueConverter.CastToUInt32_T(number);
 			return new UInt32_T(unchecked(value * convert.value));
 		}
 
-		public INumber Negate() {
+		public readonly INumber Negate() {
 			throw new InvalidOperationException("Negation cannot be performed on unsigned integers");
 		}
 
-		public IInteger Not() {
+		public readonly IInteger Not() {
 			//For sizes larger than int, this block should be removed by the compiler
 			if (sizeof(UInt32) < sizeof(int)) {
 				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
-				return (upcast as IInteger)!.Not();
+				return ((IInteger)upcast!).Not();
 			}
 
 			return new UInt32_T(~value);
 		}
 
-		public IInteger Or(IInteger number) {
+		public readonly IInteger Or(IInteger number) {
 			//For sizes larger than int, this block should be removed by the compiler
 			if (sizeof(UInt32) < sizeof(int)) {
 				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
-				return (upcast as IInteger)!.Or(number);
+				return ((IInteger)upcast!).Or(number);
 			}
-
-			if (number is not INumber iNum)
-				throw new Exception("Internal Chips Error: IInteger instance was not an INumber");
 
 			if (number is IFloat)
 				throw new Exception("Cannot perform bitwise-OR operations with non-integer values");
 
-			if (TypeTracking.GetSizeFromNumericType(iNum.Value.GetType()) > sizeof(UInt32))
+			if (TypeTracking.ShouldUpcast(this, number))
 				return number.Or(this);
 
-			UInt32_T convert = ValueConverter.CastToUInt32_T(iNum);
+			UInt32_T convert = ValueConverter.CastToUInt32_T(number);
 			return new UInt32_T(value | convert.value);
 		}
 
-		public INumber Remainder(INumber number) {
-			//For sizes larger than int, this block should be removed by the compiler
-			if (sizeof(UInt32) < sizeof(int)) {
-				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
-				return upcast.Remainder(number);
-			}
-
-			if (TypeTracking.GetSizeFromNumericType(number.Value.GetType()) > sizeof(UInt32))
-				return number.Remainder(this);
-
-			UInt32_T convert = ValueConverter.CastToUInt32_T(number);
-			return new UInt32_T(value % convert.value);
-		}
-
-		public INumber Subtract(INumber number) {
+		public readonly INumber Subtract(INumber number) {
 			//For sizes larger than int, this block should be removed by the compiler
 			if (sizeof(UInt32) < sizeof(int)) {
 				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
 				return upcast.Subtract(number);
 			}
 
-			if (TypeTracking.GetSizeFromNumericType(number.Value.GetType()) > sizeof(UInt32))
-				return number.Negate().Subtract(this.Negate());
+			if (TypeTracking.ShouldUpcast(this, number))
+				return number.Upcast(this).Subtract(number);
 
 			UInt32_T convert = ValueConverter.CastToUInt32_T(number);
 			return new UInt32_T(unchecked(value - convert.value));
 		}
 
-		public IInteger Xor(IInteger number) {
+		public readonly IInteger Xor(IInteger number) {
 			//For sizes larger than int, this block should be removed by the compiler
 			if (sizeof(UInt32) < sizeof(int)) {
 				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
-				return (upcast as IInteger)!.And(number);
+				return ((IInteger)upcast!).Xor(number);
 			}
-
-			if (number is not INumber iNum)
-				throw new Exception("Internal Chips Error: IInteger instance was not an INumber");
 
 			if (number is IFloat)
 				throw new Exception("Cannot perform bitwise-XOR operations with non-integer values");
 
-			if (TypeTracking.GetSizeFromNumericType(iNum.Value.GetType()) > sizeof(UInt32))
+			if (TypeTracking.ShouldUpcast(this, number))
 				return number.Xor(this);
 
-			UInt32_T convert = ValueConverter.CastToUInt32_T(iNum);
+			UInt32_T convert = ValueConverter.CastToUInt32_T(number);
 			return new UInt32_T(value ^ convert.value);
 		}
 	}
 
 	[TextTemplateGenerated]
-	public struct UInt64_T : IInteger {
+	public struct UInt64_T : IInteger, INumberConstants<UInt64_T> {
 		private UInt64 value;
 
-		public object Value => value;
+		public readonly object Value => value;
 
-		public UInt64 ActualValue => value;
+		public readonly UInt64 ActualValue => value;
 
-		public bool IsZero => value == 0;
+		public readonly bool IsZero => value == 0;
 
-		public bool IsNegative => false;
+		public readonly bool IsNegative => false;
+
+		public readonly int NumericSize => sizeof(UInt64);
+
+		public static UInt64_T Zero => new UInt64_T((UInt64)0);
+
+		public static UInt64_T One => new UInt64_T((UInt64)1);
 
 		public UInt64_T(UInt64 value) {
 			this.value = value;
@@ -1586,17 +1671,21 @@ namespace Chips.Runtime.Types.NumberProcessing {
 			this.value = (UInt64)value;
 		}
 
-		public INumber Abs()
+		public readonly INumber Upcast(INumber number) {
+			return TypeTracking.ShouldUpcast(number, this) ? ValueConverter.CastToUInt64_T(number) : number;
+		}
+
+		public readonly INumber Abs()
 			=> new UInt64_T(value);
 
-		public INumber Add(INumber number) {
+		public readonly INumber Add(INumber number) {
 			//For sizes larger than int, this block should be removed by the compiler
 			if (sizeof(UInt64) < sizeof(int)) {
 				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
 				return upcast.Add(number);
 			}
 
-			if (TypeTracking.GetSizeFromNumericType(number.Value.GetType()) > sizeof(UInt64))
+			if (TypeTracking.ShouldUpcast(this, number))
 				return number.Add(this);
 
 			UInt64_T convert = ValueConverter.CastToUInt64_T(number);
@@ -1609,27 +1698,24 @@ namespace Chips.Runtime.Types.NumberProcessing {
 			return new UInt64_T(unchecked(value + convert.value));
 		}
 
-		public IInteger And(IInteger number) {
+		public readonly IInteger And(IInteger number) {
 			//For sizes larger than int, this block should be removed by the compiler
 			if (sizeof(UInt64) < sizeof(int)) {
 				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
-				return (upcast as IInteger)!.And(number);
+				return ((IInteger)upcast!).And(number);
 			}
-
-			if (number is not INumber iNum)
-				throw new Exception("Internal Chips Error: IInteger instance was not an INumber");
 
 			if (number is IFloat)
 				throw new Exception("Cannot perform bitwise-AND operations with non-integer values");
 
-			if (TypeTracking.GetSizeFromNumericType(iNum.Value.GetType()) > sizeof(UInt64))
+			if (TypeTracking.ShouldUpcast(this, number))
 				return number.And(this);
 
-			UInt64_T convert = ValueConverter.CastToUInt64_T(iNum);
+			UInt64_T convert = ValueConverter.CastToUInt64_T(number);
 			return new UInt64_T(value & convert.value);
 		}
 
-		public IInteger ArithmeticRotateLeft() {
+		public readonly IInteger ArithmeticRotateLeft() {
 			bool carry = Registers.F.Carry;
 			Registers.F.Carry = unchecked(value & (UInt64)((UInt64)1 << (8 * sizeof(UInt64) - 1))) != 0;
 			
@@ -1640,7 +1726,7 @@ namespace Chips.Runtime.Types.NumberProcessing {
 			return i;
 		}
 
-		public IInteger ArithmeticRotateRight() {
+		public readonly IInteger ArithmeticRotateRight() {
 			bool carry = Registers.F.Carry;
 			Registers.F.Carry = (value & 1) != 0;
 			
@@ -1651,340 +1737,812 @@ namespace Chips.Runtime.Types.NumberProcessing {
 			return i;
 		}
 
-		public IInteger ArithmeticShiftLeft()
+		public readonly IInteger ArithmeticShiftLeft()
 			=> new UInt64_T(value << 1);
 
-		public IInteger ArithmeticShiftRight()
+		public readonly IInteger ArithmeticShiftRight()
 			=> new UInt64_T(value >> 1);
 
-		public string BinaryRepresentation(bool leadingZeroes) {
-			string bin = Convert.ToString((long)value, 2);
-			if (leadingZeroes)
-				bin = bin.PadLeft(sizeof(UInt64) * 8, '0');
-			return bin;
+		public readonly void Compare(INumber number) {
+			//For sizes larger than int, this block should be removed by the compiler
+			if (sizeof(UInt64) < sizeof(int)) {
+				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
+				upcast.Compare(number);
+				return;
+			}
+
+			if (TypeTracking.ShouldUpcast(this, number)) {
+				number.Upcast(this).Compare(number);
+				return;
+			}
+
+			INumber sub = this.Subtract(number);
+
+			Registers.F.Negative = sub.Divide(this).IsZero;  // If (this - number) is less than this, then (sub / this) will be 0 due to integer division
+			Registers.F.Zero = sub.IsZero;
 		}
 
-		public INumber Decrement()
+		public readonly INumber Decrement()
 			=> new UInt64_T(unchecked(value - 1));
 
-		public INumber Divide(INumber number, bool inverseLogic = false) {
+		public readonly INumber Divide(INumber number) {
 			//For sizes larger than int, this block should be removed by the compiler
 			if (sizeof(UInt64) < sizeof(int)) {
 				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
 				return upcast.Divide(number);
 			}
 
-			if (TypeTracking.GetSizeFromNumericType(number.Value.GetType()) > sizeof(UInt64))
-				return number.Divide(this, true);
+			if (TypeTracking.ShouldUpcast(this, number))
+				return number.Upcast(this).Divide(number);
 
 			UInt64_T convert = ValueConverter.CastToUInt64_T(number);
-			return new UInt64_T(!inverseLogic ? value / convert.value : convert.value / value);
+			return new UInt64_T(value / convert.value);
 		}
 
-		public INumber Increment()
+		public readonly INumber Increment()
 			=> new UInt64_T(unchecked(value + 1));
 
-		public INumber Multiply(INumber number) {
+		public readonly INumber Modulus(INumber number) {
+			//For sizes larger than int, this block should be removed by the compiler
+			if (sizeof(UInt64) < sizeof(int)) {
+				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
+				return upcast.Modulus(number);
+			}
+
+			if (TypeTracking.ShouldUpcast(this, number))
+				return number.Upcast(this).Modulus(number);
+
+			UInt64_T convert = ValueConverter.CastToUInt64_T(number);
+			return new UInt64_T(value % convert.value);
+		}
+
+		public readonly INumber Multiply(INumber number) {
 			//For sizes larger than int, this block should be removed by the compiler
 			if (sizeof(UInt64) < sizeof(int)) {
 				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
 				return upcast.Multiply(number);
 			}
 
-			if (TypeTracking.GetSizeFromNumericType(number.Value.GetType()) > sizeof(UInt64))
+			if (TypeTracking.ShouldUpcast(this, number))
 				return number.Multiply(this);
 
 			UInt64_T convert = ValueConverter.CastToUInt64_T(number);
 			return new UInt64_T(unchecked(value * convert.value));
 		}
 
-		public INumber Negate() {
+		public readonly INumber Negate() {
 			throw new InvalidOperationException("Negation cannot be performed on unsigned integers");
 		}
 
-		public IInteger Not() {
+		public readonly IInteger Not() {
 			//For sizes larger than int, this block should be removed by the compiler
 			if (sizeof(UInt64) < sizeof(int)) {
 				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
-				return (upcast as IInteger)!.Not();
+				return ((IInteger)upcast!).Not();
 			}
 
 			return new UInt64_T(~value);
 		}
 
-		public IInteger Or(IInteger number) {
+		public readonly IInteger Or(IInteger number) {
 			//For sizes larger than int, this block should be removed by the compiler
 			if (sizeof(UInt64) < sizeof(int)) {
 				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
-				return (upcast as IInteger)!.Or(number);
+				return ((IInteger)upcast!).Or(number);
 			}
-
-			if (number is not INumber iNum)
-				throw new Exception("Internal Chips Error: IInteger instance was not an INumber");
 
 			if (number is IFloat)
 				throw new Exception("Cannot perform bitwise-OR operations with non-integer values");
 
-			if (TypeTracking.GetSizeFromNumericType(iNum.Value.GetType()) > sizeof(UInt64))
+			if (TypeTracking.ShouldUpcast(this, number))
 				return number.Or(this);
 
-			UInt64_T convert = ValueConverter.CastToUInt64_T(iNum);
+			UInt64_T convert = ValueConverter.CastToUInt64_T(number);
 			return new UInt64_T(value | convert.value);
 		}
 
-		public INumber Remainder(INumber number) {
-			//For sizes larger than int, this block should be removed by the compiler
-			if (sizeof(UInt64) < sizeof(int)) {
-				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
-				return upcast.Remainder(number);
-			}
-
-			if (TypeTracking.GetSizeFromNumericType(number.Value.GetType()) > sizeof(UInt64))
-				return number.Remainder(this);
-
-			UInt64_T convert = ValueConverter.CastToUInt64_T(number);
-			return new UInt64_T(value % convert.value);
-		}
-
-		public INumber Subtract(INumber number) {
+		public readonly INumber Subtract(INumber number) {
 			//For sizes larger than int, this block should be removed by the compiler
 			if (sizeof(UInt64) < sizeof(int)) {
 				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
 				return upcast.Subtract(number);
 			}
 
-			if (TypeTracking.GetSizeFromNumericType(number.Value.GetType()) > sizeof(UInt64))
-				return number.Negate().Subtract(this.Negate());
+			if (TypeTracking.ShouldUpcast(this, number))
+				return number.Upcast(this).Subtract(number);
 
 			UInt64_T convert = ValueConverter.CastToUInt64_T(number);
 			return new UInt64_T(unchecked(value - convert.value));
 		}
 
-		public IInteger Xor(IInteger number) {
+		public readonly IInteger Xor(IInteger number) {
 			//For sizes larger than int, this block should be removed by the compiler
 			if (sizeof(UInt64) < sizeof(int)) {
 				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
-				return (upcast as IInteger)!.And(number);
+				return ((IInteger)upcast!).Xor(number);
 			}
-
-			if (number is not INumber iNum)
-				throw new Exception("Internal Chips Error: IInteger instance was not an INumber");
 
 			if (number is IFloat)
 				throw new Exception("Cannot perform bitwise-XOR operations with non-integer values");
 
-			if (TypeTracking.GetSizeFromNumericType(iNum.Value.GetType()) > sizeof(UInt64))
+			if (TypeTracking.ShouldUpcast(this, number))
 				return number.Xor(this);
 
-			UInt64_T convert = ValueConverter.CastToUInt64_T(iNum);
+			UInt64_T convert = ValueConverter.CastToUInt64_T(number);
 			return new UInt64_T(value ^ convert.value);
 		}
 	}
 
 	[TextTemplateGenerated]
-	public struct Single_T : IFloat {
+	public unsafe struct IntPtr_T : IInteger, INumberConstants<IntPtr_T> {
+		private IntPtr value;
+
+		public readonly object Value => value;
+
+		public readonly IntPtr ActualValue => value;
+
+		public readonly bool IsZero => value == 0;
+
+		public readonly bool IsNegative => value < 0;
+
+		public readonly int NumericSize => sizeof(IntPtr);
+
+		public static IntPtr_T Zero => new IntPtr_T((IntPtr)0);
+
+		public static IntPtr_T One => new IntPtr_T((IntPtr)1);
+
+		public IntPtr_T(IntPtr value) {
+			this.value = value;
+		}
+
+		public IntPtr_T(Int32 value) {
+			this.value = (IntPtr)value;
+		}
+
+		public readonly INumber Upcast(INumber number) {
+			return TypeTracking.ShouldUpcast(number, this) ? ValueConverter.CastToIntPtr_T(number) : number;
+		}
+
+		public readonly INumber Abs() {
+			if (value == IntPtr.MinValue) {
+				Registers.F.Overflow = true;
+				return new IntPtr_T(IntPtr.MaxValue);
+			}
+
+			return new IntPtr_T(Math.Abs(value));
+		}
+
+		public readonly INumber Add(INumber number) {
+			//For sizes larger than int, this block should be removed by the compiler
+			if (sizeof(IntPtr) < sizeof(int)) {
+				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
+				return upcast.Add(number);
+			}
+
+			if (TypeTracking.ShouldUpcast(this, number))
+				return number.Add(this);
+
+			IntPtr_T convert = ValueConverter.CastToIntPtr_T(number);
+
+			if ((value < 0 && convert.value < 0 && value + convert.value > 0) || (value > 0 && convert.value > 0 && value + convert.value < 0)) {
+				Registers.F.Overflow = true;
+				return new IntPtr_T(value < 0 ? IntPtr.MinValue : IntPtr.MaxValue);
+			}
+
+			return new IntPtr_T(unchecked(value + convert.value));
+		}
+
+		public readonly IInteger And(IInteger number) {
+			//For sizes larger than int, this block should be removed by the compiler
+			if (sizeof(IntPtr) < sizeof(int)) {
+				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
+				return ((IInteger)upcast!).And(number);
+			}
+
+			if (number is IFloat)
+				throw new Exception("Cannot perform bitwise-AND operations with non-integer values");
+
+			if (TypeTracking.ShouldUpcast(this, number))
+				return number.And(this);
+
+			IntPtr_T convert = ValueConverter.CastToIntPtr_T(number);
+			return new IntPtr_T(value & convert.value);
+		}
+
+		public readonly IInteger ArithmeticRotateLeft() {
+			bool carry = Registers.F.Carry;
+			Registers.F.Carry = unchecked(value & (IntPtr)((IntPtr)1 << (8 * sizeof(IntPtr) - 1))) != 0;
+			
+			var i = new IntPtr_T(value << 1);
+			if (carry)
+				i.value |= 1;
+
+			return i;
+		}
+
+		public readonly IInteger ArithmeticRotateRight() {
+			bool carry = Registers.F.Carry;
+			Registers.F.Carry = (value & 1) != 0;
+			
+			var i = new IntPtr_T(value >> 1);
+			if (carry)
+				i.value = (IntPtr)unchecked(i.value | ((IntPtr)1 << (8 * sizeof(IntPtr) - 1)));
+
+			return i;
+		}
+
+		public readonly IInteger ArithmeticShiftLeft()
+			=> new IntPtr_T(value << 1);
+
+		public readonly IInteger ArithmeticShiftRight()
+			=> new IntPtr_T(value >> 1);
+
+		public readonly void Compare(INumber number) {
+			//For sizes larger than int, this block should be removed by the compiler
+			if (sizeof(IntPtr) < sizeof(int)) {
+				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
+				upcast.Compare(number);
+				return;
+			}
+
+			if (TypeTracking.ShouldUpcast(this, number)) {
+				number.Upcast(this).Compare(number);
+				return;
+			}
+
+			INumber sub = this.Subtract(number);
+
+			Registers.F.Negative = sub.IsNegative;
+			Registers.F.Zero = sub.IsZero;
+		}
+
+		public readonly INumber Decrement()
+			=> new IntPtr_T(unchecked(value - 1));
+
+		public readonly INumber Divide(INumber number) {
+			//For sizes larger than int, this block should be removed by the compiler
+			if (sizeof(IntPtr) < sizeof(int)) {
+				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
+				return upcast.Divide(number);
+			}
+
+			if (TypeTracking.ShouldUpcast(this, number))
+				return number.Upcast(this).Divide(number);
+
+			IntPtr_T convert = ValueConverter.CastToIntPtr_T(number);
+			return new IntPtr_T(value / convert.value);
+		}
+
+		public readonly INumber Increment()
+			=> new IntPtr_T(unchecked(value + 1));
+
+		public readonly INumber Modulus(INumber number) {
+			//For sizes larger than int, this block should be removed by the compiler
+			if (sizeof(IntPtr) < sizeof(int)) {
+				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
+				return upcast.Modulus(number);
+			}
+
+			if (TypeTracking.ShouldUpcast(this, number))
+				return number.Upcast(this).Modulus(number);
+
+			IntPtr_T convert = ValueConverter.CastToIntPtr_T(number);
+			return new IntPtr_T(value % convert.value);
+		}
+
+		public readonly INumber Multiply(INumber number) {
+			//For sizes larger than int, this block should be removed by the compiler
+			if (sizeof(IntPtr) < sizeof(int)) {
+				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
+				return upcast.Multiply(number);
+			}
+
+			if (TypeTracking.ShouldUpcast(this, number))
+				return number.Multiply(this);
+
+			IntPtr_T convert = ValueConverter.CastToIntPtr_T(number);
+			return new IntPtr_T(unchecked(value * convert.value));
+		}
+
+		public readonly INumber Negate() {
+			//For sizes larger than int, this block should be removed by the compiler
+			if (sizeof(IntPtr) < sizeof(int)) {
+				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
+				return upcast.Negate();
+			}
+
+			return new IntPtr_T(-value);
+		}
+
+		public readonly IInteger Not() {
+			//For sizes larger than int, this block should be removed by the compiler
+			if (sizeof(IntPtr) < sizeof(int)) {
+				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
+				return ((IInteger)upcast!).Not();
+			}
+
+			return new IntPtr_T(~value);
+		}
+
+		public readonly IInteger Or(IInteger number) {
+			//For sizes larger than int, this block should be removed by the compiler
+			if (sizeof(IntPtr) < sizeof(int)) {
+				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
+				return ((IInteger)upcast!).Or(number);
+			}
+
+			if (number is IFloat)
+				throw new Exception("Cannot perform bitwise-OR operations with non-integer values");
+
+			if (TypeTracking.ShouldUpcast(this, number))
+				return number.Or(this);
+
+			IntPtr_T convert = ValueConverter.CastToIntPtr_T(number);
+			return new IntPtr_T(value | convert.value);
+		}
+
+		public readonly INumber Subtract(INumber number) {
+			//For sizes larger than int, this block should be removed by the compiler
+			if (sizeof(IntPtr) < sizeof(int)) {
+				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
+				return upcast.Subtract(number);
+			}
+
+			if (TypeTracking.ShouldUpcast(this, number))
+				return number.Upcast(this).Subtract(number);
+
+			IntPtr_T convert = ValueConverter.CastToIntPtr_T(number);
+			return new IntPtr_T(unchecked(value - convert.value));
+		}
+
+		public readonly IInteger Xor(IInteger number) {
+			//For sizes larger than int, this block should be removed by the compiler
+			if (sizeof(IntPtr) < sizeof(int)) {
+				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
+				return ((IInteger)upcast!).Xor(number);
+			}
+
+			if (number is IFloat)
+				throw new Exception("Cannot perform bitwise-XOR operations with non-integer values");
+
+			if (TypeTracking.ShouldUpcast(this, number))
+				return number.Xor(this);
+
+			IntPtr_T convert = ValueConverter.CastToIntPtr_T(number);
+			return new IntPtr_T(value ^ convert.value);
+		}
+	}
+
+	[TextTemplateGenerated]
+	public unsafe struct UIntPtr_T : IInteger, INumberConstants<UIntPtr_T> {
+		private UIntPtr value;
+
+		public readonly object Value => value;
+
+		public readonly UIntPtr ActualValue => value;
+
+		public readonly bool IsZero => value == 0;
+
+		public readonly bool IsNegative => false;
+
+		public readonly int NumericSize => sizeof(UIntPtr);
+
+		public static UIntPtr_T Zero => new UIntPtr_T((UIntPtr)0);
+
+		public static UIntPtr_T One => new UIntPtr_T((UIntPtr)1);
+
+		public UIntPtr_T(UIntPtr value) {
+			this.value = value;
+		}
+
+		public UIntPtr_T(Int32 value) {
+			this.value = (UIntPtr)value;
+		}
+
+		public readonly INumber Upcast(INumber number) {
+			return TypeTracking.ShouldUpcast(number, this) ? ValueConverter.CastToUIntPtr_T(number) : number;
+		}
+
+		public readonly INumber Abs()
+			=> new UIntPtr_T(value);
+
+		public readonly INumber Add(INumber number) {
+			//For sizes larger than int, this block should be removed by the compiler
+			if (sizeof(UIntPtr) < sizeof(int)) {
+				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
+				return upcast.Add(number);
+			}
+
+			if (TypeTracking.ShouldUpcast(this, number))
+				return number.Add(this);
+
+			UIntPtr_T convert = ValueConverter.CastToUIntPtr_T(number);
+
+			if (value + convert.value < value) {
+				Registers.F.Overflow = true;
+				return new UIntPtr_T(UIntPtr.MaxValue);
+			}
+
+			return new UIntPtr_T(unchecked(value + convert.value));
+		}
+
+		public readonly IInteger And(IInteger number) {
+			//For sizes larger than int, this block should be removed by the compiler
+			if (sizeof(UIntPtr) < sizeof(int)) {
+				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
+				return ((IInteger)upcast!).And(number);
+			}
+
+			if (number is IFloat)
+				throw new Exception("Cannot perform bitwise-AND operations with non-integer values");
+
+			if (TypeTracking.ShouldUpcast(this, number))
+				return number.And(this);
+
+			UIntPtr_T convert = ValueConverter.CastToUIntPtr_T(number);
+			return new UIntPtr_T(value & convert.value);
+		}
+
+		public readonly IInteger ArithmeticRotateLeft() {
+			bool carry = Registers.F.Carry;
+			Registers.F.Carry = unchecked(value & (UIntPtr)((UIntPtr)1 << (8 * sizeof(UIntPtr) - 1))) != 0;
+			
+			var i = new UIntPtr_T(value << 1);
+			if (carry)
+				i.value |= 1;
+
+			return i;
+		}
+
+		public readonly IInteger ArithmeticRotateRight() {
+			bool carry = Registers.F.Carry;
+			Registers.F.Carry = (value & 1) != 0;
+			
+			var i = new UIntPtr_T(value >> 1);
+			if (carry)
+				i.value = (UIntPtr)unchecked(i.value | ((UIntPtr)1 << (8 * sizeof(UIntPtr) - 1)));
+
+			return i;
+		}
+
+		public readonly IInteger ArithmeticShiftLeft()
+			=> new UIntPtr_T(value << 1);
+
+		public readonly IInteger ArithmeticShiftRight()
+			=> new UIntPtr_T(value >> 1);
+
+		public readonly void Compare(INumber number) {
+			//For sizes larger than int, this block should be removed by the compiler
+			if (sizeof(UIntPtr) < sizeof(int)) {
+				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
+				upcast.Compare(number);
+				return;
+			}
+
+			if (TypeTracking.ShouldUpcast(this, number)) {
+				number.Upcast(this).Compare(number);
+				return;
+			}
+
+			INumber sub = this.Subtract(number);
+
+			Registers.F.Negative = sub.Divide(this).IsZero;  // If (this - number) is less than this, then (sub / this) will be 0 due to integer division
+			Registers.F.Zero = sub.IsZero;
+		}
+
+		public readonly INumber Decrement()
+			=> new UIntPtr_T(unchecked(value - 1));
+
+		public readonly INumber Divide(INumber number) {
+			//For sizes larger than int, this block should be removed by the compiler
+			if (sizeof(UIntPtr) < sizeof(int)) {
+				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
+				return upcast.Divide(number);
+			}
+
+			if (TypeTracking.ShouldUpcast(this, number))
+				return number.Upcast(this).Divide(number);
+
+			UIntPtr_T convert = ValueConverter.CastToUIntPtr_T(number);
+			return new UIntPtr_T(value / convert.value);
+		}
+
+		public readonly INumber Increment()
+			=> new UIntPtr_T(unchecked(value + 1));
+
+		public readonly INumber Modulus(INumber number) {
+			//For sizes larger than int, this block should be removed by the compiler
+			if (sizeof(UIntPtr) < sizeof(int)) {
+				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
+				return upcast.Modulus(number);
+			}
+
+			if (TypeTracking.ShouldUpcast(this, number))
+				return number.Upcast(this).Modulus(number);
+
+			UIntPtr_T convert = ValueConverter.CastToUIntPtr_T(number);
+			return new UIntPtr_T(value % convert.value);
+		}
+
+		public readonly INumber Multiply(INumber number) {
+			//For sizes larger than int, this block should be removed by the compiler
+			if (sizeof(UIntPtr) < sizeof(int)) {
+				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
+				return upcast.Multiply(number);
+			}
+
+			if (TypeTracking.ShouldUpcast(this, number))
+				return number.Multiply(this);
+
+			UIntPtr_T convert = ValueConverter.CastToUIntPtr_T(number);
+			return new UIntPtr_T(unchecked(value * convert.value));
+		}
+
+		public readonly INumber Negate() {
+			throw new InvalidOperationException("Negation cannot be performed on unsigned integers");
+		}
+
+		public readonly IInteger Not() {
+			//For sizes larger than int, this block should be removed by the compiler
+			if (sizeof(UIntPtr) < sizeof(int)) {
+				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
+				return ((IInteger)upcast!).Not();
+			}
+
+			return new UIntPtr_T(~value);
+		}
+
+		public readonly IInteger Or(IInteger number) {
+			//For sizes larger than int, this block should be removed by the compiler
+			if (sizeof(UIntPtr) < sizeof(int)) {
+				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
+				return ((IInteger)upcast!).Or(number);
+			}
+
+			if (number is IFloat)
+				throw new Exception("Cannot perform bitwise-OR operations with non-integer values");
+
+			if (TypeTracking.ShouldUpcast(this, number))
+				return number.Or(this);
+
+			UIntPtr_T convert = ValueConverter.CastToUIntPtr_T(number);
+			return new UIntPtr_T(value | convert.value);
+		}
+
+		public readonly INumber Subtract(INumber number) {
+			//For sizes larger than int, this block should be removed by the compiler
+			if (sizeof(UIntPtr) < sizeof(int)) {
+				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
+				return upcast.Subtract(number);
+			}
+
+			if (TypeTracking.ShouldUpcast(this, number))
+				return number.Upcast(this).Subtract(number);
+
+			UIntPtr_T convert = ValueConverter.CastToUIntPtr_T(number);
+			return new UIntPtr_T(unchecked(value - convert.value));
+		}
+
+		public readonly IInteger Xor(IInteger number) {
+			//For sizes larger than int, this block should be removed by the compiler
+			if (sizeof(UIntPtr) < sizeof(int)) {
+				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
+				return ((IInteger)upcast!).Xor(number);
+			}
+
+			if (number is IFloat)
+				throw new Exception("Cannot perform bitwise-XOR operations with non-integer values");
+
+			if (TypeTracking.ShouldUpcast(this, number))
+				return number.Xor(this);
+
+			UIntPtr_T convert = ValueConverter.CastToUIntPtr_T(number);
+			return new UIntPtr_T(value ^ convert.value);
+		}
+	}
+
+	[TextTemplateGenerated]
+	public struct Single_T : IFloat, IFloatConstants<Single_T> {
 		private Single value;
 
-		public object Value => value;
+		public readonly object Value => value;
 
-		public Single ActualValue => value;
+		public readonly Single ActualValue => value;
 
-		public bool IsZero => value == 0;
+		public readonly bool IsZero => value == 0;
 
-		public bool IsNegative => value < 0;
+		public readonly bool IsNegative => value < 0;
 
-		public bool IsNaN => Single.IsNaN(value);
+		public readonly int NumericSize => sizeof(Single);
 
-		public bool IsInfinity => Single.IsInfinity(value);
+		public static Single_T Zero => new Single_T((Single)0);
+
+		public static Single_T One => new Single_T((Single)1);
+
+		public static Single_T E => new Single_T(MathF.E);
+
+		public readonly bool IsNaN => Single.IsNaN(value);
+
+		public readonly bool IsInfinity => Single.IsInfinity(value);
 
 		public Single_T(Single value) {
 			this.value = value;
 		}
 
-		public INumber Abs()
-			=> new Single_T((Single)Math.Abs(value));
+		public readonly INumber Upcast(INumber number) {
+			return TypeTracking.ShouldUpcast(number, this) ? ValueConverter.CastToSingle_T(number) : number;
+		}
 
-		public IFloat Acos()
-			=> new Single_T((Single)Math.Acos(value));
+		public readonly INumber Abs()
+			=> new Single_T(MathF.Abs(value));
 
-		public IFloat Acosh()
-			=> new Single_T((Single)Math.Acosh(value));
+		public readonly IFloat Acos()
+			=> new Single_T(MathF.Acos(value));
 
-		public INumber Add(INumber number) {
-			int targetSize = TypeTracking.GetSizeFromNumericType(number.Value.GetType());
+		public readonly IFloat Acosh()
+			=> new Single_T(MathF.Acosh(value));
 
-			if (number is IInteger || targetSize < sizeof(Single))
-				number = ValueConverter.CastToSingle_T(number);
-			else if (targetSize > sizeof(Single))
+		public readonly INumber Add(INumber number) {
+			if (TypeTracking.ShouldUpcast(this, number))
 				return number.Add(this);
 
 			Single_T convert = ValueConverter.CastToSingle_T(number);
 			return new Single_T(value + convert.value);
 		}
 
-		public IFloat Asin()
-			=> new Single_T((Single)Math.Asin(value));
+		public readonly IFloat Asin()
+			=> new Single_T(MathF.Asin(value));
 
-		public IFloat Asinh()
-			=> new Single_T((Single)Math.Asinh(value));
+		public readonly IFloat Asinh()
+			=> new Single_T(MathF.Asinh(value));
 
-		public IFloat Atan()
-			=> new Single_T((Single)Math.Atan(value));
+		public readonly IFloat Atan()
+			=> new Single_T(MathF.Atan(value));
 
-		public IFloat Atan2(IFloat divisor, bool inverseLogic = false) {
-			if (divisor is not INumber number)
-				throw new InvalidOperationException("Number was not a floating-point value");
+		public readonly IFloat Atan2(IFloat divisor) {
+			if (TypeTracking.ShouldUpcast(this, divisor))
+				return ((IFloat)divisor.Upcast(this)).Atan2(divisor);
 
-			int targetSize = TypeTracking.GetSizeFromNumericType(number.Value.GetType());
-
-			if (targetSize < sizeof(Single))
-				number = ValueConverter.CastToSingle_T(number);
-			else if (targetSize > sizeof(Single))
-				return divisor.Atan2(this, true);
-
-			Single_T convert = ValueConverter.CastToSingle_T(number);
-			return new Single_T((Single)Math.Atan2(!inverseLogic ? value : convert.value, !inverseLogic ? convert.value : value));
+			Single_T convert = ValueConverter.CastToSingle_T(divisor);
+			return new Single_T(MathF.Atan2(value, convert.value));
 		}
 
-		public IFloat Atanh()
-			=> new Single_T((Single)Math.Asinh(value));
+		public readonly IFloat Atanh()
+			=> new Single_T(MathF.Asinh(value));
 
-		public INumber Ceiling()
-			=> new Single_T((Single)Math.Ceiling(value));
+		public readonly INumber Ceiling()
+			=> new Single_T(MathF.Ceiling(value));
 
-		public IFloat Cos()
-			=> new Single_T((Single)Math.Cos(value));
+		public readonly void Compare(INumber number) {
+			if (TypeTracking.ShouldUpcast(this, number)) {
+				number.Upcast(this).Compare(number);
+				return;
+			}
 
-		public IFloat Cosh()
-			=> new Single_T((Single)Math.Cosh(value));
+			INumber sub = this.Subtract(number);
+
+			Registers.F.Negative = sub.IsNegative;
+			Registers.F.Zero = sub.IsZero;
+		}
+
+		public readonly IFloat Cos()
+			=> new Single_T(MathF.Cos(value));
+
+		public readonly IFloat Cosh()
+			=> new Single_T(MathF.Cosh(value));
 		
-		public INumber Decrement()
+		public readonly INumber Decrement()
 			=> new Single_T(value + 1);
 
-		public INumber Divide(INumber number, bool inverseLogic = false) {
-			int targetSize = TypeTracking.GetSizeFromNumericType(number.Value.GetType());
-
-			if (number is IInteger || targetSize < sizeof(Single))
-				number = ValueConverter.CastToSingle_T(number);
-			else if (targetSize > sizeof(Single))
-				return number.Divide(this, true);
+		public readonly INumber Divide(INumber number) {
+			if (TypeTracking.ShouldUpcast(this, number))
+				return number.Upcast(this).Divide(number);
 
 			Single_T convert = ValueConverter.CastToSingle_T(number);
-			return new Single_T(!inverseLogic ? value / convert.value : convert.value / value);
+			return new Single_T(value / convert.value);
 		}
 
-		public IFloat Exp()
-			=> new Single_T((Single)Math.Exp(value));
+		public readonly IFloat Exp()
+			=> new Single_T(MathF.Exp(value));
 
-		public INumber Floor()
-			=> new Single_T((Single)Math.Floor(value));
+		public readonly INumber Floor()
+			=> new Single_T(MathF.Floor(value));
 
-		public IInteger GetBits()
-			=> (ValueConverter.RetrieveFloatingPointBits(this) as IInteger)!;
+		public readonly IInteger GetBits()
+			=> ValueConverter.RetrieveFloatingPointBits(this);
 
-		public INumber Increment()
+		public readonly INumber Increment()
 			=> new Single_T(value + 1);
 
-		public IFloat Inverse()
-			=> (new Single_T(1f).Divide(this) as IFloat)!;
+		public readonly IFloat Inverse()
+			=> (IFloat)One.Divide(this);
 
-		public IFloat Ln()
-			=> new Single_T((Single)Math.Log(value));
+		public readonly IFloat Ln()
+			=> new Single_T(MathF.Log(value));
 
-		public IFloat Log10()
-			=> new Single_T((Single)Math.Log10(value));
+		public readonly IFloat Log10()
+			=> new Single_T(MathF.Log10(value));
 
-		public IFloat Log2()
-			=> new Single_T((Single)Math.Log2(value));
+		public readonly IFloat Log2()
+			=> new Single_T(MathF.Log2(value));
 
-		public INumber Multiply(INumber number) {
-			int targetSize = TypeTracking.GetSizeFromNumericType(number.Value.GetType());
+		public readonly INumber Modulus(INumber number) {
+			if (TypeTracking.ShouldUpcast(this, number))
+				return number.Upcast(this).Modulus(number);
 
-			if (number is IInteger || targetSize < sizeof(Single))
-				number = ValueConverter.CastToSingle_T(number);
-			else if (targetSize > sizeof(Single))
+			Single_T convert = ValueConverter.CastToSingle_T(number);
+			return new Single_T(value % convert.value);
+		}
+
+		public readonly INumber Multiply(INumber number) {
+			if (TypeTracking.ShouldUpcast(this, number))
 				return number.Multiply(this);
 
 			Single_T convert = ValueConverter.CastToSingle_T(number);
 			return new Single_T(value * convert.value);
 		}
 
-		public INumber Negate()
+		public readonly INumber Negate()
 			=> new Single_T(-value);
 
-		public IFloat Pow(IFloat exponent) {
-			if (exponent is not INumber number)
-				throw new InvalidOperationException("Number was not a floating-point value");
-			
-			int targetSize = TypeTracking.GetSizeFromNumericType(number.Value.GetType());
+		public readonly IFloat Pow(IFloat exponent) {
+			if (TypeTracking.ShouldUpcast(this, exponent))
+				return ((IFloat)exponent.Upcast(this)).Pow(exponent);
 
-			if (number is IInteger || targetSize < sizeof(Single))
-				number = ValueConverter.CastToSingle_T(number);
-			else if (targetSize > sizeof(Single))
-				return ValueConverter.Constants.GetConst_E(number.Value.GetType()).Pow((number.Multiply((Ln() as INumber)!) as IFloat)!); //x^y = e^(y * ln(x))
-
-			Single_T convert = ValueConverter.CastToSingle_T(number);
-			return new Single_T(value * convert.value);
+			Single_T convert = ValueConverter.CastToSingle_T(exponent);
+			return new Single_T(MathF.Pow(value, convert.value));
 		}
 
-		public INumber Remainder(INumber number) {
-			int targetSize = TypeTracking.GetSizeFromNumericType(number.Value.GetType());
-
-			if (number is IInteger || targetSize < sizeof(Single))
-				number = ValueConverter.CastToSingle_T(number);
-			else if (targetSize > sizeof(Single))
-				return number.Remainder(this);
-
-			Single_T convert = ValueConverter.CastToSingle_T(number);
-			return new Single_T(value % convert.value);
-		}
-
-		public IFloat Root(IFloat root)
+		public readonly IFloat Root(IFloat root)
 			=> Pow(root.Inverse());
 
-		public IFloat Sin()
-			=> new Single_T((Single)Math.Sin(value));
+		public readonly IFloat Sin()
+			=> new Single_T(MathF.Sin(value));
 
-		public IFloat Sinh()
-			=> new Single_T((Single)Math.Sinh(value));
+		public readonly IFloat Sinh()
+			=> new Single_T(MathF.Sinh(value));
 
-		public IFloat Sqrt()
-			=> new Single_T((Single)Math.Sqrt(value));
+		public readonly IFloat Sqrt()
+			=> new Single_T(MathF.Sqrt(value));
 
-		public INumber Subtract(INumber number) {
-			int targetSize = TypeTracking.GetSizeFromNumericType(number.Value.GetType());
-
-			if (number is IInteger || targetSize < sizeof(Single))
-				number = ValueConverter.CastToSingle_T(number);
-			else if (targetSize > sizeof(Single))
-				return number.Negate().Subtract(this.Negate());
+		public readonly INumber Subtract(INumber number) {
+			if (TypeTracking.ShouldUpcast(this, number))
+				return number.Upcast(this).Subtract(number);
 
 			Single_T convert = ValueConverter.CastToSingle_T(number);
 			return new Single_T(value - convert.value);
 		}
 
-		public IFloat Tan()
-			=> new Single_T((Single)Math.Tan(value));
+		public readonly IFloat Tan()
+			=> new Single_T(MathF.Tan(value));
 
-		public IFloat Tanh()
-			=> new Single_T((Single)Math.Tanh(value));
+		public readonly IFloat Tanh()
+			=> new Single_T(MathF.Tanh(value));
 	}
 	
 	[TextTemplateGenerated]
-	public struct Double_T : IFloat {
+	public struct Double_T : IFloat, IFloatConstants<Double_T> {
 		private Double value;
 
-		public object Value => value;
+		public readonly object Value => value;
 
-		public Double ActualValue => value;
+		public readonly Double ActualValue => value;
 
-		public bool IsZero => value == 0;
+		public readonly bool IsZero => value == 0;
 
-		public bool IsNegative => value < 0;
+		public readonly bool IsNegative => value < 0;
 
-		public bool IsNaN => Double.IsNaN(value);
+		public readonly int NumericSize => sizeof(Double);
 
-		public bool IsInfinity => Double.IsInfinity(value);
+		public static Double_T Zero => new Double_T((Double)0);
+
+		public static Double_T One => new Double_T((Double)1);
+
+		public static Double_T E => new Double_T(Math.E);
+
+		public readonly bool IsNaN => Double.IsNaN(value);
+
+		public readonly bool IsInfinity => Double.IsInfinity(value);
 
 		public Double_T(Double value) {
 			this.value = value;
@@ -1994,190 +2552,180 @@ namespace Chips.Runtime.Types.NumberProcessing {
 			this.value = (Double)value;
 		}
 
-		public INumber Abs()
-			=> new Double_T((Double)Math.Abs(value));
+		public readonly INumber Upcast(INumber number) {
+			return TypeTracking.ShouldUpcast(number, this) ? ValueConverter.CastToDouble_T(number) : number;
+		}
 
-		public IFloat Acos()
-			=> new Double_T((Double)Math.Acos(value));
+		public readonly INumber Abs()
+			=> new Double_T(Math.Abs(value));
 
-		public IFloat Acosh()
-			=> new Double_T((Double)Math.Acosh(value));
+		public readonly IFloat Acos()
+			=> new Double_T(Math.Acos(value));
 
-		public INumber Add(INumber number) {
-			int targetSize = TypeTracking.GetSizeFromNumericType(number.Value.GetType());
+		public readonly IFloat Acosh()
+			=> new Double_T(Math.Acosh(value));
 
-			if (number is IInteger || targetSize < sizeof(Double))
-				number = ValueConverter.CastToDouble_T(number);
-			else if (targetSize > sizeof(Double))
+		public readonly INumber Add(INumber number) {
+			if (TypeTracking.ShouldUpcast(this, number))
 				return number.Add(this);
 
 			Double_T convert = ValueConverter.CastToDouble_T(number);
 			return new Double_T(value + convert.value);
 		}
 
-		public IFloat Asin()
-			=> new Double_T((Double)Math.Asin(value));
+		public readonly IFloat Asin()
+			=> new Double_T(Math.Asin(value));
 
-		public IFloat Asinh()
-			=> new Double_T((Double)Math.Asinh(value));
+		public readonly IFloat Asinh()
+			=> new Double_T(Math.Asinh(value));
 
-		public IFloat Atan()
-			=> new Double_T((Double)Math.Atan(value));
+		public readonly IFloat Atan()
+			=> new Double_T(Math.Atan(value));
 
-		public IFloat Atan2(IFloat divisor, bool inverseLogic = false) {
-			if (divisor is not INumber number)
-				throw new InvalidOperationException("Number was not a floating-point value");
+		public readonly IFloat Atan2(IFloat divisor) {
+			if (TypeTracking.ShouldUpcast(this, divisor))
+				return ((IFloat)divisor.Upcast(this)).Atan2(divisor);
 
-			int targetSize = TypeTracking.GetSizeFromNumericType(number.Value.GetType());
-
-			if (targetSize < sizeof(Double))
-				number = ValueConverter.CastToDouble_T(number);
-			else if (targetSize > sizeof(Double))
-				return divisor.Atan2(this, true);
-
-			Double_T convert = ValueConverter.CastToDouble_T(number);
-			return new Double_T((Double)Math.Atan2(!inverseLogic ? value : convert.value, !inverseLogic ? convert.value : value));
+			Double_T convert = ValueConverter.CastToDouble_T(divisor);
+			return new Double_T(Math .Atan2(value, convert.value));
 		}
 
-		public IFloat Atanh()
-			=> new Double_T((Double)Math.Asinh(value));
+		public readonly IFloat Atanh()
+			=> new Double_T(Math.Asinh(value));
 
-		public INumber Ceiling()
-			=> new Double_T((Double)Math.Ceiling(value));
+		public readonly INumber Ceiling()
+			=> new Double_T(Math.Ceiling(value));
 
-		public IFloat Cos()
-			=> new Double_T((Double)Math.Cos(value));
+		public readonly void Compare(INumber number) {
+			if (TypeTracking.ShouldUpcast(this, number)) {
+				number.Upcast(this).Compare(number);
+				return;
+			}
 
-		public IFloat Cosh()
-			=> new Double_T((Double)Math.Cosh(value));
+			INumber sub = this.Subtract(number);
+
+			Registers.F.Negative = sub.IsNegative;
+			Registers.F.Zero = sub.IsZero;
+		}
+
+		public readonly IFloat Cos()
+			=> new Double_T(Math.Cos(value));
+
+		public readonly IFloat Cosh()
+			=> new Double_T(Math.Cosh(value));
 		
-		public INumber Decrement()
+		public readonly INumber Decrement()
 			=> new Double_T(value + 1);
 
-		public INumber Divide(INumber number, bool inverseLogic = false) {
-			int targetSize = TypeTracking.GetSizeFromNumericType(number.Value.GetType());
-
-			if (number is IInteger || targetSize < sizeof(Double))
-				number = ValueConverter.CastToDouble_T(number);
-			else if (targetSize > sizeof(Double))
-				return number.Divide(this, true);
+		public readonly INumber Divide(INumber number) {
+			if (TypeTracking.ShouldUpcast(this, number))
+				return number.Upcast(this).Divide(number);
 
 			Double_T convert = ValueConverter.CastToDouble_T(number);
-			return new Double_T(!inverseLogic ? value / convert.value : convert.value / value);
+			return new Double_T(value / convert.value);
 		}
 
-		public IFloat Exp()
-			=> new Double_T((Double)Math.Exp(value));
+		public readonly IFloat Exp()
+			=> new Double_T(Math.Exp(value));
 
-		public INumber Floor()
-			=> new Double_T((Double)Math.Floor(value));
+		public readonly INumber Floor()
+			=> new Double_T(Math.Floor(value));
 
-		public IInteger GetBits()
-			=> (ValueConverter.RetrieveFloatingPointBits(this) as IInteger)!;
+		public readonly IInteger GetBits()
+			=> ValueConverter.RetrieveFloatingPointBits(this);
 
-		public INumber Increment()
+		public readonly INumber Increment()
 			=> new Double_T(value + 1);
 
-		public IFloat Inverse()
-			=> (new Double_T(1f).Divide(this) as IFloat)!;
+		public readonly IFloat Inverse()
+			=> (IFloat)One.Divide(this);
 
-		public IFloat Ln()
-			=> new Double_T((Double)Math.Log(value));
+		public readonly IFloat Ln()
+			=> new Double_T(Math.Log(value));
 
-		public IFloat Log10()
-			=> new Double_T((Double)Math.Log10(value));
+		public readonly IFloat Log10()
+			=> new Double_T(Math.Log10(value));
 
-		public IFloat Log2()
-			=> new Double_T((Double)Math.Log2(value));
+		public readonly IFloat Log2()
+			=> new Double_T(Math.Log2(value));
 
-		public INumber Multiply(INumber number) {
-			int targetSize = TypeTracking.GetSizeFromNumericType(number.Value.GetType());
+		public readonly INumber Modulus(INumber number) {
+			if (TypeTracking.ShouldUpcast(this, number))
+				return number.Upcast(this).Modulus(number);
 
-			if (number is IInteger || targetSize < sizeof(Double))
-				number = ValueConverter.CastToDouble_T(number);
-			else if (targetSize > sizeof(Double))
+			Double_T convert = ValueConverter.CastToDouble_T(number);
+			return new Double_T(value % convert.value);
+		}
+
+		public readonly INumber Multiply(INumber number) {
+			if (TypeTracking.ShouldUpcast(this, number))
 				return number.Multiply(this);
 
 			Double_T convert = ValueConverter.CastToDouble_T(number);
 			return new Double_T(value * convert.value);
 		}
 
-		public INumber Negate()
+		public readonly INumber Negate()
 			=> new Double_T(-value);
 
-		public IFloat Pow(IFloat exponent) {
-			if (exponent is not INumber number)
-				throw new InvalidOperationException("Number was not a floating-point value");
-			
-			int targetSize = TypeTracking.GetSizeFromNumericType(number.Value.GetType());
+		public readonly IFloat Pow(IFloat exponent) {
+			if (TypeTracking.ShouldUpcast(this, exponent))
+				return ((IFloat)exponent.Upcast(this)).Pow(exponent);
 
-			if (number is IInteger || targetSize < sizeof(Double))
-				number = ValueConverter.CastToDouble_T(number);
-			else if (targetSize > sizeof(Double))
-				return ValueConverter.Constants.GetConst_E(number.Value.GetType()).Pow((number.Multiply((Ln() as INumber)!) as IFloat)!); //x^y = e^(y * ln(x))
-
-			Double_T convert = ValueConverter.CastToDouble_T(number);
-			return new Double_T(value * convert.value);
+			Double_T convert = ValueConverter.CastToDouble_T(exponent);
+			return new Double_T(Math.Pow(value, convert.value));
 		}
 
-		public INumber Remainder(INumber number) {
-			int targetSize = TypeTracking.GetSizeFromNumericType(number.Value.GetType());
-
-			if (number is IInteger || targetSize < sizeof(Double))
-				number = ValueConverter.CastToDouble_T(number);
-			else if (targetSize > sizeof(Double))
-				return number.Remainder(this);
-
-			Double_T convert = ValueConverter.CastToDouble_T(number);
-			return new Double_T(value % convert.value);
-		}
-
-		public IFloat Root(IFloat root)
+		public readonly IFloat Root(IFloat root)
 			=> Pow(root.Inverse());
 
-		public IFloat Sin()
-			=> new Double_T((Double)Math.Sin(value));
+		public readonly IFloat Sin()
+			=> new Double_T(Math.Sin(value));
 
-		public IFloat Sinh()
-			=> new Double_T((Double)Math.Sinh(value));
+		public readonly IFloat Sinh()
+			=> new Double_T(Math.Sinh(value));
 
-		public IFloat Sqrt()
-			=> new Double_T((Double)Math.Sqrt(value));
+		public readonly IFloat Sqrt()
+			=> new Double_T(Math.Sqrt(value));
 
-		public INumber Subtract(INumber number) {
-			int targetSize = TypeTracking.GetSizeFromNumericType(number.Value.GetType());
-
-			if (number is IInteger || targetSize < sizeof(Double))
-				number = ValueConverter.CastToDouble_T(number);
-			else if (targetSize > sizeof(Double))
-				return number.Negate().Subtract(this.Negate());
+		public readonly INumber Subtract(INumber number) {
+			if (TypeTracking.ShouldUpcast(this, number))
+				return number.Upcast(this).Subtract(number);
 
 			Double_T convert = ValueConverter.CastToDouble_T(number);
 			return new Double_T(value - convert.value);
 		}
 
-		public IFloat Tan()
-			=> new Double_T((Double)Math.Tan(value));
+		public readonly IFloat Tan()
+			=> new Double_T(Math.Tan(value));
 
-		public IFloat Tanh()
-			=> new Double_T((Double)Math.Tanh(value));
+		public readonly IFloat Tanh()
+			=> new Double_T(Math.Tanh(value));
 	}
 	
 	[TextTemplateGenerated]
-	public struct Decimal_T : IFloat {
+	public struct Decimal_T : IFloat, IFloatConstants<Decimal_T> {
 		private Decimal value;
 
-		public object Value => value;
+		public readonly object Value => value;
 
-		public Decimal ActualValue => value;
+		public readonly Decimal ActualValue => value;
 
-		public bool IsZero => value == 0;
+		public readonly bool IsZero => value == 0;
 
-		public bool IsNegative => value < 0;
+		public readonly bool IsNegative => value < 0;
 
-		public bool IsNaN => false;
+		public readonly int NumericSize => sizeof(Decimal);
 
-		public bool IsInfinity => false;
+		public static Decimal_T Zero => new Decimal_T((Decimal)0);
+
+		public static Decimal_T One => new Decimal_T((Decimal)1);
+
+		public static Decimal_T E => new Decimal_T(DecimalMath.DecimalEx.E);
+
+		public readonly bool IsNaN => false;
+
+		public readonly bool IsInfinity => false;
 
 		public Decimal_T(Decimal value) {
 			this.value = value;
@@ -2187,173 +2735,155 @@ namespace Chips.Runtime.Types.NumberProcessing {
 			this.value = (Decimal)value;
 		}
 
-		public INumber Abs()
-			=> new Decimal_T((Decimal)Math.Abs(value));
+		public readonly INumber Upcast(INumber number) {
+			return TypeTracking.ShouldUpcast(number, this) ? ValueConverter.CastToDecimal_T(number) : number;
+		}
 
-		public IFloat Acos()
+		public readonly INumber Abs()
+			=> new Decimal_T(Math.Abs(value));
+
+		public readonly IFloat Acos()
 			=> new Decimal_T(DecimalMath.DecimalEx.ACos(value));
 
-		public IFloat Acosh()
-			=> throw new InvalidOperationException("Performing \"acosh\" on <f128> values is not supported");
+		public readonly IFloat Acosh()
+			=> throw new InvalidOperationException("Performing \"acosh\" on decimal values is not supported");
 
-		public INumber Add(INumber number) {
-			int targetSize = TypeTracking.GetSizeFromNumericType(number.Value.GetType());
-
-			if (number is IInteger || targetSize < sizeof(Decimal))
-				number = ValueConverter.CastToDecimal_T(number);
-			else if (targetSize > sizeof(Decimal))
+		public readonly INumber Add(INumber number) {
+			if (TypeTracking.ShouldUpcast(this, number))
 				return number.Add(this);
 
 			Decimal_T convert = ValueConverter.CastToDecimal_T(number);
 			return new Decimal_T(value + convert.value);
 		}
 
-		public IFloat Asin()
+		public readonly IFloat Asin()
 			=> new Decimal_T(DecimalMath.DecimalEx.ASin(value));
 
-		public IFloat Asinh()
-			=> throw new InvalidOperationException("Performing \"asinh\" on <f128> values is not supported");
+		public readonly IFloat Asinh()
+			=> throw new InvalidOperationException("Performing \"asinh\" on decimal values is not supported");
 
-		public IFloat Atan()
+		public readonly IFloat Atan()
 			=> new Decimal_T(DecimalMath.DecimalEx.ATan(value));
 
-		public IFloat Atan2(IFloat divisor, bool inverseLogic = false) {
-			if (divisor is not INumber number)
-				throw new InvalidOperationException("Number was not a floating-point value");
+		public readonly IFloat Atan2(IFloat divisor) {
+			if (TypeTracking.ShouldUpcast(this, divisor))
+				return ((IFloat)divisor.Upcast(this)).Atan2(divisor);
 
-			int targetSize = TypeTracking.GetSizeFromNumericType(number.Value.GetType());
-
-			if (targetSize < sizeof(Decimal))
-				number = ValueConverter.CastToDecimal_T(number);
-			else if (targetSize > sizeof(Decimal))
-				return divisor.Atan2(this, true);
-
-			Decimal_T convert = ValueConverter.CastToDecimal_T(number);
+			Decimal_T convert = ValueConverter.CastToDecimal_T(divisor);
 			return new Decimal_T(DecimalMath.DecimalEx.ATan2(value, convert.value));
 		}
 
-		public IFloat Atanh()
-			=> throw new InvalidOperationException("Performing \"atanh\" on <f128> values is not supported");
+		public readonly IFloat Atanh()
+			=> throw new InvalidOperationException("Performing \"atanh\" on decimal values is not supported");
 
-		public INumber Ceiling()
-			=> new Decimal_T((Decimal)Math.Ceiling(value));
+		public readonly INumber Ceiling()
+			=> new Decimal_T(Math.Ceiling(value));
 
-		public IFloat Cos()
-			=> new Decimal_T(DecimalMath.DecimalEx.Cos(value));
+		public readonly void Compare(INumber number) {
+			if (TypeTracking.ShouldUpcast(this, number)) {
+				number.Upcast(this).Compare(number);
+				return;
+			}
 
-		public IFloat Cosh()
-			=> throw new InvalidOperationException("Performing \"cosh\" on <f128> values is not supported");
-		
-		public INumber Decrement()
-			=> new Decimal_T(value + 1);
+			INumber sub = this.Subtract(number);
 
-		public INumber Divide(INumber number, bool inverseLogic = false) {
-			int targetSize = TypeTracking.GetSizeFromNumericType(number.Value.GetType());
-
-			if (number is IInteger || targetSize < sizeof(Decimal))
-				number = ValueConverter.CastToDecimal_T(number);
-			else if (targetSize > sizeof(Decimal))
-				return number.Divide(this, true);
-
-			Decimal_T convert = ValueConverter.CastToDecimal_T(number);
-			return new Decimal_T(!inverseLogic ? value / convert.value : convert.value / value);
+			Registers.F.Negative = sub.IsNegative;
+			Registers.F.Zero = sub.IsZero;
 		}
 
-		public IFloat Exp()
-			=> new Decimal_T(DecimalMath.DecimalEx.Exp(value));
+		public readonly IFloat Cos()
+			=> new Decimal_T(DecimalMath.DecimalEx.Cos(value));
 
-		public INumber Floor()
-			=> new Decimal_T((Decimal)Math.Floor(value));
-
-		public IInteger GetBits()
-			=> throw new InvalidOperationException("Retrieving the bits on an <f128> instance is not supported");
-
-		public INumber Increment()
+		public readonly IFloat Cosh()
+			=> throw new InvalidOperationException("Performing \"cosh\" on decimal values is not supported");
+		
+		public readonly INumber Decrement()
 			=> new Decimal_T(value + 1);
 
-		public IFloat Inverse()
-			=> (new Decimal_T(1f).Divide(this) as IFloat)!;
+		public readonly INumber Divide(INumber number) {
+			if (TypeTracking.ShouldUpcast(this, number))
+				return number.Upcast(this).Divide(number);
 
-		public IFloat Ln()
+			Decimal_T convert = ValueConverter.CastToDecimal_T(number);
+			return new Decimal_T(value / convert.value);
+		}
+
+		public readonly IFloat Exp()
+			=> new Decimal_T(DecimalMath.DecimalEx.Exp(value));
+
+		public readonly INumber Floor()
+			=> new Decimal_T(Math.Floor(value));
+
+		public readonly IInteger GetBits()
+			=> throw new InvalidOperationException("Retrieving the bits on an decimal instance is not supported");
+
+		public readonly INumber Increment()
+			=> new Decimal_T(value + 1);
+
+		public readonly IFloat Inverse()
+			=> (IFloat)One.Divide(this);
+
+		public readonly IFloat Ln()
 			=> new Decimal_T(DecimalMath.DecimalEx.Log(value));
 
-		public IFloat Log10()
+		public readonly IFloat Log10()
 			=> new Decimal_T(DecimalMath.DecimalEx.Log10(value));
 
-		public IFloat Log2()
+		public readonly IFloat Log2()
 			=> new Decimal_T(DecimalMath.DecimalEx.Log2(value));
 
-		public INumber Multiply(INumber number) {
-			int targetSize = TypeTracking.GetSizeFromNumericType(number.Value.GetType());
+		public readonly INumber Modulus(INumber number) {
+			if (TypeTracking.ShouldUpcast(this, number))
+				return number.Upcast(this).Modulus(number);
 
-			if (number is IInteger || targetSize < sizeof(Decimal))
-				number = ValueConverter.CastToDecimal_T(number);
-			else if (targetSize > sizeof(Decimal))
+			Decimal_T convert = ValueConverter.CastToDecimal_T(number);
+			return new Decimal_T(value % convert.value);
+		}
+
+		public readonly INumber Multiply(INumber number) {
+			if (TypeTracking.ShouldUpcast(this, number))
 				return number.Multiply(this);
 
 			Decimal_T convert = ValueConverter.CastToDecimal_T(number);
 			return new Decimal_T(value * convert.value);
 		}
 
-		public INumber Negate()
+		public readonly INumber Negate()
 			=> new Decimal_T(-value);
 
-		public IFloat Pow(IFloat exponent) {
-			if (exponent is not INumber number)
-				throw new InvalidOperationException("Number was not a floating-point value");
-			
-			int targetSize = TypeTracking.GetSizeFromNumericType(number.Value.GetType());
+		public readonly IFloat Pow(IFloat exponent) {
+			if (TypeTracking.ShouldUpcast(this, exponent))
+				return ((IFloat)exponent.Upcast(this)).Pow(exponent);
 
-			if (number is IInteger || targetSize < sizeof(Decimal))
-				number = ValueConverter.CastToDecimal_T(number);
-			else if (targetSize > sizeof(Decimal))
-				return ValueConverter.Constants.GetConst_E(number.Value.GetType()).Pow((number.Multiply((Ln() as INumber)!) as IFloat)!); //x^y = e^(y * ln(x))
-
-			Decimal_T convert = ValueConverter.CastToDecimal_T(number);
-			return new Decimal_T(value * convert.value);
+			Decimal_T convert = ValueConverter.CastToDecimal_T(exponent);
+			return new Decimal_T(DecimalMath.DecimalEx.Pow(value, convert.value));
 		}
 
-		public INumber Remainder(INumber number) {
-			int targetSize = TypeTracking.GetSizeFromNumericType(number.Value.GetType());
-
-			if (number is IInteger || targetSize < sizeof(Decimal))
-				number = ValueConverter.CastToDecimal_T(number);
-			else if (targetSize > sizeof(Decimal))
-				return number.Remainder(this);
-
-			Decimal_T convert = ValueConverter.CastToDecimal_T(number);
-			return new Decimal_T(value % convert.value);
-		}
-
-		public IFloat Root(IFloat root)
+		public readonly IFloat Root(IFloat root)
 			=> Pow(root.Inverse());
 
-		public IFloat Sin()
+		public readonly IFloat Sin()
 			=> new Decimal_T(DecimalMath.DecimalEx.Sin(value));
 
-		public IFloat Sinh()
-			=> throw new InvalidOperationException("Performing \"sinh\" on <f128> values is not supported");
+		public readonly IFloat Sinh()
+			=> throw new InvalidOperationException("Performing \"sinh\" on decimal values is not supported");
 
-		public IFloat Sqrt()
+		public readonly IFloat Sqrt()
 			=> new Decimal_T(DecimalMath.DecimalEx.Sqrt(value));
 
-		public INumber Subtract(INumber number) {
-			int targetSize = TypeTracking.GetSizeFromNumericType(number.Value.GetType());
-
-			if (number is IInteger || targetSize < sizeof(Decimal))
-				number = ValueConverter.CastToDecimal_T(number);
-			else if (targetSize > sizeof(Decimal))
-				return number.Negate().Subtract(this.Negate());
+		public readonly INumber Subtract(INumber number) {
+			if (TypeTracking.ShouldUpcast(this, number))
+				return number.Upcast(this).Subtract(number);
 
 			Decimal_T convert = ValueConverter.CastToDecimal_T(number);
 			return new Decimal_T(value - convert.value);
 		}
 
-		public IFloat Tan()
+		public readonly IFloat Tan()
 			=> new Decimal_T(DecimalMath.DecimalEx.Tan(value));
 
-		public IFloat Tanh()
-			=> throw new InvalidOperationException("Performing \"tanh\" on <f128> values is not supported");
+		public readonly IFloat Tanh()
+			=> throw new InvalidOperationException("Performing \"tanh\" on decimal values is not supported");
 	}
 	
 }

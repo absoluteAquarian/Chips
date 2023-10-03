@@ -76,9 +76,9 @@ _______|___x0___|___x1___|___x2___|___x3___|___x4___|___x5___|___x6___|___x7___|
 |  7x  |  add.f |  sub.f |  mul.f |  div.f |  mod.f |  rep.f |    asr |    asl |    ror |    rol | trim.e |        |    bvs |        |        |        |
 |  8x  |   traf |   trad |   trfi |   trfl |   trax |   tray |    asr |    asl |        |  ldz.m |        |        |    bvc |        |        |        |
 |  9x  |  nwarr |  nwobj |    len |  ldc.d |   trxa |   trya |        |        |        |        |        |        |    bss |        |        |        |
-|  Ax  |        |        | ldc.iu |  ldc.m |        |        |        |        |        |        |        |        |    bsc |        |        |        |
-|  Bx  |        |        |  ldc.l |        |        |        |        |        |        |        |        |        |    bis |        |        |        |
-|  Cx  |        |        | ldc.lu |        |        |        |        |        |        |        |        |        |    bic |        |        |        |
+|  Ax  |  add.d |  sub.d | ldc.iu |  ldc.m |        |        |        |        |        |        |        |        |    bsc |        |        |        |
+|  Bx  |  mul.d |  div.d |  ldc.l |        |        |        |        |        |        |        |        |        |    bis |        |        |        |
+|  Cx  |  mod.d |  rep.d | ldc.lu |        |        |        |        |        |        |        |        |        |    bic |        |        |        |
 |  Dx  |        |        |        |        |        |        |        |        |        |        |        |        |        |        |        |        |
 |  Ex  |        |        |        |        |        |        |        |        |        |        |        |        |        |        |        |        |
 |  Fx  |        |        |        |        |        |        |        |        |        |        |        |        |        |  <tb1> |   wait |   halt |
@@ -90,8 +90,8 @@ _______|___x0___|___x1___|___x2___|___x3___|___x4___|___x5___|___x6___|___x7___|
 |  0x  |  add.l |  sub.l |  mul.l |  div.l |  mod.l |  rep.l |  and.l |   or.l |  xor.l |        |        |        |        |        |        |        |
 |  1x  | add.iu | sub.iu | mul.iu | div.iu | mod.iu | rep.iu | and.iu |  or.iu | xor.iu |        |        |        |        |        |        |        |
 |  2x  | add.lu | sub.lu | mul.lu | div.lu | mod.lu | rep.lu | and.lu |  or.lu | xor.lu |        |        |        |        |        |        |        |
-|  3x  |  add.d |  sub.d |  mul.d |  div.d |  mod.d |  rep.d |        |        |        |        |        |        |        |        |        |        |
-|  4x  |  add.m |  sub.m |  mul.m |  div.m |  mod.m |  rep.m |        |        |        |        |        |        |        |        |        |        |
+|  3x  |  add.m |  sub.m |  mul.m |  div.m |  mod.m |  rep.m |        |        |        |        |        |        |        |        |        |        |
+|  4x  |        |        |        |        |        |        |        |        |        |        |        |        |        |        |        |        |
 |  5x  |        |        |        |        |        |        |        |        |        |        |        |        |        |        |        |        |
 |  6x  |        |        |        |        |        |        |        |        |        |        |        |        |        |        |        |        |
 |  7x  |        |        |        |        |        |        |        |        |        |        |        |        |        |        |        |        |
@@ -112,7 +112,7 @@ ADD [40]
 ADD [50]
 * Syntax: add <int>
 * Adds an integer to &A
-ADD.D [FD 30]
+ADD.D [A0]
 * Syntax: add.d <double>
 * Adds a double-precision floating-point number to &A
 ADD.F [60]
@@ -130,7 +130,7 @@ ADD.L [FD 00]
 ADD.LU [FD 20]
 * Syntax: add.lu <ulong>
 * Adds an unsigned long integer to &A
-ADD.M [FD 40]
+ADD.M [FD 30]
 * Syntax: add.m <decimal>
 * Adds a decimal number to &A
 AND [46]
@@ -165,15 +165,15 @@ ASR [86]
 BGE [1D]
 * Syntax: bge <label>
 * Jumps to a label if the Zero flag is set or the Negative flag is cleared
-BLE [2D]
-* Syntax: ble <label>
-* Jumps to a label if the Zero flag or Negative flag is set
 BIC [BC]
 * Syntax: bic <label>
 * Jumps to a label if the Invalid flag is cleared
 BIS [AC]
 * Syntax: bis <label>
 * Jumps to a label if the Invalid flag is set
+BLE [2D]
+* Syntax: ble <label>
+* Jumps to a label if the Zero flag or Negative flag is set
 BNC [6C]
 * Syntax: bnc <label>
 * Jumps to a label if the Negative flag is cleared
@@ -254,7 +254,7 @@ DIV [43]
 DIV [53]
 * Syntax: div <int>
 * Divides &A by an integer
-DIV.D [FD 33]
+DIV.D [B1]
 * Syntax: div.d <double>
 * Divides &A by a double-precision floating-point number
 DIV.F [63]
@@ -272,7 +272,7 @@ DIV.L [FD 03]
 DIV.LU [FD 23]
 * Syntax: div.lu <ulong>
 * Divides &A by an unsigned long integer
-DIV.M [FD 43]
+DIV.M [FD 33]
 * Syntax: div.m <decimal>
 * Divides &A by a decimal number
 DUP [13]
@@ -346,12 +346,12 @@ LDC.S [04]
 LDEL [0B]
 * Syntax: ldel &X
 * Pops an array, then pushes the element at the index in &X
-LDELA [1B]
-* Syntax: ldela &X
-* Pops an array, then loads the address of the element at the index in &X into &A
 LDEL [4B]
 * Syntax: ldel &Y
 * Pops an array, then pushes the element at the index in &Y
+LDELA [1B]
+* Syntax: ldela &X
+* Pops an array, then loads the address of the element at the index in &X into &A
 LDELA [5B]
 * Syntax: ldela &Y
 * Pops an array, then loads the address of the element at the index in &Y into &A
@@ -422,6 +422,9 @@ MOD [44]
 MOD [54]
 * Syntax: mod <int>
 * Sets &A to the modulus of &A and an integer
+MOD.D [C0]
+* Syntax: mod.d <double>
+* Sets &I to the modulus of &I and a double-precision floating-point number
 MOD.F [64]
 * Syntax: mod.f
 * Pops a floating-point number and sets &I to the modulus of &I and the value
@@ -437,13 +440,16 @@ MOD.L [FD 04]
 MOD.LU [FD 24]
 * Syntax: mod.lu <ulong>
 * Sets &A to the modulus of &A and an unsigned long integer
+MOD.M [FD 34]
+* Syntax: mod.m <decimal>
+* Sets &I to the modulus of &I and a decimal number
 MUL [42]
 * Syntax: mul
 * Pops an integer and multiplies &A by it
 MUL [52]
 * Syntax: mul <int>
 * Multiplies &A by an integer
-MUL.D [FD 32]
+MUL.D [B0]
 * Syntax: mul.d <double>
 * Multiplies &I by a double-precision floating-point number
 MUL.F [62]
@@ -461,7 +467,7 @@ MUL.L [FD 02]
 MUL.LU [FD 22]
 * Syntax: mul.lu <ulong>
 * Multiplies &A by an unsigned long integer
-MUL.M [FD 42]
+MUL.M [FD 32]
 * Syntax: mul.m <decimal>
 * Multiplies &I by a decimal number
 MUL.S [4A]
@@ -535,7 +541,7 @@ REP [55]
 * Syntax: rep <int>
 * Sets &A to the result of the repeat function for &A and an integer
   * -1 rep 10 = 9
-REP.D [FD 35]
+REP.D [C1]
 * Syntax: rep.d <double>
 * Sets &I to the repeat function for &I and a double-precision floating-point number
   * -0.5 rep 2.5 = 2
@@ -559,7 +565,7 @@ REP.LU [FD 25]
 * Syntax: rep.lu <ulong>
 * Sets &A to the result of the repeat function for &A and an unsigned long integer
   * -1 rep 10 = 9
-REP.M [FD 45]
+REP.M [FD 35]
 * Syntax: rep.m <decimal>
 * Sets &I to the result of the repeat function for &I and a decimal number
   * -0.5 rep 2.5 = 2
@@ -608,7 +614,7 @@ SUB [41]
 SUB [51]
 * Syntax: sub <int>
 * Subtracts an integer from &A
-SUB.D [FD 31]
+SUB.D [A1]
 * Syntax: sub.d <double>
 * Subtracts a double-precision floating-point number from &I
 SUB.IU [FD 11]
@@ -632,7 +638,7 @@ SUB.L [FD 01]
 SUB.LU [FD 21]
 * Syntax: sub.lu <ulong>
 * Subtracts an unsigned long integer from &A
-SUB.M [FD 41]
+SUB.M [FD 31]
 * Syntax: sub.m <decimal>
 * Subtracts a decimal number from &I
 

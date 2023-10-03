@@ -172,5 +172,46 @@ namespace Chips.Utility {
 				_ => type
 			};
 		}
+
+		public static int GetHeapSize(this string str) {
+			// Calculate how large the 7-bit encoded int will be for the string's length
+			// Magic numbers taken from:  https://stackoverflow.com/a/49780224
+			int length = Encoding.UTF8.GetByteCount(str);
+
+			int size;
+			if (length < 128)
+				size = 1;
+			else if (length < 16384)
+				size = 2;
+			else if (length < 2097152)
+				size = 3;
+			else if (length < 268435456)
+				size = 4;
+			else
+				size = 5;
+
+			return size + length + 1;  // Encoded length + string bytes + null terminator
+		}
+
+		public static void EncodeToHeap(this string str, Span<byte> span) {
+			int expectedSize = str.GetHeapSize();
+			if (span.Length < expectedSize)
+				throw new ArgumentException($"Span is too small to encode string. Expected at least {expectedSize} bytes, got {span.Length} bytes instead.", nameof(span));
+
+			// Write the string's length as a 7-bit encoded int
+			int length = Encoding.UTF8.GetByteCount(str);
+			int i = 0;
+			while (length >= 128) {
+				span[i++] = (byte)(length | 0x80);
+				length >>= 7;
+			}
+			span[i++] = (byte)length;
+
+			// Write the string's bytes
+			i += Encoding.UTF8.GetBytes(str, span.Slice(i));
+
+			// Write the null terminator
+			span[i] = 0;
+		}
 	}
 }

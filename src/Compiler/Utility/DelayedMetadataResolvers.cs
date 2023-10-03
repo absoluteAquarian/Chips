@@ -9,11 +9,11 @@ using System.Collections.Generic;
 using System.IO;
 
 namespace Chips.Compiler.Utility {
-	public interface IDelayedResolver {
+	public interface IDelayedSourceResolver {
 		void Resolve(CompilationContext context);
 	}
 
-	public abstract class BaseDelayedMetadataResolver<T> : IDelayedResolver where T : class, IMetadataMember {
+	public abstract class BaseDelayedSourceResolver<T> : IDelayedSourceResolver where T : class, IMetadataMember {
 		private readonly TypeResolverSnapshot snapshot;
 		public readonly string metadata;
 
@@ -27,7 +27,7 @@ namespace Chips.Compiler.Utility {
 			}
 		}
 
-		protected BaseDelayedMetadataResolver(T member) {
+		protected BaseDelayedSourceResolver(T member) {
 			snapshot = default;
 			metadata = null!;
 			sourceLine = -1;
@@ -35,7 +35,7 @@ namespace Chips.Compiler.Utility {
 			_resolvedMember = member;
 		}
 
-		protected BaseDelayedMetadataResolver(TypeResolver resolver, string metadata) {
+		protected BaseDelayedSourceResolver(TypeResolver resolver, string metadata) {
 			snapshot = resolver.GetSnapshot();
 			this.metadata = metadata;
 			sourceLine = ChipsCompiler.CompilingSourceLineOverride ?? ChipsCompiler.CompilingSourceLine;
@@ -64,7 +64,7 @@ namespace Chips.Compiler.Utility {
 		}
 	}
 
-	public sealed class DelayedTypeResolver : BaseDelayedMetadataResolver<TypeDefinition>, ITypeDefOrRef {
+	public sealed class DelayedTypeResolver : BaseDelayedSourceResolver<TypeDefinition>, ITypeDefOrRef {
 		private readonly bool wasMetadataAlreadyParsed;
 
 		private DelayedTypeResolver(TypeDefinition def) : base(def) { }
@@ -129,7 +129,7 @@ namespace Chips.Compiler.Utility {
 		#endregion
 	}
 
-	public sealed class DelayedMethodResolver : BaseDelayedMetadataResolver<MethodDefinition>, IMethodDescriptor {
+	public sealed class DelayedMethodResolver : BaseDelayedSourceResolver<MethodDefinition>, IMethodDescriptor {
 		private DelayedMethodResolver(MethodDefinition def) : base(def) { }
 
 		public DelayedMethodResolver(TypeResolver resolver, string metadata) : base(resolver, metadata) { }
@@ -169,7 +169,7 @@ namespace Chips.Compiler.Utility {
 		#endregion
 	}
 
-	public sealed class DelayedFieldResolver : BaseDelayedMetadataResolver<FieldDefinition>, IFieldDescriptor {
+	public sealed class DelayedFieldResolver : BaseDelayedSourceResolver<FieldDefinition>, IFieldDescriptor {
 		public readonly string typeMetadata;
 		public readonly string fieldMetadata;
 

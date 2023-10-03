@@ -66,6 +66,22 @@ namespace Chips.Utility.Reflection {
 			return RetrieveFromCache(CacheType.Method, GetMethodNameForCache(type, name), () => t.GetMethod(n, UniversalFlags, args));
 		}
 
+		/// <summary>
+		/// A dummy class for use with <see cref="GetCachedMethod(Type, string, int, Type[])"/> when specifying parameters using generic types on the method definition
+		/// </summary>
+		public class T {
+			public static Type Type => typeof(T);
+		}
+
+		public static MethodInfo? GetCachedMethod(this Type type, string name, int genericArgumentCount, params Type[] arguments) {
+			// Local capturing
+			var t = type;
+			var n = name;
+			var g = genericArgumentCount;
+			var args = arguments;
+			return RetrieveFromCache(CacheType.Method, GetMethodNameForCache(type, name + $"`{genericArgumentCount}"), () => t.GetMethod(n, g, UniversalFlags, null, args, null));
+		}
+
 		public static MethodInfo? GetCachedImplicitOperator(this Type type, Type returnType) {
 			// Local capturing
 			var t = type;

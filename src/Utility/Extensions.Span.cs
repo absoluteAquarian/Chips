@@ -10,13 +10,27 @@ namespace Chips.Utility {
 		public static unsafe string DecodeSpan(this ref Span<byte> span)
 			=> Encoding.UTF8.GetString((byte*)Unsafe.AsPointer(ref span.GetPinnableReference()), span.Length);
 
-		public static ReadOnlySpan<int> ConvertSpan(this ReadOnlySpan<byte> span, int count) {
-			Span<int> result = stackalloc int[count];
+		public static int Extract7BitEncodedInt(this ReadOnlySpan<byte> span, int offset, out int bytesRead) {
+			int result = 0;
+			int shift = 0;
+			bytesRead = 0;
 
-			for (int i = 0; i < count; i++)
-				result[i] = BitConverter.ToInt32(span[(i * 4)..((i + 1) * 4)]);
+			byte read;
+			do {
+				// Read the byte
+				read = span[offset];
+				result |= (read & 0x7F) << shift;
 
-			return new ReadOnlySpan<int>(result.ToArray());
+				// Prepare for the next byte
+				shift += 7;
+				bytesRead++;
+				offset++;
+			} while ((read & 0x80) != 0 && bytesRead < 5 && offset < span.Length);
+
+			if ((read & 0x80) != 0)
+				throw new FormatException("Invalid 7-bit encoded integer");
+
+			return result;
 		}
 	}
 }

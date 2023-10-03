@@ -8,6 +8,8 @@ using System;
 using AsmResolver.DotNet;
 using Chips.Utility;
 using System.Linq;
+using Chips.Runtime.Types;
+using Chips.Runtime;
 
 namespace Chips.Compiler.Utility {
 	public static partial class StringSerialization {
@@ -66,24 +68,24 @@ namespace Chips.Compiler.Utility {
 				if (numberLarge) {
 					if (numberUnsigned) {
 						if (!ulong.TryParse(span, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out ulong result))
-							throw ChipsCompiler.ErrorAndThrow(new FormatException($"Argument \"{arg}\" could not be parsed as a hexadecimal UInt64 number"));
+							throw ChipsCompiler.ErrorAndThrow(new FormatException($"Argument \"{arg.DesanitizeString()}\" could not be parsed as a hexadecimal UInt64 number"));
 
 						return result;
 					} else {
 						if (!long.TryParse(span, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out long result))
-							throw ChipsCompiler.ErrorAndThrow(new FormatException($"Argument \"{arg}\" could not be parsed as a hexadecimal Int64 number"));
+							throw ChipsCompiler.ErrorAndThrow(new FormatException($"Argument \"{arg.DesanitizeString()}\" could not be parsed as a hexadecimal Int64 number"));
 
 						return result;
 					}
 				} else {
 					if (numberUnsigned) {
 						if (!uint.TryParse(span, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out uint result))
-							throw ChipsCompiler.ErrorAndThrow(new FormatException($"Argument \"{arg}\" could not be parsed as a hexadecimal UInt32 number"));
+							throw ChipsCompiler.ErrorAndThrow(new FormatException($"Argument \"{arg.DesanitizeString()}\" could not be parsed as a hexadecimal UInt32 number"));
 
 						return result;
 					} else {
 						if (!int.TryParse(span, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out int result))
-							throw ChipsCompiler.ErrorAndThrow(new FormatException($"Argument \"{arg}\" could not be parsed as a hexadecimal Int32 number"));
+							throw ChipsCompiler.ErrorAndThrow(new FormatException($"Argument \"{arg.DesanitizeString()}\" could not be parsed as a hexadecimal Int32 number"));
 
 						return result;
 					}
@@ -95,12 +97,12 @@ namespace Chips.Compiler.Utility {
 
 				if (numberLarge) {
 					if (span.IndexOfAnyExcept("01") != -1)
-						throw ChipsCompiler.ErrorAndThrow(new FormatException($"Argument \"{arg}\" could not be parsed as a binary Int64 number"));
+						throw ChipsCompiler.ErrorAndThrow(new FormatException($"Argument \"{arg.DesanitizeString()}\" could not be parsed as a binary Int64 number"));
 
 					return numberUnsigned ? Convert.ToUInt64(span.ToString(), 2) : Convert.ToInt64(span.ToString(), 2);
 				} else {
 					if (span.IndexOfAnyExcept("01") != -1)
-						throw ChipsCompiler.ErrorAndThrow(new FormatException($"Argument \"{arg}\" could not be parsed as a binary Int32 number"));
+						throw ChipsCompiler.ErrorAndThrow(new FormatException($"Argument \"{arg.DesanitizeString()}\" could not be parsed as a binary Int32 number"));
 
 					return numberUnsigned ? Convert.ToUInt32(span.ToString(), 2) : Convert.ToInt32(span.ToString(), 2);
 				}
@@ -108,24 +110,24 @@ namespace Chips.Compiler.Utility {
 				if (numberLarge) {
 					if (numberUnsigned) {
 						if (!ulong.TryParse(span, out ulong result))
-							throw ChipsCompiler.ErrorAndThrow(new FormatException($"Argument \"{arg}\" could not be parsed as a UInt64 number"));
+							throw ChipsCompiler.ErrorAndThrow(new FormatException($"Argument \"{arg.DesanitizeString()}\" could not be parsed as a UInt64 number"));
 
 						return result;
 					} else {
 						if (!long.TryParse(span, out long result))
-							throw ChipsCompiler.ErrorAndThrow(new FormatException($"Argument \"{arg}\" could not be parsed as an Int64 number"));
+							throw ChipsCompiler.ErrorAndThrow(new FormatException($"Argument \"{arg.DesanitizeString()}\" could not be parsed as an Int64 number"));
 
 						return result;
 					}
 				} else {
 					if (numberUnsigned) {
 						if (!uint.TryParse(span, out uint result))
-							throw ChipsCompiler.ErrorAndThrow(new FormatException($"Argument \"{arg}\" could not be parsed as a UInt32 number"));
+							throw ChipsCompiler.ErrorAndThrow(new FormatException($"Argument \"{arg.DesanitizeString()}\" could not be parsed as a UInt32 number"));
 
 						return result;
 					} else {
 						if (!int.TryParse(span, out int result))
-							throw ChipsCompiler.ErrorAndThrow(new FormatException($"Argument \"{arg}\" could not be parsed as an Int32 number"));
+							throw ChipsCompiler.ErrorAndThrow(new FormatException($"Argument \"{arg.DesanitizeString()}\" could not be parsed as an Int32 number"));
 
 						return result;
 					}
@@ -139,39 +141,58 @@ namespace Chips.Compiler.Utility {
 
 			// Parse an unsigned 16-bit integer
 			if (!ushort.TryParse(arg, out ushort result))
-				throw ChipsCompiler.ErrorAndThrow(new FormatException($"Argument \"{arg}\" could not be parsed as an unsigned 16-bit integer"));
+				throw ChipsCompiler.ErrorAndThrow(new FormatException($"Argument \"{arg.DesanitizeString()}\" could not be parsed as an unsigned 16-bit integer"));
 
 			return result;
 		}
 
 		public static object? ParseFloatArgument(CompilationContext context, string arg) {
 			if (arg.Length == 0)
-				return ChipsCompiler.ErrorAndThrow(new FormatException("Argument cannot be empty"));
+				throw ChipsCompiler.ErrorAndThrow(new FormatException("Argument cannot be empty"));
 
 			ReadOnlySpan<char> span = arg;
 
 			if (span[^1] == 'f') {
 				// Single constant
 				if (!float.TryParse(span[..^1], NumberStyles.Float, CultureInfo.InvariantCulture, out float result))
-					throw ChipsCompiler.ErrorAndThrow(new FormatException($"Argument \"{arg}\" could not be parsed as a Single number"));
+					throw ChipsCompiler.ErrorAndThrow(new FormatException($"Argument \"{arg.DesanitizeString()}\" could not be parsed as a Single number"));
 					
 				return result;
 			} else if (span[^1] == 'm') {
 				// Decimal constant
 				if (!decimal.TryParse(span[..^1], NumberStyles.Float, CultureInfo.InvariantCulture, out decimal result))
-					throw ChipsCompiler.ErrorAndThrow(new FormatException($"Argument \"{arg}\" could not be parsed as a Decimal number"));
+					throw ChipsCompiler.ErrorAndThrow(new FormatException($"Argument \"{arg.DesanitizeString()}\" could not be parsed as a Decimal number"));
 
 				return result;
 			} else if (span[^1] == 'd') {
 				// Double constant
 				if (!double.TryParse(span[..^1], NumberStyles.Float, CultureInfo.InvariantCulture, out double result))
-					throw ChipsCompiler.ErrorAndThrow(new FormatException($"Argument \"{arg}\" could not be parsed as a Double number"));
+					throw ChipsCompiler.ErrorAndThrow(new FormatException($"Argument \"{arg.DesanitizeString()}\" could not be parsed as a Double number"));
 
 				return result;
 			} else {
 				// Could not parse as float
-				return ChipsCompiler.ErrorAndThrow(new FormatException($"Argument \"{arg}\" could not be parsed as a floating-point number"));
+				return ChipsCompiler.ErrorAndThrow(new FormatException($"Argument \"{arg.DesanitizeString()}\" could not be parsed as a floating-point number"));
 			}
+		}
+
+		public static Register ParseRegisterArgument(CompilationContext context, string arg) {
+			if (arg.Length == 0)
+				throw ChipsCompiler.ErrorAndThrow(new FormatException("Argument cannot be empty"));
+
+			if (!arg.StartsWith("&"))
+				throw ChipsCompiler.ErrorAndThrow(new FormatException($"Argument \"{arg.DesanitizeString()}\" is not a register"));
+
+			return arg[1..] switch {
+				"A" => Registers.A,
+				"I" => Registers.I,
+				"S" => Registers.S,
+				"E" => Registers.E,
+				"F" => throw ChipsCompiler.ErrorAndThrow(new ParsingException("Register &F cannot be used as an argument")),
+				"X" => Registers.X,
+				"Y" => Registers.Y,
+				_ => throw ChipsCompiler.ErrorAndThrow(new FormatException($"Argument \"{arg.DesanitizeString()}\" is not a register")),
+			};
 		}
 
 		[StringSyntax("regex")]
