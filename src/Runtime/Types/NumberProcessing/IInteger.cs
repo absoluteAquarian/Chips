@@ -16,4 +16,10 @@
 
 		IInteger Xor(IInteger number);
 	}
+
+	public interface IInteger<T> : IInteger, INumber<T> { }
+
+	public interface IUnsignedInteger : IInteger { }
+
+	public interface IUnsignedInteger<T> : IUnsignedInteger, INumber<T> { }
 }

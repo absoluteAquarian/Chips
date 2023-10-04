@@ -21,10 +21,10 @@ namespace Chips.Runtime.Types.NumberProcessing {
 	[TextTemplateGenerated]
 <# if (!type.Name.EndsWith("IntPtr")) {
 #>
-	public struct <#= type.Name #>_T : IInteger, INumberConstants<<#= type.Name #>_T> {
+	public struct <#= type.Name #>_T : I<#= type.Name.StartsWith("U") || type.Name == "Byte" ? "Unsigned" : "" #>Integer<<#= type.Name #>>, INumberConstants<<#= type.Name #>_T> {
 <# } else {
 #>
-	public unsafe struct <#= type.Name #>_T : IInteger, INumberConstants<<#= type.Name #>_T> {
+	public unsafe struct <#= type.Name #>_T : I<#= type.Name.StartsWith("U") ? "Unsigned" : "" #>Integer<<#= type.Name #>>, INumberConstants<<#= type.Name #>_T> {
 <#
 } #>
 		private <#= type.Name #> value;
@@ -314,7 +314,7 @@ namespace Chips.Runtime.Types.NumberProcessing {
 <# foreach (var type in fTypes) { 
 #>
 	[TextTemplateGenerated]
-	public struct <#= type.Name #>_T : IFloat, IFloatConstants<<#= type.Name #>_T> {
+	public struct <#= type.Name #>_T : IFloat<<#= type.Name #>>, IFloatConstants<<#= type.Name #>_T> {
 		private <#= type.Name #> value;
 
 		public readonly object Value => value;

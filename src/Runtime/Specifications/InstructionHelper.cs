@@ -15,7 +15,7 @@ namespace Chips.Runtime.Specifications {
 	internal static class InstructionHelper {
 		private static readonly ConditionalWeakTable<CilMethodBody, Dictionary<string, int>> _namedBodyLocals = new();
 
-		public static void EmitDelayedResolver(this CompilationContext context, Func<CilMethodBody, int, IDelayedInstructionResolver> getResolver) {
+		public static void EmitNopAndDelayedResolver(this CompilationContext context, Func<CilMethodBody, int, IDelayedInstructionResolver> getResolver) {
 			context.Instructions.Add(CilOpCodes.Nop);
 			var body = context.Body;
 			var index = body.Instructions.Count - 1;

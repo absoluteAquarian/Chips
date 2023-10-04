@@ -52,4 +52,6 @@
 
 		IFloat Tanh();
 	}
+
+	public interface IFloat<T> : IFloat, INumber<T> { }
 }

@@ -174,16 +174,12 @@ namespace Chips.Runtime.Specifications {
 		public override int ExpectedArgumentCount => 0;
 
 		public override void Compile(CompilationContext context, OpcodeArgumentCollection args) {
-			StackObject obj2 = context.stack.Pop();
-			StackObject obj1 = context.stack.Pop();
-
-			if (obj1 is not StackObject.Integer or StackObject.Float or StackObject.Address)
-				throw ChipsCompiler.ErrorAndThrow(new ArgumentException($"First object on stack for to \"{Name}\" must be an integer or float"));
-			if (obj2 is not StackObject.Integer or StackObject.Float or StackObject.Address)
-				throw ChipsCompiler.ErrorAndThrow(new ArgumentException($"Second object on stack for to \"{Name}\" must be an integer or float"));
+			// An error will be thrown during runtime if the values aren't numbers
+			context.stack.Pop();
+			context.stack.Pop();
 
 			// Instruction will be delayed in order to ensure that the stack is set up properly for later instructions
-			context.EmitDelayedResolver(static (body, index) => new DelayedBoxResolver(body, index));
+			context.EmitNopAndDelayedResolver(static (body, index) => new DelayedBoxResolver(body, index));
 
 			int local = context.CreateOrGetLocal<INumber>("__compare");
 
@@ -206,5 +202,24 @@ namespace Chips.Runtime.Specifications {
 
 	// conv
 
-	// kbrdy
+	public sealed class OpcodeKbrdy : Opcode {
+		public override OpcodeID Code => OpcodeID.Kbrdy;
+
+		public override StackBehavior StackBehavior => StackBehavior.PushOne;
+		
+		public override int ExpectedArgumentCount => 0;
+
+		public override unsafe nint Method => (nint)(delegate*<bool>)&Implementation.Kbrdy;
+
+		public override void GetMethodSignature(out Type returnType, out Type[] parameterTypes) {
+			returnType = typeof(bool);
+			parameterTypes = Type.EmptyTypes;
+		}
+
+		public override OpcodeArgumentCollection? DeserializeArguments(BinaryReader reader, TypeResolver resolver, StringHeap heap) => null;
+
+		public override OpcodeArgumentCollection? ParseArguments(CompilationContext context, string[] args) => null;
+
+		public override void SerializeArguments(BinaryWriter writer, OpcodeArgumentCollection args, TypeResolver resolver, StringHeap heap) { }
+	}
 }

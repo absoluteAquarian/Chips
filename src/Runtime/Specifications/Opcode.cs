@@ -34,7 +34,7 @@ namespace Chips.Runtime.Specifications {
 		/// An optional address to this instruction's method.<br/>
 		/// If a custom <see cref="Compile"/> implementation is used, this property should be <see cref="nint.Zero"/>
 		/// </summary>
-		public virtual nint Method => nint.Zero;
+		public virtual unsafe nint Method => nint.Zero;
 
 		/// <summary>
 		/// The expected stack behavior for this Chips instruction
@@ -333,7 +333,7 @@ namespace Chips.Runtime.Specifications {
 			// Instruction will be delayed in order to ensure that the stack is set up properly for later instructions
 			// Variable capturing
 			bool loadsAddress = LoadsAddress;
-			context.EmitDelayedResolver((body, index) => loadsAddress ? new DelayedArrayLoadAddressResolver(body, index) : new DelayedArrayLoadResolver(body, index));
+			context.EmitNopAndDelayedResolver((body, index) => loadsAddress ? new DelayedArrayLoadAddressResolver(body, index) : new DelayedArrayLoadResolver(body, index));
 
 			context.stack.Push(LoadsAddress ? StackObject.Address : StackObject.Object);
 		}

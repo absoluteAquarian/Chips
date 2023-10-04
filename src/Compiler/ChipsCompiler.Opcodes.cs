@@ -15,11 +15,11 @@ namespace Chips {
 			[OpcodeID.Ldlc] = new OpcodeLdlc(),
 			// ldmtd
 			[OpcodeID.Ldzs] = new OpcodeLdzs(),
-			[OpcodeID.Ldela_X] = new OpcodeLdelX(),
+			[OpcodeID.Ldel_X] = new OpcodeLdelX(),
 			[OpcodeID.Comp] = new OpcodeComp(),
 			// is
 			// conv
-			// kbrdy
+			[OpcodeID.Kbrdy] = new OpcodeKbrdy(),
 
 			// push
 			// pop
@@ -37,6 +37,74 @@ namespace Chips {
 			// bge
 			// tostr
 			// kbkey
+
+			// clc
+			// clv
+			// cln
+			// clz
+			// cls
+			// stfi
+			// stfs
+			// strg
+			// stlc
+			// ldz.f
+			// stind
+			// stel
+			// bzc
+			// ble
+			// tostr
+			// kbline
+
+			// stc
+			// inca
+			// deca
+			// inci
+			// deci
+			// cat
+			// cat
+			// find
+			// find
+			// ldz.iu
+			// split
+			// rem
+			// bcs
+			// call
+			// calli
+			// print
+
+			// add
+			// sub
+			// mul
+			// div
+			// mod
+			// rep
+			// and
+			// or
+			// xor
+			// ldz.d
+			// mul.s
+			// ldel
+			// bcc
+			// ret
+			// 0x3E
+			// printl
+
+			// add
+			// sub
+			// mul
+			// div
+			// mod
+			// rep
+			// and
+			// or
+			// xor
+			// ldz.l
+			// trim
+			// ldela
+			// bns
+			// 0x4D
+			// 0x4E
+			// 0x4F
 		};
 
 		private static string RemapOpcodeName(string code) {

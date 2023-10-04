@@ -22,6 +22,8 @@ namespace Chips.Runtime.Utility {
 			["byte"] = CreateParseValueDelegate<byte>(byte.TryParse),
 			["ushort"] = CreateParseValueDelegate<ushort>(ushort.TryParse),
 			["ulong"] = CreateParseValueDelegate<ulong>(ulong.TryParse),
+			["nint"] = CreateParseValueDelegate<nint>(nint.TryParse),
+			["nuint"] = CreateParseValueDelegate<nuint>(nuint.TryParse),
 			["float"] = CreateParseValueDelegate<float>(float.TryParse),
 			["double"] = CreateParseValueDelegate<double>(double.TryParse),
 			["decimal"] = CreateParseValueDelegate<decimal>(decimal.TryParse),
@@ -36,6 +38,8 @@ namespace Chips.Runtime.Utility {
 			=> arg is float or double or decimal;
 
 		internal static bool ShouldUpcast(INumber target, INumber number)
-			=> (target is IInteger && number is IFloat) || target.NumericSize < number.NumericSize;
+			=> (target is IInteger && number is IFloat)  // Integers should always be upcast to floats
+				|| (target is IInteger && number is IUnsignedInteger && target.NumericSize == number.NumericSize)  // Signed integers should always be upcast to unsigned integers of the same size
+				|| target.NumericSize < number.NumericSize;  // Upcast if the target's size is smaller than the number's size
 	}
 }

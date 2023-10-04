@@ -5,7 +5,7 @@ using System;
 #pragma warning disable CS0162
 namespace Chips.Runtime.Types.NumberProcessing {
 	[TextTemplateGenerated]
-	public struct SByte_T : IInteger, INumberConstants<SByte_T> {
+	public struct SByte_T : IInteger<SByte>, INumberConstants<SByte_T> {
 		private SByte value;
 
 		public readonly object Value => value;
@@ -245,7 +245,7 @@ namespace Chips.Runtime.Types.NumberProcessing {
 	}
 
 	[TextTemplateGenerated]
-	public struct Int16_T : IInteger, INumberConstants<Int16_T> {
+	public struct Int16_T : IInteger<Int16>, INumberConstants<Int16_T> {
 		private Int16 value;
 
 		public readonly object Value => value;
@@ -485,7 +485,7 @@ namespace Chips.Runtime.Types.NumberProcessing {
 	}
 
 	[TextTemplateGenerated]
-	public struct Int32_T : IInteger, INumberConstants<Int32_T> {
+	public struct Int32_T : IInteger<Int32>, INumberConstants<Int32_T> {
 		private Int32 value;
 
 		public readonly object Value => value;
@@ -722,7 +722,7 @@ namespace Chips.Runtime.Types.NumberProcessing {
 	}
 
 	[TextTemplateGenerated]
-	public struct Int64_T : IInteger, INumberConstants<Int64_T> {
+	public struct Int64_T : IInteger<Int64>, INumberConstants<Int64_T> {
 		private Int64 value;
 
 		public readonly object Value => value;
@@ -962,7 +962,7 @@ namespace Chips.Runtime.Types.NumberProcessing {
 	}
 
 	[TextTemplateGenerated]
-	public struct Byte_T : IInteger, INumberConstants<Byte_T> {
+	public struct Byte_T : IUnsignedInteger<Byte>, INumberConstants<Byte_T> {
 		private Byte value;
 
 		public readonly object Value => value;
@@ -1190,7 +1190,7 @@ namespace Chips.Runtime.Types.NumberProcessing {
 	}
 
 	[TextTemplateGenerated]
-	public struct UInt16_T : IInteger, INumberConstants<UInt16_T> {
+	public struct UInt16_T : IUnsignedInteger<UInt16>, INumberConstants<UInt16_T> {
 		private UInt16 value;
 
 		public readonly object Value => value;
@@ -1418,7 +1418,7 @@ namespace Chips.Runtime.Types.NumberProcessing {
 	}
 
 	[TextTemplateGenerated]
-	public struct UInt32_T : IInteger, INumberConstants<UInt32_T> {
+	public struct UInt32_T : IUnsignedInteger<UInt32>, INumberConstants<UInt32_T> {
 		private UInt32 value;
 
 		public readonly object Value => value;
@@ -1646,7 +1646,7 @@ namespace Chips.Runtime.Types.NumberProcessing {
 	}
 
 	[TextTemplateGenerated]
-	public struct UInt64_T : IInteger, INumberConstants<UInt64_T> {
+	public struct UInt64_T : IUnsignedInteger<UInt64>, INumberConstants<UInt64_T> {
 		private UInt64 value;
 
 		public readonly object Value => value;
@@ -1874,7 +1874,7 @@ namespace Chips.Runtime.Types.NumberProcessing {
 	}
 
 	[TextTemplateGenerated]
-	public unsafe struct IntPtr_T : IInteger, INumberConstants<IntPtr_T> {
+	public unsafe struct IntPtr_T : IInteger<IntPtr>, INumberConstants<IntPtr_T> {
 		private IntPtr value;
 
 		public readonly object Value => value;
@@ -2114,7 +2114,7 @@ namespace Chips.Runtime.Types.NumberProcessing {
 	}
 
 	[TextTemplateGenerated]
-	public unsafe struct UIntPtr_T : IInteger, INumberConstants<UIntPtr_T> {
+	public unsafe struct UIntPtr_T : IUnsignedInteger<UIntPtr>, INumberConstants<UIntPtr_T> {
 		private UIntPtr value;
 
 		public readonly object Value => value;
@@ -2342,7 +2342,7 @@ namespace Chips.Runtime.Types.NumberProcessing {
 	}
 
 	[TextTemplateGenerated]
-	public struct Single_T : IFloat, IFloatConstants<Single_T> {
+	public struct Single_T : IFloat<Single>, IFloatConstants<Single_T> {
 		private Single value;
 
 		public readonly object Value => value;
@@ -2521,7 +2521,7 @@ namespace Chips.Runtime.Types.NumberProcessing {
 	}
 	
 	[TextTemplateGenerated]
-	public struct Double_T : IFloat, IFloatConstants<Double_T> {
+	public struct Double_T : IFloat<Double>, IFloatConstants<Double_T> {
 		private Double value;
 
 		public readonly object Value => value;
@@ -2704,7 +2704,7 @@ namespace Chips.Runtime.Types.NumberProcessing {
 	}
 	
 	[TextTemplateGenerated]
-	public struct Decimal_T : IFloat, IFloatConstants<Decimal_T> {
+	public struct Decimal_T : IFloat<Decimal>, IFloatConstants<Decimal_T> {
 		private Decimal value;
 
 		public readonly object Value => value;
