@@ -2,7 +2,6 @@
 using Chips.Compiler.Utility;
 using System;
 using System.IO;
-using System.Linq;
 
 namespace Chips.Utility {
 	partial class Extensions {
@@ -12,8 +11,8 @@ namespace Chips.Utility {
 
 			if (type.Module?.Assembly is null)
 				throw new ArgumentException("Type must be defined in an assembly", nameof(type));
-			
-			heap.WriteString(writer, type.FullName.AttemptCoreTypeAlias());
+
+			type.WriteFullName(writer, heap);
 		}
 
 		public static DelayedTypeResolver ReadTypeDefinition(this BinaryReader reader, TypeResolver resolver, StringHeap heap) {

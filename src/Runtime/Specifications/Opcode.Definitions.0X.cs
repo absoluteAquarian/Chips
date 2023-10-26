@@ -12,7 +12,7 @@ namespace Chips.Runtime.Specifications {
 		public override OpcodeID Code => OpcodeID.Nop;
 
 		public override void Compile(CompilationContext context, OpcodeArgumentCollection args) {
-			context.Instructions.Add(CilOpCodes.Nop);
+			context.Cursor.Emit(CilOpCodes.Nop);
 		}
 	}
 
@@ -20,7 +20,7 @@ namespace Chips.Runtime.Specifications {
 		public override OpcodeID Code => OpcodeID.Brk;
 
 		public override void Compile(CompilationContext context, OpcodeArgumentCollection args) {
-			context.Instructions.Add(CilOpCodes.Break);
+			context.Cursor.Emit(CilOpCodes.Break);
 		}
 	}
 
@@ -33,7 +33,7 @@ namespace Chips.Runtime.Specifications {
 			EmitRegisterAccess(context, args, out int value);
 			
 			// Push the constant
-			context.Instructions.Add(CilOpCodes.Ldc_I4, value);
+			context.Cursor.Emit(CilOpCodes.Ldc_I4, value);
 			context.EmitNumberRegisterAssignment<IntegerRegister, int>();
 		}
 
@@ -60,10 +60,8 @@ namespace Chips.Runtime.Specifications {
 		public override void Compile(CompilationContext context, OpcodeArgumentCollection args) {
 			EmitRegisterAccess(context, args, out float value);
 
-			var instructions = context.Instructions;
-
 			// Push the constant, then call the appropriate method in FloatRegister
-			instructions.Add(CilOpCodes.Ldc_R4, value);
+			context.Cursor.Emit(CilOpCodes.Ldc_R4, value);
 			context.EmitNumberRegisterAssignment<FloatRegister, float>();
 		}
 
@@ -90,7 +88,7 @@ namespace Chips.Runtime.Specifications {
 		public override void Compile(CompilationContext context, OpcodeArgumentCollection args) {
 			EmitRegisterAccess(context, args, out StringMetadata arg);
 
-			context.Instructions.Add(CilOpCodes.Ldstr, context.heap.GetString(arg));
+			context.Cursor.Emit(CilOpCodes.Ldstr, context.heap.GetString(arg));
 			context.EmitRegisterValueAssignment<StringRegister>();
 		}
 
@@ -153,7 +151,7 @@ namespace Chips.Runtime.Specifications {
 		public override void Compile(CompilationContext context, OpcodeArgumentCollection args) {
 			EmitRegisterAccess(context);
 
-			context.Instructions.Add(CilOpCodes.Ldnull);
+			context.Cursor.Emit(CilOpCodes.Ldnull);
 			context.EmitRegisterValueAssignment<StringRegister>();
 		}
 	}
@@ -169,24 +167,29 @@ namespace Chips.Runtime.Specifications {
 	public sealed class OpcodeComp : Opcode {
 		public override OpcodeID Code => OpcodeID.Comp;
 
-		public override StackBehavior StackBehavior => StackBehavior.PopTwo;
-
 		public override int ExpectedArgumentCount => 0;
 
 		public override void Compile(CompilationContext context, OpcodeArgumentCollection args) {
-			// An error will be thrown during runtime if the values aren't numbers
-			context.stack.Pop();
-			context.stack.Pop();
+			/*    C# code:
+			 *    
+			 *    __compare = ValueConverter.CheckedBoxToUnderlyingType((object)value2);
+			 *    ValueConverter.CheckedBoxToUnderlyingType((object)value1).Compare(__compare);
+			 */
+
+			int local = context.CreateOrGetLocal<INumber>("__compare");
 
 			// Instruction will be delayed in order to ensure that the stack is set up properly for later instructions
 			context.EmitNopAndDelayedResolver(static (body, index) => new DelayedBoxResolver(body, index));
 
-			int local = context.CreateOrGetLocal<INumber>("__compare");
+			context.EmitBoxToUnderlyingType();
+			context.Cursor.Emit(CilOpCodes.Stloc, local);
+
+			// Instruction will be delayed in order to ensure that the stack is set up properly for later instructions
+			context.EmitNopAndDelayedResolver(static (body, index) => new DelayedBoxResolver(body, index));
 
 			context.EmitBoxToUnderlyingType();
-			context.Instructions.Add(CilOpCodes.Stloc, local);
 
-			context.EmitBoxToUnderlyingType();
+			context.Cursor.Emit(CilOpCodes.Ldloc, local);
 
 			context.EmitFunctionCall<INumber>(nameof(INumber.Compare));
 		}
@@ -198,14 +201,57 @@ namespace Chips.Runtime.Specifications {
 		public override void SerializeArguments(BinaryWriter writer, OpcodeArgumentCollection args, TypeResolver resolver, StringHeap heap) { }
 	}
 
-	// is
+	public sealed class OpcodeIs : TypeOperandOpcode {
+		public override OpcodeID Code => OpcodeID.Is;
+
+		public override bool AllowsNull => true;
+
+		public override void Compile(CompilationContext context, OpcodeArgumentCollection args) {
+			if (args[0] is null) {
+				// Check against null directly
+				context.EmitRegisterLoad("F");
+				context.Cursor.Emit(CilOpCodes.Ldnull);
+				context.Cursor.Emit(CilOpCodes.Ceq);
+				context.EmitFlagAssignment(nameof(FlagsRegister.Conversion));
+				return;
+			}
+
+			var resolver = (DelayedTypeResolver)args[0]!;
+			
+			/*    C# code:
+			 *    
+			 *    Registers.F.Conversion = value is ArgType;
+			 */
+
+			context.EmitRegisterLoad("F");
+
+			// Local capturing
+			var r = resolver;
+			context.EmitNopAndDelayedResolver((body, index) => new DelayedIsinstResolver(body, index, r));
+
+			context.EmitFlagAssignment(nameof(FlagsRegister.Conversion));
+		}
+	}
 
 	// conv
 
+	public sealed class OpcodeConv : TypeOperandOpcode {
+		public override OpcodeID Code => OpcodeID.Conv;
+
+		public override bool AllowsNull => false;
+
+		public override void Compile(CompilationContext context, OpcodeArgumentCollection args) {
+			var resolver = (DelayedTypeResolver)args[0]!;
+
+			if (resolver.metadata == "object") {
+				// Box or castclass
+				context.EmitNopAndDelayedResolver(static (body, index) => new DelayedBoxOrImplicitObjectResolver(body, index));
+			}
+		}
+	}
+
 	public sealed class OpcodeKbrdy : Opcode {
 		public override OpcodeID Code => OpcodeID.Kbrdy;
-
-		public override StackBehavior StackBehavior => StackBehavior.PushOne;
 		
 		public override int ExpectedArgumentCount => 0;
 

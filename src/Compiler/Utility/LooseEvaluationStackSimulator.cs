@@ -4,6 +4,8 @@ using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
 namespace Chips.Compiler.Utility {
+	// Currently unused due to being useless, considering reimplementing in the future
+
 	/// <summary>
 	/// An object representing a simulation of the evaluation stack, used to provide context for Chips instructions.<br/>
 	/// For a more precise evaluation, use <see cref="StrictEvaluationStackSimulator"/>
@@ -143,6 +145,10 @@ namespace Chips.Compiler.Utility {
 		/// <summary>
 		/// A string value
 		/// </summary>
-		String
+		String,
+		/// <summary>
+		/// A null value
+		/// </summary>
+		Null
 	}
 }

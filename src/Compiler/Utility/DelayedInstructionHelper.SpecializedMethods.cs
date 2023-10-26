@@ -85,8 +85,8 @@ namespace Chips.Compiler.Utility {
 				stack.Push(signature.ReturnType.Resolve() ?? throw new ArgumentException("Invalid operand type for instruction."));
 		}
 
-		private static int GetBranchTarget(this CilInstruction instruction) {
-			return ((ICilLabel)instruction.Operand!).Offset;
+		private static int GetBranchTarget(this CilInstruction instruction, CilMethodBody body) {
+			return body.Instructions.GetIndexByOffset(((ICilLabel)instruction.Operand!).Offset);
 		}
 
 		private static void UpdateSwitchOffsets(this CilInstruction instruction, int instructionIndex, StrictEvaluationStackSimulator stack) {

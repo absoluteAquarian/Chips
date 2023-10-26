@@ -10,6 +10,11 @@ namespace Chips.Compiler.Utility {
 	public sealed class StringHeap {
 		private byte[] _heap = Array.Empty<byte>();
 
+		public StringHeap() {
+			// Empty string is always first in the heap
+			_ = GetOrAdd("");
+		}
+
 		/// <summary>
 		/// Adds a string to the heap if it isn't already present, then returns its index in the heap
 		/// </summary>

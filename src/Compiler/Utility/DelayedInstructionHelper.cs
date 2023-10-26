@@ -1,7 +1,6 @@
 ﻿using AsmResolver.DotNet;
 using AsmResolver.DotNet.Code.Cil;
 using AsmResolver.DotNet.Signatures;
-using AsmResolver.DotNet.Signatures.Types;
 using AsmResolver.PE.DotNet.Cil;
 using System;
 
@@ -105,12 +104,12 @@ namespace Chips.Compiler.Utility {
 				case CilCode.Ret:
 					break;
 				case CilCode.Br_S:
-					stack.SetBranch(instruction.GetBranchTarget());
+					stack.SetBranch(instruction.GetBranchTarget(body));
 					break;
 				case CilCode.Brfalse_S:
 				case CilCode.Brtrue_S:
 					stack.Pop();
-					stack.SetBranch(instruction.GetBranchTarget());
+					stack.SetBranch(instruction.GetBranchTarget(body));
 					break;
 				case CilCode.Beq_S:
 				case CilCode.Bge_S:
@@ -124,15 +123,15 @@ namespace Chips.Compiler.Utility {
 				case CilCode.Blt_Un_S:
 					stack.Pop();
 					stack.Pop();
-					stack.SetBranch(instruction.GetBranchTarget());
+					stack.SetBranch(instruction.GetBranchTarget(body));
 					break;
 				case CilCode.Br:
-					stack.SetBranch(instruction.GetBranchTarget());
+					stack.SetBranch(instruction.GetBranchTarget(body));
 					break;
 				case CilCode.Brfalse:
 				case CilCode.Brtrue:
 					stack.Pop();
-					stack.SetBranch(instruction.GetBranchTarget());
+					stack.SetBranch(instruction.GetBranchTarget(body));
 					break;
 				case CilCode.Beq:
 				case CilCode.Bge:
@@ -146,7 +145,7 @@ namespace Chips.Compiler.Utility {
 				case CilCode.Blt_Un:
 					stack.Pop();
 					stack.Pop();
-					stack.SetBranch(instruction.GetBranchTarget());
+					stack.SetBranch(instruction.GetBranchTarget(body));
 					break;
 				case CilCode.Switch:
 					instruction.UpdateSwitchOffsets(index, stack);

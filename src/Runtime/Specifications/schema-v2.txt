@@ -238,8 +238,10 @@ COMP [0C]
 CONV [0E]
 * Syntax: conv <type>
 * Pops a value, then attempts to cast it to a specified type
-  * If successful, the Conversion flag is set and the converted value is pushed
-  * Otherwise, no value is pushed
+  * If the type is "object", the value is boxed
+  * If the value is a boxed object, unbox.any/castclass is used
+  * If the value has an explicit or implicit conversion to the specified type, the conversion is used
+  * Otherwise, a runtime error is thrown
 
 -- D --
 DECA [32]
@@ -303,8 +305,7 @@ INCI [33]
 * Increases &I by one
 IS [0D]
 * Syntax: is <type|null>
-* Pops a value and sets the Zero flag to whether it is the specified type or a subclass of the type, or null
-  * If it is the specified type, the casted value is pushed
+* Pops a value and sets the Conversion flag to whether it is the specified type or a subclass of the type, or null
 
 -- J --
 -- K --

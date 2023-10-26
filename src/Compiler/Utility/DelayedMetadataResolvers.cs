@@ -3,7 +3,9 @@ using AsmResolver.DotNet;
 using AsmResolver.DotNet.Signatures;
 using AsmResolver.DotNet.Signatures.Types;
 using AsmResolver.PE.DotNet.Metadata.Tables;
+using Chips.Compiler.Parsing;
 using Chips.Utility;
+using Sprache;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -225,7 +227,12 @@ namespace Chips.Compiler.Utility {
 	internal static class DelayedResolverExtensions {
 		public static void WriteFullName(this IFieldDescriptor field, BinaryWriter writer, StringHeap heap) {
 			if (field is DelayedFieldResolver resolver) {
-				heap.WriteString(writer, resolver.typeMetadata.AttemptCoreTypeAlias());
+				var meta = resolver.typeMetadata;
+
+				if (ParsingSequences.TypeAndModifiers.TryParse(meta) is not IResult<ParsedTypeAndModifiers> result)
+					throw new ArgumentException("Invalid type metadata: " + meta);
+
+				heap.WriteString(writer, result.Value.AttemptCoreTypeAlias());
 				heap.WriteString(writer, resolver.fieldMetadata);
 			} else {
 				if (field.Module?.Assembly is null)
@@ -235,8 +242,36 @@ namespace Chips.Compiler.Utility {
 				if (field.Name is null)
 					throw new ArgumentException("Field must have a name", nameof(field));
 
-				heap.WriteString(writer, field.DeclaringType.FullName.AttemptCoreTypeAlias());
+				var fullName = field.DeclaringType.FullName;
+
+				if (ParsingSequences.TypeAndModifiers.TryParse(fullName) is not IResult<ParsedTypeAndModifiers> result)
+					throw new ArgumentException("Invalid type metadata: " + fullName);
+
+				heap.WriteString(writer, result.Value.AttemptCoreTypeAlias());
 				heap.WriteString(writer, field.Name);
+			}
+		}
+
+		public static void WriteFullName(this ITypeDefOrRef type, BinaryWriter writer, StringHeap heap) {
+			if (type is DelayedTypeResolver resolver) {
+				var meta = resolver.metadata;
+
+				if (ParsingSequences.TypeAndModifiers.TryParse(meta) is not IResult<ParsedTypeAndModifiers> result)
+					throw new ArgumentException("Invalid type metadata: " + meta);
+
+				heap.WriteString(writer, result.Value.AttemptCoreTypeAlias());
+			} else {
+				if (type.Module?.Assembly is null)
+					throw new ArgumentException("Type must be defined in an assembly", nameof(type));
+				if (type.Name is null)
+					throw new ArgumentException("Type must have a name", nameof(type));
+
+				var fullName = type.FullName;
+
+				if (ParsingSequences.TypeAndModifiers.TryParse(fullName) is not IResult<ParsedTypeAndModifiers> result)
+					throw new ArgumentException("Invalid type metadata: " + fullName);
+
+				heap.WriteString(writer, result.Value.AttemptCoreTypeAlias());
 			}
 		}
 	}

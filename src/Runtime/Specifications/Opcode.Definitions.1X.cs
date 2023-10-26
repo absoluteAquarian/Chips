@@ -10,16 +10,12 @@ namespace Chips.Runtime.Specifications {
 	// pop
 
 	public sealed class OpcodePop : Opcode {
-		public sealed override StackBehavior StackBehavior => StackBehavior.PopOne;
-
 		public sealed override int ExpectedArgumentCount => 0;
 
 		public override OpcodeID Code => OpcodeID.Pop;
 
 		public override void Compile(CompilationContext context, OpcodeArgumentCollection args) {
-			context.stack.Pop();
-
-			context.Instructions.Add(CilOpCodes.Pop);
+			context.Cursor.Emit(CilOpCodes.Pop);
 		}
 
 		public sealed override OpcodeArgumentCollection? DeserializeArguments(BinaryReader reader, TypeResolver resolver, StringHeap heap) => null;
@@ -81,7 +77,7 @@ namespace Chips.Runtime.Specifications {
 		public override void Compile(CompilationContext context, OpcodeArgumentCollection args) {
 			EmitRegisterAccess(context);
 
-			context.Instructions.Add(CilOpCodes.Ldc_I4_0);
+			context.Cursor.Emit(CilOpCodes.Ldc_I4_0);
 			context.EmitNumberRegisterAssignment<IntegerRegister, int>();
 		}
 	}

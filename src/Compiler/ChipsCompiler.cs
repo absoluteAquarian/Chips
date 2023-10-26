@@ -103,12 +103,15 @@ namespace Chips {
 		private static AssemblyDefinition _dotNetAssembly;
 		internal static AssemblyDefinition DotNetAssemblyDefinition => _dotNetAssembly ??= DotNetAssembly.ImportWith(ManifestModule.DefaultImporter).Resolve() ?? throw new NullReferenceException("Could not resolve .NET assembly");
 
-		private static List<IDelayedSourceResolver> _delayedSourceResolvers = new();
-		private static List<IDelayedInstructionResolver> _delayedInstructionResolvers = new();
+		private static readonly List<IDelayedSourceResolver> _delayedSourceResolvers = new();
+		private static readonly List<IDelayedInstructionResolver> _delayedInstructionResolvers = new();
+		private static readonly List<IDelayedCILMetadataResolver> _delayedCILResolvers = new();
 
 		internal static void AddDelayedResolver(IDelayedSourceResolver resolver) => _delayedSourceResolvers.Add(resolver);
 
 		internal static void AddDelayedResolver(IDelayedInstructionResolver resolver) => _delayedInstructionResolvers.Add(resolver);
+
+		internal static void AddDelayedResolver(IDelayedCILMetadataResolver resolver) => _delayedCILResolvers.Add(resolver);
 
 		internal static BytecodeMethodSegment? FoundEntryPoint;
 
@@ -132,19 +135,37 @@ namespace Chips {
 			foreach (IDelayedSourceResolver resolver in _delayedSourceResolvers)
 				resolver.Resolve(project.context);
 
+			// Resolve any delayed CIL metadata resolvers
+			foreach (IDelayedCILMetadataResolver resolver in _delayedCILResolvers)
+				resolver.Resolve(project.context);
+
 			// Resolve any delayed instructions
 			foreach (var resolvers in _delayedInstructionResolvers.GroupBy(static i => i.Body.Owner.MetadataToken.ToUInt32())) {
 				StrictEvaluationStackSimulator? stack = null;
 				int lastIndex = -1;
 
-				foreach (IDelayedInstructionResolver resolver in resolvers.OrderBy(static i => i.InstructionIndex)) {
-					if (stack is null)
-						stack = resolver.Body.GetStackUpTo(resolver.InstructionIndex);
-					else
-						stack.ModifyStack(resolver.Body, lastIndex, resolver.InstructionIndex);
+				// Ensure that the offsets are updated so that branch instructions can be handled (offsets are stored rather than instruction indices)
+				resolvers.FirstOrDefault()?.Body.Instructions.CalculateOffsets();
 
+				int offsetAdjustment = 0;
+
+				foreach (IDelayedInstructionResolver resolver in resolvers.OrderBy(static i => i.InstructionIndex).ToList()) {  // ToList() needed since InstructionIndex is updated in the loop
 					try {
+						resolver.InstructionIndex += offsetAdjustment;
+
+						if (stack is null)
+							stack = resolver.Body.GetStackUpTo(resolver.InstructionIndex);
+						else
+							stack.ModifyStack(resolver.Body, lastIndex, resolver.InstructionIndex);
+
+						int oldSize = resolver.Body.Instructions.Count;
+
 						resolver.Resolve(stack);
+
+						int newSize = resolver.Body.Instructions.Count;
+
+						offsetAdjustment += newSize - oldSize;
+
 						lastIndex = resolver.InstructionIndex;
 					} catch (Exception ex) {
 						// Add the error to the error list

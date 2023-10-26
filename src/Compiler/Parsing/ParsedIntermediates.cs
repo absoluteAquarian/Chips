@@ -1,4 +1,5 @@
 ﻿using AsmResolver.PE.DotNet.Metadata.Tables.Rows;
+using Chips.Utility;
 
 namespace Chips.Compiler.Parsing {
 	public readonly struct ParsedType {
@@ -49,5 +50,17 @@ namespace Chips.Compiler.Parsing {
 			this.name = name;
 			this.parameterTypes = parameterTypes;
 		}
+	}
+
+	public readonly struct ParsedTypeAndModifiers {
+		public readonly string type;
+		public readonly string modifiers;
+
+		public ParsedTypeAndModifiers(string type, string modifiers) {
+			this.type = type;
+			this.modifiers = modifiers;
+		}
+
+		public string AttemptCoreTypeAlias() => type.AttemptCoreTypeAlias() + modifiers;
 	}
 }

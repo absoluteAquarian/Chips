@@ -9,7 +9,7 @@ namespace Chips.Compiler.Utility {
 	public interface IDelayedInstructionResolver {
 		CilMethodBody Body { get; }
 
-		int InstructionIndex { get; }
+		int InstructionIndex { get; set; }
 
 		public CilInstruction Instruction => Body.Instructions[InstructionIndex];
 
@@ -19,7 +19,7 @@ namespace Chips.Compiler.Utility {
 	public abstract class DelayedArrayIndexerResolver : IDelayedInstructionResolver {
 		public CilMethodBody Body { get; }
 
-		public int InstructionIndex { get; }
+		public int InstructionIndex { get; set; }
 
 		public abstract bool LoadsValue { get; }
 
@@ -257,7 +257,7 @@ namespace Chips.Compiler.Utility {
 	public sealed class DelayedBoxResolver : IDelayedInstructionResolver {
 		public CilMethodBody Body { get; }
 
-		public int InstructionIndex { get; }
+		public int InstructionIndex { get; set; }
 
 		public DelayedBoxResolver(CilMethodBody body, int instructionIndex) {
 			Body = body;
@@ -270,6 +270,34 @@ namespace Chips.Compiler.Utility {
 			// Expected stack: [ value, ... ]
 
 			var type = stack.Peek();
+
+			if (type?.IsValueType is not true)
+				throw new Exception($"Expected value type object on stack, got \"{type?.Name ?? "null"}\" instead");
+
+			instruction.ReplaceWith(CilOpCodes.Box, type);
+		}
+	}
+
+	public sealed class DelayedBoxOrImplicitObjectResolver : IDelayedInstructionResolver {
+		public CilMethodBody Body { get; }
+
+		public int InstructionIndex { get; set; }
+
+		public DelayedBoxOrImplicitObjectResolver(CilMethodBody body, int instructionIndex) {
+			Body = body;
+			InstructionIndex = instructionIndex;
+		}
+
+		public void Resolve(StrictEvaluationStackSimulator stack) {
+			var instruction = ((IDelayedInstructionResolver)this).Instruction;
+
+			// Expected stack: [ value, ... ]
+
+			var type = stack.Peek();
+
+			if (type?.IsValueType is not true)
+				return;  // Reference types are implicitly readable as System.Object
+
 			instruction.ReplaceWith(CilOpCodes.Box, type);
 		}
 	}
@@ -277,7 +305,7 @@ namespace Chips.Compiler.Utility {
 	public sealed class DelayedUnboxResolver : IDelayedInstructionResolver {
 		public CilMethodBody Body { get; }
 
-		public int InstructionIndex { get; }
+		public int InstructionIndex { get; set; }
 
 		public DelayedUnboxResolver(CilMethodBody body, int instructionIndex) {
 			Body = body;
@@ -295,6 +323,73 @@ namespace Chips.Compiler.Utility {
 				throw new Exception($"Expected boxed object on stack, got \"{type?.Name ?? "null"}\" instead");
 
 			instruction.ReplaceWith(CilOpCodes.Unbox_Any, boxed.boxedType);
+		}
+	}
+
+	public sealed class DelayedIsinstResolver : IDelayedInstructionResolver {
+		public CilMethodBody Body { get; }
+
+		public int InstructionIndex { get; set; }
+
+		public ITypeDefOrRef Type { get; }
+
+		public DelayedIsinstResolver(CilMethodBody body, int instructionIndex, ITypeDefOrRef type) {
+			Body = body;
+			InstructionIndex = instructionIndex;
+			Type = type;
+		}
+
+		public void Resolve(StrictEvaluationStackSimulator stack) {
+			var instruction = ((IDelayedInstructionResolver)this).Instruction;
+
+			// Expected stack: [ object, ... ]
+
+			instruction.ReplaceWith(CilOpCodes.Isinst, Type);
+		}
+	}
+
+	public sealed class DelayedUnboxOrCastclassResolver : IDelayedInstructionResolver {
+		public CilMethodBody Body { get; }
+
+		public int InstructionIndex { get; set; }
+
+		public ITypeDefOrRef Type { get; }
+
+		public DelayedUnboxOrCastclassResolver(CilMethodBody body, int instructionIndex, ITypeDefOrRef type) {
+			Body = body;
+			InstructionIndex = instructionIndex;
+			Type = type;
+		}
+
+		public void Resolve(StrictEvaluationStackSimulator stack) {
+			var instruction = ((IDelayedInstructionResolver)this).Instruction;
+
+			// Expected stack: [ object, ... ]
+
+			if (Type.IsValueType) {
+				if (stack.Peek() is not BoxedTypeDefOrRef)
+					throw new Exception($"Expected boxed object on stack, got \"{stack.Peek()?.Name ?? "null"}\" instead");
+
+				instruction.ReplaceWith(CilOpCodes.Unbox_Any, Type);
+			} else
+				instruction.ReplaceWith(CilOpCodes.Castclass, Type);
+		}
+	}
+
+	public sealed class MethodStackScanner : IDelayedInstructionResolver {
+		public CilMethodBody Body { get; }
+
+		public int InstructionIndex {
+			get => Body.Instructions.Count;
+			set { }
+		}
+
+		public MethodStackScanner(CilMethodBody body) {
+			Body = body;
+		}
+
+		public void Resolve(StrictEvaluationStackSimulator stack) {
+			// Empty method, all that matters is that the full stack is scanned
 		}
 	}
 }

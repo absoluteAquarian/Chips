@@ -5,25 +5,22 @@ using Chips.Compiler.Utility;
 namespace Chips.Compiler {
 	public sealed class CompilationContext {
 		public readonly ReferenceImporter importer;
-		private CilMethodBody _method;
 		public readonly TypeResolver resolver;
 		public readonly StringHeap heap;
-		public readonly LooseEvaluationStackSimulator stack;
 
-		public CilMethodBody Body => _method;
-
-		public CilInstructionCollection Instructions => _method?.Instructions!;
+		public CILCursor Cursor { get; private set; }
 
 		internal CompilationContext(ReferenceImporter importer) {
 			this.importer = importer;
 			resolver = new();
 			heap = new();
-			stack = new();
 		}
 
 		public void SetMethod(CilMethodBody method) {
-			_method = method;
-			stack.Clear();
+			if (method is not null)
+				Cursor = new CILCursor(method);
+			else
+				Cursor = null!;
 		}
 	}
 }

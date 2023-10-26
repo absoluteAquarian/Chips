@@ -57,6 +57,11 @@ namespace Chips.Compiler.Parsing {
 			from suffix in TypeModifier.Optional()
 			select $"{name}{{{suffix.GetOrElse("")}}}";
 
+		public static readonly Parser<ParsedTypeAndModifiers> TypeAndModifiers =
+			from name in TypeString
+			from suffix in TypeModifier.Optional()
+			select new ParsedTypeAndModifiers(name, suffix.GetOrElse(""));
+
 		public static readonly Parser<string> TokenizedVariableType =
 			from type in VariableType.Token()
 			select type;
@@ -91,17 +96,6 @@ namespace Chips.Compiler.Parsing {
 		public static readonly Parser<ParsedMethodVariable> FunctionLocal =
 			from def in FunctionArgument.Token()
 			select new ParsedMethodVariable(def);
-
-		/// <summary>
-		/// Parses a local definition, returning a comma-separated list of the following:<br/>
-		/// <c>[constant],name,type</c>
-		/// </summary>
-		public static readonly Parser<string> LocalDefinition =
-			from token in Parse.String(".local").Token().Text()
-			from constant in Parse.String("const").Token().Text().Optional()
-			from name in IdentifierStringWithSuffix(':').Token()
-			from type in VariableType
-			select $"{(constant.IsDefined ? "constant" : "")},{name},{type}";
 
 		private static readonly Parser<string> OpcodeText =
 			from code in Parse.Lower.Many().Text()

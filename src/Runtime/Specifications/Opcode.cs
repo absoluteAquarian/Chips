@@ -37,11 +37,6 @@ namespace Chips.Runtime.Specifications {
 		public virtual unsafe nint Method => nint.Zero;
 
 		/// <summary>
-		/// The expected stack behavior for this Chips instruction
-		/// </summary>
-		public abstract StackBehavior StackBehavior { get; }
-
-		/// <summary>
 		/// The expected number of arguments to be given to this instructino
 		/// </summary>
 		public abstract int ExpectedArgumentCount { get; }
@@ -63,21 +58,6 @@ namespace Chips.Runtime.Specifications {
 		public virtual void GetMethodSignature(out Type returnType, out Type[] parameterTypes) {
 			returnType = typeof(void);
 			parameterTypes = Type.EmptyTypes;
-		}
-
-		/// <summary>
-		/// Gets the expected evaluation stack modification for this opcode.  Defaults to reading <see cref="StackBehavior"/> and throws if <see cref="StackBehavior.PopVar"/> is used
-		/// </summary>
-		/// <param name="popped">How many values are popped</param>
-		/// <param name="pushed">How many values are pushed.</param>
-		public virtual void GetStackModification(out int popped, out int pushed) {
-			var behaviour = StackBehavior;
-
-			if ((behaviour & StackBehavior.PopVar) != 0)
-				throw new InvalidOperationException("Cannot get stack modification for an opcode with variable stack behavior");
-
-			popped = ((int)behaviour & 0xFF00) >> 8;
-			pushed = (int)behaviour & 0xFF;
 		}
 
 		/// <summary>
@@ -109,8 +89,6 @@ namespace Chips.Runtime.Specifications {
 	/// An implementation of <see cref="Opcode"/> that has no arguments with the stack behavior forced to <see cref="StackBehavior.None"/>
 	/// </summary>
 	public abstract class BasicOpcode : Opcode {
-		public sealed override StackBehavior StackBehavior => StackBehavior.None;
-
 		public sealed override int ExpectedArgumentCount => 0;
 
 		public sealed override OpcodeArgumentCollection? DeserializeArguments(BinaryReader reader, TypeResolver resolver, StringHeap heap) => null;
@@ -125,8 +103,6 @@ namespace Chips.Runtime.Specifications {
 	/// </summary>
 	public abstract class LoadConstantOpcode<T> : Opcode {
 		public abstract string Register { get; }
-
-		public sealed override StackBehavior StackBehavior => StackBehavior.None;
 
 		public sealed override int ExpectedArgumentCount => 1;
 
@@ -205,8 +181,6 @@ namespace Chips.Runtime.Specifications {
 
 		public abstract bool LoadsStaticField { get; }
 
-		public sealed override StackBehavior StackBehavior => LoadsStaticField ? StackBehavior.PushOne : StackBehavior.PopOne | StackBehavior.PushOne;
-
 		public sealed override int ExpectedArgumentCount => 1;
 
 		public sealed override void Compile(CompilationContext context, OpcodeArgumentCollection args) {
@@ -222,21 +196,13 @@ namespace Chips.Runtime.Specifications {
 			if (fieldDefinition.IsStatic != LoadsStaticField)
 				throw ChipsCompiler.ErrorAndThrow(new ArgumentException($"Opcode \"{Name}\" expects an identifier for {(LoadsStaticField ? "a static" : "an instance")} field.  Field \"{fieldDefinition.Name}\" in type \"{fieldDefinition.DeclaringType!.Name}\" is {(fieldDefinition.IsStatic ? "a static" : "an instance")} field"));
 
-			if (!LoadsStaticField) {
-				var obj = context.stack.Pop();
-				if (obj != StackObject.Object)
-					throw ChipsCompiler.ErrorAndThrow(new ArgumentException($"Opcode \"{Name}\" expects an object on the stack, received \"{obj}\" instead"));
-			}
-
 			// Emit the field access
 			var importedField = context.importer.ImportField(fieldDefinition);
 
 			if (LoadsStaticField)
-				context.Instructions.Add(LoadsAddress ? CilOpCodes.Ldsflda : CilOpCodes.Ldsfld, importedField);
+				context.Cursor.Emit(LoadsAddress ? CilOpCodes.Ldsflda : CilOpCodes.Ldsfld, importedField);
 			else
-				context.Instructions.Add(LoadsAddress ? CilOpCodes.Ldflda : CilOpCodes.Ldfld, importedField);
-
-			context.stack.Push(LoadsAddress ? StackObject.Address : StackObject.Object);
+				context.Cursor.Emit(LoadsAddress ? CilOpCodes.Ldflda : CilOpCodes.Ldfld, importedField);
 		}
 
 		public sealed override OpcodeArgumentCollection? DeserializeArguments(BinaryReader reader, TypeResolver resolver, StringHeap heap) {
@@ -248,20 +214,11 @@ namespace Chips.Runtime.Specifications {
 		}
 
 		public sealed override OpcodeArgumentCollection? ParseArguments(CompilationContext context, string[] args) {
-			if (args.Length != 1)
-				throw ChipsCompiler.ErrorAndThrow(new ArgumentException($"Expected one argument, received {args.Length}"));
-
-			var field = new DelayedFieldResolver(context.resolver, args[0]);
-			ChipsCompiler.AddDelayedResolver(field);
-
 			return new OpcodeArgumentCollection()
-				.Add(field);
+				.Add(new DelayedFieldResolver(context.resolver, args[0]));
 		}
 
 		public sealed override void SerializeArguments(BinaryWriter writer, OpcodeArgumentCollection args, TypeResolver resolver, StringHeap heap) {
-			if (args.Count != 1)
-				throw ChipsCompiler.ErrorAndThrow(new ArgumentException($"Expected one argument, received {args.Count}"));
-
 			var arg = args[0];
 			if (arg is not IFieldDescriptor field)
 				throw ChipsCompiler.ErrorAndThrow(new ArgumentException("Argument was not an IFieldDescriptor instance"));
@@ -275,8 +232,6 @@ namespace Chips.Runtime.Specifications {
 
 		public abstract bool LoadsLocal { get; }
 
-		public sealed override StackBehavior StackBehavior => StackBehavior.PushOne;
-
 		public sealed override int ExpectedArgumentCount => 1;
 
 		public sealed override void Compile(CompilationContext context, OpcodeArgumentCollection args) {
@@ -284,11 +239,9 @@ namespace Chips.Runtime.Specifications {
 				throw ChipsCompiler.ErrorAndThrow(new ArgumentException($"Opcode \"{Name}\" expects an unsigned 16-bit integer as the argument"));
 
 			if (LoadsLocal)
-				context.Instructions.Add(LoadsAddress ? CilOpCodes.Ldloca : CilOpCodes.Ldloc, arg);
+				context.Cursor.Emit(LoadsAddress ? CilOpCodes.Ldloca : CilOpCodes.Ldloc, arg);
 			else
-				context.Instructions.Add(LoadsAddress ? CilOpCodes.Ldarga : CilOpCodes.Ldarg, arg);
-
-			context.stack.Push(LoadsAddress ? StackObject.Address : StackObject.Object);
+				context.Cursor.Emit(LoadsAddress ? CilOpCodes.Ldarga : CilOpCodes.Ldarg, arg);
 		}
 
 		public sealed override OpcodeArgumentCollection? DeserializeArguments(BinaryReader reader, TypeResolver resolver, StringHeap heap) {
@@ -311,16 +264,9 @@ namespace Chips.Runtime.Specifications {
 
 		public abstract bool IndexWithXRegister { get; }
 
-		public sealed override StackBehavior StackBehavior => StackBehavior.PushOne | StackBehavior.PopOne;
-
 		public sealed override int ExpectedArgumentCount => 1;
 
 		public sealed override void Compile(CompilationContext context, OpcodeArgumentCollection args) {
-			StackObject obj = context.stack.Pop();
-
-			if (obj is not StackObject.Object)
-				throw ChipsCompiler.ErrorAndThrow(new ArgumentException($"Opcode \"{Name}\" expects an object on the stack, received \"{obj}\" instead"));
-
 			if (IndexWithXRegister)
 				context.EmitRegisterLoad("X");
 			else
@@ -334,8 +280,6 @@ namespace Chips.Runtime.Specifications {
 			// Variable capturing
 			bool loadsAddress = LoadsAddress;
 			context.EmitNopAndDelayedResolver((body, index) => loadsAddress ? new DelayedArrayLoadAddressResolver(body, index) : new DelayedArrayLoadResolver(body, index));
-
-			context.stack.Push(LoadsAddress ? StackObject.Address : StackObject.Object);
 		}
 
 		public sealed override OpcodeArgumentCollection? DeserializeArguments(BinaryReader reader, TypeResolver resolver, StringHeap heap) => null;
@@ -362,18 +306,13 @@ namespace Chips.Runtime.Specifications {
 
 		public abstract string Flag { get; }
 
-		public sealed override StackBehavior StackBehavior => SetsFlag ? StackBehavior.None : StackBehavior.PushOne;
-
 		public sealed override int ExpectedArgumentCount => 0;
 
 		public sealed override void Compile(CompilationContext context, OpcodeArgumentCollection args) {
 			if (SetsFlag)
 				context.EmitFlagAssignment(Flag, FlagValue);
-			else {
+			else
 				context.EmitFlagRetrieval(Flag);
-
-				context.stack.Push(StackObject.Boolean);
-			}
 		}
 
 		public sealed override OpcodeArgumentCollection? DeserializeArguments(BinaryReader reader, TypeResolver resolver, StringHeap heap) => null;
@@ -381,5 +320,53 @@ namespace Chips.Runtime.Specifications {
 		public sealed override OpcodeArgumentCollection? ParseArguments(CompilationContext context, string[] args) => null;
 
 		public sealed override void SerializeArguments(BinaryWriter writer, OpcodeArgumentCollection args, TypeResolver resolver, StringHeap heap) { }
+	}
+
+	public abstract class TypeOperandOpcode : Opcode {
+		public abstract bool AllowsNull { get; }
+
+		public sealed override int ExpectedArgumentCount => 1;
+
+		public sealed override OpcodeArgumentCollection? DeserializeArguments(BinaryReader reader, TypeResolver resolver, StringHeap heap) {
+			var type = heap.ReadString(reader);
+
+			if (type == "") {
+				if (!AllowsNull)
+					throw ChipsCompiler.ErrorAndThrow(new ArgumentException($"Opcode \"{Name}\" does not allow null as an argument"));
+
+				return new OpcodeArgumentCollection().Add(null);
+			}
+
+			var typeDef = reader.ReadTypeDefinition(resolver, heap);
+			ChipsCompiler.AddDelayedResolver(typeDef);
+
+			return new OpcodeArgumentCollection()
+				.Add(typeDef);
+		}
+
+		public sealed override OpcodeArgumentCollection? ParseArguments(CompilationContext context, string[] args) {
+			if (args[0] == null) {
+				if (!AllowsNull)
+					throw ChipsCompiler.ErrorAndThrow(new ArgumentException($"Opcode \"{Name}\" does not allow null as an argument"));
+
+				return new OpcodeArgumentCollection().Add(null);
+			}
+
+			return new OpcodeArgumentCollection()
+				.Add(new DelayedTypeResolver(context.resolver, args[0], false));
+		}
+
+		public sealed override void SerializeArguments(BinaryWriter writer, OpcodeArgumentCollection args, TypeResolver resolver, StringHeap heap) {
+			var arg = args[0];
+			if (arg is null) {
+				if (!AllowsNull)
+					throw ChipsCompiler.ErrorAndThrow(new ArgumentException($"Opcode \"{Name}\" does not allow null as an argument"));
+
+				heap.WriteString(writer, "");
+			} else if (arg is ITypeDefOrRef type)
+				writer.Write(type, heap);
+			else
+				throw ChipsCompiler.ErrorAndThrow(new ArgumentException("Argument was not an ITypeDefOrRef instance"));
+		}
 	}
 }
