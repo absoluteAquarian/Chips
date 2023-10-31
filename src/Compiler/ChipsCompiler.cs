@@ -44,8 +44,23 @@ namespace Chips {
 		public static bool NoEntryPoint => _noEntryPoint ??= buildOptions.TryGetValue("no-entry", out string? value) && bool.TryParse(value, out bool result) && result;
 
 		static ChipsCompiler() {
+			compilingOpcodes = new();
+
+			foreach (Type type in typeof(ChipsCompiler).Assembly.GetExportedTypes().Where(static t => t.IsSubclassOf(typeof(CompilingOpcode)))) {
+				System.Reflection.ConstructorInfo constructor = type.GetConstructor(Type.EmptyTypes)
+					?? throw new InvalidOperationException($"Compiling opcode {type.Name} does not have a parameterless constructor");
+
+				CompilingOpcode opcode = (CompilingOpcode)constructor.Invoke(null);
+				OpcodeID id = opcode.GetRuntimeOpcode().Code;
+
+				if (compilingOpcodes.ContainsKey(id))
+					throw new InvalidOperationException($"OpcodeID.{id} was used by more than one opcode");
+
+				compilingOpcodes.Add(id, opcode);
+			}
+
 			opcodeNames = Enum.GetValues<OpcodeID>()
-				.Where(static id => opcodes.ContainsKey(id))
+				.Where(static id => compilingOpcodes.ContainsKey(id))
 				.Select(static id => id.ToString())
 				.Select(static name => (name.Contains('_') ? name[..name.IndexOf('_')] : name).ToLower())
 				.Distinct()
@@ -228,8 +243,6 @@ namespace Chips {
 
 			string workingDir = Directory.GetCurrentDirectory();
 
-			Utility.Extensions.StringExtensionsLinkedToSourceLines = true;
-
 			project.SetupReferences();
 
 			// Assemble the binary object files
@@ -271,8 +284,6 @@ namespace Chips {
 					writer.Write(code._rawDataCPDB);
 				}
 			}
-
-			Utility.Extensions.StringExtensionsLinkedToSourceLines = false;
 		}
 
 		private static void CompileBinaryFiles(ChipsProject project) {
@@ -322,8 +333,8 @@ namespace Chips {
 			return false;
 		}
 
-		public static IEnumerable<Opcode> FindOpcode(string name) {
-			foreach (var (id, code) in opcodes) {
+		public static IEnumerable<CompilingOpcode> FindOpcode(string name) {
+			foreach (var (id, code) in compilingOpcodes) {
 				string opcodeName = id.ToString().ToLower();
 				
 				int index = opcodeName.IndexOf('_');

@@ -4,12 +4,10 @@ using Chips.Compiler.Compilation;
 using Chips.Compiler.IO;
 using Chips.Compiler.IO.PDB;
 using Chips.Compiler.Utility;
-using Chips.Runtime.Specifications;
 using Chips.Utility;
 using Sprache;
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 
 namespace Chips.Compiler.Parsing.States {
@@ -20,13 +18,13 @@ namespace Chips.Compiler.Parsing.States {
 
 		public void Success() => OnSuccess?.Invoke(this);
 
-		public abstract bool ParseNext(StreamReader reader, CompilationContext context, BytecodeFile code, out BaseState? next);
+		public abstract bool ParseNext(SourceReader reader, CompilationContext context, BytecodeFile code, out BaseState? next);
 	}
 
 	internal abstract class MultipleStates : BaseState {
 		protected abstract IEnumerable<BaseState> EnumeratePossibleStates();
 
-		public override bool ParseNext(StreamReader reader, CompilationContext context, BytecodeFile code, out BaseState? next) {
+		public override bool ParseNext(SourceReader reader, CompilationContext context, BytecodeFile code, out BaseState? next) {
 			int pos = reader.GetActualPosition();
 
 			foreach (var state in EnumeratePossibleStates()) {
@@ -50,12 +48,12 @@ namespace Chips.Compiler.Parsing.States {
 	}
 
 	internal sealed class Comment : BaseState {
-		public override bool ParseNext(StreamReader reader, CompilationContext context, BytecodeFile code, out BaseState? next) {
+		public override bool ParseNext(SourceReader reader, CompilationContext context, BytecodeFile code, out BaseState? next) {
 			ChipsCompiler.CompilingSourceLineOverride = null;
 
 			reader.ReadUntilNonWhitespace();
 
-			if (reader.Peek() == ';') {
+			if (reader.BaseReader.Peek() == ';') {
 				reader.ReadUntilNewline();
 				next = Previous;
 				return true;
@@ -67,7 +65,7 @@ namespace Chips.Compiler.Parsing.States {
 	}
 
 	internal sealed class Empty : BaseState {
-		public override bool ParseNext(StreamReader reader, CompilationContext context, BytecodeFile code, out BaseState? next) {
+		public override bool ParseNext(SourceReader reader, CompilationContext context, BytecodeFile code, out BaseState? next) {
 			ChipsCompiler.CompilingSourceLineOverride = null;
 
 			reader.ReadUntilNonWhitespace();
@@ -98,7 +96,7 @@ namespace Chips.Compiler.Parsing.States {
 			return new ScopeOpen(body) { Previous = parent };
 		}
 
-		public override bool ParseNext(StreamReader reader, CompilationContext context, BytecodeFile code, out BaseState? next) {
+		public override bool ParseNext(SourceReader reader, CompilationContext context, BytecodeFile code, out BaseState? next) {
 			// Parse the scope opening
 			if (reader.ReadFirstNonWhitespaceChar() != '{') {
 				next = null;
@@ -132,7 +130,7 @@ namespace Chips.Compiler.Parsing.States {
 			return new ScopeClose() { Previous = parent.Previous?.Previous };
 		}
 
-		public override bool ParseNext(StreamReader reader, CompilationContext context, BytecodeFile code, out BaseState? next) {
+		public override bool ParseNext(SourceReader reader, CompilationContext context, BytecodeFile code, out BaseState? next) {
 			// Parse the scope closing
 			// In case any characters appeared between the current location and the closing bracket, consume them
 			if (!reader.ReadUntil('}', alwaysConsume: true).EndsWith('}')) {
@@ -146,7 +144,7 @@ namespace Chips.Compiler.Parsing.States {
 	}
 
 	internal sealed class NamespaceImport : BaseState {
-		public override bool ParseNext(StreamReader reader, CompilationContext context, BytecodeFile code, out BaseState? next) {
+		public override bool ParseNext(SourceReader reader, CompilationContext context, BytecodeFile code, out BaseState? next) {
 			ChipsCompiler.CompilingSourceLineOverride = ChipsCompiler.CompilingSourceLine;
 
 			if (reader.ReadWord() != ".import") {
@@ -172,7 +170,7 @@ namespace Chips.Compiler.Parsing.States {
 	}
 
 	internal sealed class TypeAlias : BaseState {
-		public override bool ParseNext(StreamReader reader, CompilationContext context, BytecodeFile code, out BaseState? next) {
+		public override bool ParseNext(SourceReader reader, CompilationContext context, BytecodeFile code, out BaseState? next) {
 			ChipsCompiler.CompilingSourceLineOverride = ChipsCompiler.CompilingSourceLine;
 
 			if (reader.ReadWord() != ".alias") {
@@ -216,7 +214,7 @@ namespace Chips.Compiler.Parsing.States {
 
 		public CPDBFileNamespaceSegment NamespaceSymbol { get; private set; }
 
-		public override bool ParseNext(StreamReader reader, CompilationContext context, BytecodeFile code, out BaseState? next) {
+		public override bool ParseNext(SourceReader reader, CompilationContext context, BytecodeFile code, out BaseState? next) {
 			ChipsCompiler.CompilingSourceLineOverride = ChipsCompiler.CompilingSourceLine;
 
 			if (reader.ReadWord() != ".namespace") {
@@ -256,7 +254,7 @@ namespace Chips.Compiler.Parsing.States {
 			yield return ScopeClose.Create(this);
 		}
 
-		public override bool ParseNext(StreamReader reader, CompilationContext context, BytecodeFile code, out BaseState? next) {
+		public override bool ParseNext(SourceReader reader, CompilationContext context, BytecodeFile code, out BaseState? next) {
 			bool success = base.ParseNext(reader, context, code, out next);
 
 			if (!success) {
@@ -279,7 +277,7 @@ namespace Chips.Compiler.Parsing.States {
 
 		public CPDBFileTypeSegment TypeSymbol { get; private set; }
 
-		public override bool ParseNext(StreamReader reader, CompilationContext context, BytecodeFile code, out BaseState? next) {
+		public override bool ParseNext(SourceReader reader, CompilationContext context, BytecodeFile code, out BaseState? next) {
 			ChipsCompiler.CompilingSourceLineOverride = ChipsCompiler.CompilingSourceLine;
 
 			if (reader.ReadWord() != ".type") {
@@ -388,7 +386,7 @@ namespace Chips.Compiler.Parsing.States {
 			yield return ScopeClose.Create(this);
 		}
 
-		public override bool ParseNext(StreamReader reader, CompilationContext context, BytecodeFile code, out BaseState? next) {
+		public override bool ParseNext(SourceReader reader, CompilationContext context, BytecodeFile code, out BaseState? next) {
 			bool success = base.ParseNext(reader, context, code, out next);
 
 			if (!success) {
@@ -407,7 +405,7 @@ namespace Chips.Compiler.Parsing.States {
 
 		public BytecodeFieldSegment Segment { get; private set; }
 
-		public override bool ParseNext(StreamReader reader, CompilationContext context, BytecodeFile code, out BaseState? next) {
+		public override bool ParseNext(SourceReader reader, CompilationContext context, BytecodeFile code, out BaseState? next) {
 			ChipsCompiler.CompilingSourceLineOverride = ChipsCompiler.CompilingSourceLine;
 
 			if (reader.ReadWord() != ".field") {
@@ -480,7 +478,7 @@ namespace Chips.Compiler.Parsing.States {
 
 		public CPDBFileMethodSegment MethodSymbol { get; private set; }
 
-		public override bool ParseNext(StreamReader reader, CompilationContext context, BytecodeFile code, out BaseState? next) {
+		public override bool ParseNext(SourceReader reader, CompilationContext context, BytecodeFile code, out BaseState? next) {
 			ChipsCompiler.CompilingSourceLineOverride = ChipsCompiler.CompilingSourceLine;
 
 			if (reader.ReadWord() != ".method") {
@@ -565,7 +563,7 @@ namespace Chips.Compiler.Parsing.States {
 			yield return ScopeClose.Create(this);
 		}
 
-		public override bool ParseNext(StreamReader reader, CompilationContext context, BytecodeFile code, out BaseState? next) {
+		public override bool ParseNext(SourceReader reader, CompilationContext context, BytecodeFile code, out BaseState? next) {
 			bool success = base.ParseNext(reader, context, code, out next);
 
 			if (!success) {
@@ -583,7 +581,7 @@ namespace Chips.Compiler.Parsing.States {
 	}
 
 	internal class LocalsListIdentifier : BaseState {
-		public override bool ParseNext(StreamReader reader, CompilationContext context, BytecodeFile code, out BaseState? next) {
+		public override bool ParseNext(SourceReader reader, CompilationContext context, BytecodeFile code, out BaseState? next) {
 			ChipsCompiler.CompilingSourceLineOverride = ChipsCompiler.CompilingSourceLine;
 
 			if (reader.ReadWord() != ".locals") {
@@ -615,7 +613,7 @@ namespace Chips.Compiler.Parsing.States {
 			yield return ScopeClose.Create(this);
 		}
 
-		public override bool ParseNext(StreamReader reader, CompilationContext context, BytecodeFile code, out BaseState? next) {
+		public override bool ParseNext(SourceReader reader, CompilationContext context, BytecodeFile code, out BaseState? next) {
 			var method = GetMethod();
 
 			if (method.hasDefinedLocals)
@@ -634,7 +632,7 @@ namespace Chips.Compiler.Parsing.States {
 	}
 
 	internal class LocalIdentifier : BaseState {
-		public override bool ParseNext(StreamReader reader, CompilationContext context, BytecodeFile code, out BaseState? next) {
+		public override bool ParseNext(SourceReader reader, CompilationContext context, BytecodeFile code, out BaseState? next) {
 			ChipsCompiler.CompilingSourceLineOverride = ChipsCompiler.CompilingSourceLine;
 
 			// Read words until a comma or the end of the locals list is reached
@@ -644,8 +642,8 @@ namespace Chips.Compiler.Parsing.States {
 			var list = GetList();
 
 			// Only consume the comma if it exists
-			if (reader.Peek() == ',') {
-				reader.Read();
+			if (reader.BaseReader.Peek() == ',') {
+				reader.BaseReader.Read();
 				list.previousLocalHadComma = true;
 			} else
 				list.previousLocalHadComma = false;
@@ -675,7 +673,7 @@ namespace Chips.Compiler.Parsing.States {
 	}
 
 	internal class LabelIdentifier : BaseState {
-		public override bool ParseNext(StreamReader reader, CompilationContext context, BytecodeFile code, out BaseState? next) {
+		public override bool ParseNext(SourceReader reader, CompilationContext context, BytecodeFile code, out BaseState? next) {
 			string identifier = reader.ReadWord();
 
 			if (!identifier.EndsWith(':') && reader.PeekFirstNonWhitespaceChar() != ':') {
@@ -712,7 +710,7 @@ namespace Chips.Compiler.Parsing.States {
 	}
 
 	internal class InstructionIdentifier : BaseState {
-		public override bool ParseNext(StreamReader reader, CompilationContext context, BytecodeFile code, out BaseState? next) {
+		public override bool ParseNext(SourceReader reader, CompilationContext context, BytecodeFile code, out BaseState? next) {
 			string opcode = reader.ReadWord();
 
 			if (ParsingSequences.Opcode.TryParse(opcode) is not IResult<string> { WasSuccessful: true } result)
@@ -739,12 +737,12 @@ namespace Chips.Compiler.Parsing.States {
 
 			bool anySuccess = false;
 			List<CompilationException> caughtExceptions = new();
-			foreach (Opcode possibleOpcode in possibleOpcodes) {
+			foreach (CompilingOpcode possibleOpcode in possibleOpcodes) {
 				int count = ChipsCompiler.ErrorCount;
 				try {
 					var args = possibleOpcode.ParseArguments(context, arguments) ?? new();
 
-					ChipsInstruction instr = new ChipsInstruction(possibleOpcode.Code, args);
+					ChipsInstruction instr = new ChipsInstruction(possibleOpcode.GetRuntimeOpcode().Code, args);
 					body.Add(instr);
 					anySuccess = true;
 					break;

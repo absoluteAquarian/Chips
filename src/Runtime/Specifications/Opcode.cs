@@ -1,14 +1,5 @@
-﻿using AsmResolver.DotNet;
-using AsmResolver.PE.DotNet.Cil;
-using Chips.Compiler;
-using Chips.Compiler.Utility;
-using Chips.Runtime.Types;
-using Chips.Runtime.Types.NumberProcessing;
-using Chips.Runtime.Utility;
-using Chips.Utility;
-using Chips.Utility.Reflection;
+﻿using AsmResolver.PE.DotNet.Cil;
 using System;
-using System.IO;
 
 namespace Chips.Runtime.Specifications {
 	/// <summary>
@@ -25,7 +16,7 @@ namespace Chips.Runtime.Specifications {
 				string name = Code.ToString();
 				int index = name.IndexOf('_');
 				if (index != -1)
-					name = name[(index + 1)..];
+					name = name[..index];
 				return name.ToLower();
 			}
 		}
@@ -37,19 +28,6 @@ namespace Chips.Runtime.Specifications {
 		public virtual unsafe nint Method => nint.Zero;
 
 		/// <summary>
-		/// The expected number of arguments to be given to this instructino
-		/// </summary>
-		public abstract int ExpectedArgumentCount { get; }
-
-		/// <summary>
-		/// Add the CIL instructions used when transpiling this Chips instruction here
-		/// </summary>
-		/// <param name="context">An object containing information about the current method being compiled</param>
-		/// <param name="args">The arguments used for this instruction</param>
-		/// <remarks>If no instructions are added, the default implementation of loading the static opcode field and calling its function is used instead</remarks>
-		public virtual void Compile(CompilationContext context, OpcodeArgumentCollection args) { }
-
-		/// <summary>
 		/// Gets the return type and parameter types used for this Chips instruction's method.<br/>
 		/// These types are used to construct the <see cref="CilOpCodes.Calli"/> instruction
 		/// </summary>
@@ -59,43 +37,6 @@ namespace Chips.Runtime.Specifications {
 			returnType = typeof(void);
 			parameterTypes = Type.EmptyTypes;
 		}
-
-		/// <summary>
-		/// Deserialize the argument collection from the data stream here
-		/// </summary>
-		/// <param name="reader">The data stream</param>
-		/// <param name="resolver">An object for resolving assemblies and types</param>
-		/// <returns>A collection of arguments.  Return <see langword="null"/> to indicate that this opcode has no arguments</returns>
-		public abstract OpcodeArgumentCollection? DeserializeArguments(BinaryReader reader, TypeResolver resolver, StringHeap heap);
-
-		/// <summary>
-		/// Parse the arguments from the string representation here
-		/// </summary>
-		/// <param name="context">An object containing information about the current method being compiled</param>
-		/// <param name="args">The list of arguments, which were previously in a comma-separated list</param>
-		/// <returns>A collection of arguments.  Return <see langword="null"/> to indicate that this opcode has no arguments</returns>
-		public abstract OpcodeArgumentCollection? ParseArguments(CompilationContext context, string[] args);
-
-		/// <summary>
-		/// Serialize the argument collection to the data stream here
-		/// </summary>
-		/// <param name="writer">The data stream</param>
-		/// <param name="args">The collection of arguments</param>
-		/// <param name="resolver">An object for resolving assemblies and types</param>
-		public abstract void SerializeArguments(BinaryWriter writer, OpcodeArgumentCollection args, TypeResolver resolver, StringHeap heap);
-	}
-
-	/// <summary>
-	/// An implementation of <see cref="Opcode"/> that has no arguments with the stack behavior forced to <see cref="StackBehavior.None"/>
-	/// </summary>
-	public abstract class BasicOpcode : Opcode {
-		public sealed override int ExpectedArgumentCount => 0;
-
-		public sealed override OpcodeArgumentCollection? DeserializeArguments(BinaryReader reader, TypeResolver resolver, StringHeap heap) => null;
-
-		public sealed override OpcodeArgumentCollection? ParseArguments(CompilationContext context, string[] args) => null;
-
-		public sealed override void SerializeArguments(BinaryWriter writer, OpcodeArgumentCollection args, TypeResolver resolver, StringHeap heap) { }
 	}
 
 	/// <summary>
@@ -103,74 +44,13 @@ namespace Chips.Runtime.Specifications {
 	/// </summary>
 	public abstract class LoadConstantOpcode<T> : Opcode {
 		public abstract string Register { get; }
-
-		public sealed override int ExpectedArgumentCount => 1;
-
-		private T ValidateArgument(OpcodeArgumentCollection args) {
-			if (args[0] is not T arg)
-				throw ChipsCompiler.ErrorAndThrow(new ArgumentException($"Opcode \"{Name}\" expects a {typeof(T).GetSimplifiedGenericTypeName()} argument, received \"{args[0]?.GetType().GetSimplifiedGenericTypeName() ?? "null"}\" instead"));
-
-			return arg;
-		}
-
-		protected void EmitRegisterAccess(CompilationContext context, OpcodeArgumentCollection args, out T arg) {
-			arg = ValidateArgument(args);
-
-			context.EmitRegisterLoad(Register);
-		}
-
-		public sealed override OpcodeArgumentCollection? DeserializeArguments(BinaryReader reader, TypeResolver resolver, StringHeap heap) {
-			try {
-				return new OpcodeArgumentCollection()
-					.Add(DeserializeArgument(reader, resolver, heap));
-			} catch (Exception ex) {
-				ChipsCompiler.ErrorAndThrow(ex);
-				throw;
-			}
-		}
-
-		protected abstract T DeserializeArgument(BinaryReader reader, TypeResolver resolver, StringHeap heap);
-
-		public sealed override OpcodeArgumentCollection? ParseArguments(CompilationContext context, string[] args) {
-			try {
-				return new OpcodeArgumentCollection()
-					.Add(ParseArgument(context, args[0]));
-			} catch (Exception ex) {
-				ChipsCompiler.ErrorAndThrow(ex);
-				throw;
-			}
-		}
-
-		protected abstract T ParseArgument(CompilationContext context, string arg);
-
-		public sealed override void SerializeArguments(BinaryWriter writer, OpcodeArgumentCollection args, TypeResolver resolver, StringHeap heap) {
-			Register register = typeof(Registers).RetrieveStaticField<Register>(Register)!;
-
-			var arg = ValidateArgument(args);
-			
-			if (!register.AcceptsValue(arg))
-				throw ChipsCompiler.ErrorAndThrow(new ArgumentException($"Register \"{Register}\" does not accept values of type \"{arg?.GetType().GetSimplifiedGenericTypeName() ?? "null"}\""));
-
-			try {
-				SerializeArgument(writer, arg, resolver, heap);
-			} catch (Exception ex) {
-				ChipsCompiler.ErrorAndThrow(ex);
-				throw;
-			}
-		}
-
-		protected abstract void SerializeArgument(BinaryWriter writer, T arg, TypeResolver resolver, StringHeap heap);
 	}
 
 	/// <summary>
 	/// An implementation of <see cref="Opcode"/> which represents an instruction that loads a "zero" to a register
 	/// </summary>
-	public abstract class LoadZeroOpcode : BasicOpcode {
+	public abstract class LoadZeroOpcode : Opcode {
 		public abstract string Register { get; }
-
-		protected void EmitRegisterAccess(CompilationContext context) {
-			context.EmitRegisterLoad(Register);
-		}
 	}
 
 	/// <summary>
@@ -180,193 +60,41 @@ namespace Chips.Runtime.Specifications {
 		public abstract bool LoadsAddress { get; }
 
 		public abstract bool LoadsStaticField { get; }
-
-		public sealed override int ExpectedArgumentCount => 1;
-
-		public sealed override void Compile(CompilationContext context, OpcodeArgumentCollection args) {
-			FieldDefinition fieldDefinition;
-			if (args[0] is DelayedFieldResolver delayed)
-				fieldDefinition = delayed.Member ?? throw ChipsCompiler.ErrorAndThrow(new ArgumentException($"Opcode \"{Name}\" could not evaluate its argument"));
-			else if (args[0] is FieldDefinition def)
-				fieldDefinition = def;
-			else
-				throw ChipsCompiler.ErrorAndThrow(new ArgumentException($"Opcode \"{Name}\" could not evaluate its argument"));
-
-			// Field is static, but opcode expects an instance field or vice versa
-			if (fieldDefinition.IsStatic != LoadsStaticField)
-				throw ChipsCompiler.ErrorAndThrow(new ArgumentException($"Opcode \"{Name}\" expects an identifier for {(LoadsStaticField ? "a static" : "an instance")} field.  Field \"{fieldDefinition.Name}\" in type \"{fieldDefinition.DeclaringType!.Name}\" is {(fieldDefinition.IsStatic ? "a static" : "an instance")} field"));
-
-			// Emit the field access
-			var importedField = context.importer.ImportField(fieldDefinition);
-
-			if (LoadsStaticField)
-				context.Cursor.Emit(LoadsAddress ? CilOpCodes.Ldsflda : CilOpCodes.Ldsfld, importedField);
-			else
-				context.Cursor.Emit(LoadsAddress ? CilOpCodes.Ldflda : CilOpCodes.Ldfld, importedField);
-		}
-
-		public sealed override OpcodeArgumentCollection? DeserializeArguments(BinaryReader reader, TypeResolver resolver, StringHeap heap) {
-			var field = reader.ReadFieldDefinition(resolver, heap);
-			ChipsCompiler.AddDelayedResolver(field);
-
-			return new OpcodeArgumentCollection()
-				.Add(field);
-		}
-
-		public sealed override OpcodeArgumentCollection? ParseArguments(CompilationContext context, string[] args) {
-			return new OpcodeArgumentCollection()
-				.Add(new DelayedFieldResolver(context.resolver, args[0]));
-		}
-
-		public sealed override void SerializeArguments(BinaryWriter writer, OpcodeArgumentCollection args, TypeResolver resolver, StringHeap heap) {
-			var arg = args[0];
-			if (arg is not IFieldDescriptor field)
-				throw ChipsCompiler.ErrorAndThrow(new ArgumentException("Argument was not an IFieldDescriptor instance"));
-
-			writer.Write(field, heap);
-		}
 	}
 
+	/// <summary>
+	/// An implementation of <see cref="Opcode"/> which represents an instruction that loads a method argument to the stack
+	/// </summary>
 	public abstract class LoadMethodVariableOpcode : Opcode {
 		public abstract bool LoadsAddress { get; }
 
 		public abstract bool LoadsLocal { get; }
-
-		public sealed override int ExpectedArgumentCount => 1;
-
-		public sealed override void Compile(CompilationContext context, OpcodeArgumentCollection args) {
-			if (args[0] is not ushort arg)
-				throw ChipsCompiler.ErrorAndThrow(new ArgumentException($"Opcode \"{Name}\" expects an unsigned 16-bit integer as the argument"));
-
-			if (LoadsLocal)
-				context.Cursor.Emit(LoadsAddress ? CilOpCodes.Ldloca : CilOpCodes.Ldloc, arg);
-			else
-				context.Cursor.Emit(LoadsAddress ? CilOpCodes.Ldarga : CilOpCodes.Ldarg, arg);
-		}
-
-		public sealed override OpcodeArgumentCollection? DeserializeArguments(BinaryReader reader, TypeResolver resolver, StringHeap heap) {
-			return new OpcodeArgumentCollection()
-				.Add(reader.ReadUInt16());
-		}
-
-		public sealed override OpcodeArgumentCollection? ParseArguments(CompilationContext context, string[] args) {
-			return new OpcodeArgumentCollection()
-				.Add(StringSerialization.ParseSimpleSmallIntegerArgument(context, args[0]));
-		}
-
-		public sealed override void SerializeArguments(BinaryWriter writer, OpcodeArgumentCollection args, TypeResolver resolver, StringHeap heap) {
-			writer.Write((ushort)args[0]!);
-		}
 	}
 
+	/// <summary>
+	/// An implementation of <see cref="Opcode"/> which represents an instruction that loads an element from an array on the stack using the X or Y registers
+	/// </summary>
 	public abstract class LoadElementInArrayOpcode : Opcode {
 		public abstract bool LoadsAddress { get; }
 
 		public abstract bool IndexWithXRegister { get; }
-
-		public sealed override int ExpectedArgumentCount => 1;
-
-		public sealed override void Compile(CompilationContext context, OpcodeArgumentCollection args) {
-			if (IndexWithXRegister)
-				context.EmitRegisterLoad("X");
-			else
-				context.EmitRegisterLoad("Y");
-
-			context.EmitRegisterValueRetrieval<IntegerRegister>();
-			context.EmitCastTo<IntPtr_T>();
-			context.EmitUnderlyingTypeValueRetrieval<IntPtr_T>();
-
-			// Instruction will be delayed in order to ensure that the stack is set up properly for later instructions
-			// Variable capturing
-			bool loadsAddress = LoadsAddress;
-			context.EmitNopAndDelayedResolver((body, index) => loadsAddress ? new DelayedArrayLoadAddressResolver(body, index) : new DelayedArrayLoadResolver(body, index));
-		}
-
-		public sealed override OpcodeArgumentCollection? DeserializeArguments(BinaryReader reader, TypeResolver resolver, StringHeap heap) => null;
-
-		public sealed override OpcodeArgumentCollection? ParseArguments(CompilationContext context, string[] args) {
-			Register register = StringSerialization.ParseRegisterArgument(context, args[0]);
-
-			if (IndexWithXRegister && !object.ReferenceEquals(register, Registers.X))
-				throw ChipsCompiler.ErrorAndThrow(new ArgumentException($"Opcode \"{Name}\" expects register &X as the argument"));
-			else if (!IndexWithXRegister && !object.ReferenceEquals(register, Registers.Y))
-				throw ChipsCompiler.ErrorAndThrow(new ArgumentException($"Opcode \"{Name}\" expects register &Y as the argument"));
-
-			// No arguments need to be saved
-			return null;
-		}
-
-		public sealed override void SerializeArguments(BinaryWriter writer, OpcodeArgumentCollection args, TypeResolver resolver, StringHeap heap) { }
 	}
 
+	/// <summary>
+	/// An implementation of <see cref="Opcode"/> which represents an instruction that loads or sets one of the flags in the F register
+	/// </summary>
 	public abstract class ModifyFlagsRegisterOpcode : Opcode {
 		public abstract bool SetsFlag { get; }
 
 		public abstract bool FlagValue { get; }
 
 		public abstract string Flag { get; }
-
-		public sealed override int ExpectedArgumentCount => 0;
-
-		public sealed override void Compile(CompilationContext context, OpcodeArgumentCollection args) {
-			if (SetsFlag)
-				context.EmitFlagAssignment(Flag, FlagValue);
-			else
-				context.EmitFlagRetrieval(Flag);
-		}
-
-		public sealed override OpcodeArgumentCollection? DeserializeArguments(BinaryReader reader, TypeResolver resolver, StringHeap heap) => null;
-
-		public sealed override OpcodeArgumentCollection? ParseArguments(CompilationContext context, string[] args) => null;
-
-		public sealed override void SerializeArguments(BinaryWriter writer, OpcodeArgumentCollection args, TypeResolver resolver, StringHeap heap) { }
 	}
 
+	/// <summary>
+	/// An implementation of <see cref="Opcode"/> which represents an instruction that uses a type token as an argument
+	/// </summary>
 	public abstract class TypeOperandOpcode : Opcode {
 		public abstract bool AllowsNull { get; }
-
-		public sealed override int ExpectedArgumentCount => 1;
-
-		public sealed override OpcodeArgumentCollection? DeserializeArguments(BinaryReader reader, TypeResolver resolver, StringHeap heap) {
-			var type = heap.ReadString(reader);
-
-			if (type == "") {
-				if (!AllowsNull)
-					throw ChipsCompiler.ErrorAndThrow(new ArgumentException($"Opcode \"{Name}\" does not allow null as an argument"));
-
-				return new OpcodeArgumentCollection().Add(null);
-			}
-
-			var typeDef = reader.ReadTypeDefinition(resolver, heap);
-			ChipsCompiler.AddDelayedResolver(typeDef);
-
-			return new OpcodeArgumentCollection()
-				.Add(typeDef);
-		}
-
-		public sealed override OpcodeArgumentCollection? ParseArguments(CompilationContext context, string[] args) {
-			if (args[0] == null) {
-				if (!AllowsNull)
-					throw ChipsCompiler.ErrorAndThrow(new ArgumentException($"Opcode \"{Name}\" does not allow null as an argument"));
-
-				return new OpcodeArgumentCollection().Add(null);
-			}
-
-			return new OpcodeArgumentCollection()
-				.Add(new DelayedTypeResolver(context.resolver, args[0], false));
-		}
-
-		public sealed override void SerializeArguments(BinaryWriter writer, OpcodeArgumentCollection args, TypeResolver resolver, StringHeap heap) {
-			var arg = args[0];
-			if (arg is null) {
-				if (!AllowsNull)
-					throw ChipsCompiler.ErrorAndThrow(new ArgumentException($"Opcode \"{Name}\" does not allow null as an argument"));
-
-				heap.WriteString(writer, "");
-			} else if (arg is ITypeDefOrRef type)
-				writer.Write(type, heap);
-			else
-				throw ChipsCompiler.ErrorAndThrow(new ArgumentException("Argument was not an ITypeDefOrRef instance"));
-		}
 	}
 }

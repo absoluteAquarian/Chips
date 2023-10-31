@@ -1,8 +1,4 @@
-﻿using AsmResolver.PE.DotNet.Cil;
-using Chips.Compiler;
-using Chips.Compiler.Utility;
-using Chips.Runtime.Types;
-using System.IO;
+﻿using Chips.Runtime.Types;
 
 namespace Chips.Runtime.Specifications {
 	// push
@@ -10,22 +6,12 @@ namespace Chips.Runtime.Specifications {
 	// pop
 
 	public sealed class OpcodePop : Opcode {
-		public sealed override int ExpectedArgumentCount => 0;
-
 		public override OpcodeID Code => OpcodeID.Pop;
-
-		public override void Compile(CompilationContext context, OpcodeArgumentCollection args) {
-			context.Cursor.Emit(CilOpCodes.Pop);
-		}
-
-		public sealed override OpcodeArgumentCollection? DeserializeArguments(BinaryReader reader, TypeResolver resolver, StringHeap heap) => null;
-
-		public sealed override OpcodeArgumentCollection? ParseArguments(CompilationContext context, string[] args) => null;
-
-		public sealed override void SerializeArguments(BinaryWriter writer, OpcodeArgumentCollection args, TypeResolver resolver, StringHeap heap) { }
 	}
 
-	// dup
+	public sealed class OpcodeDup : Opcode {
+		public override OpcodeID Code => OpcodeID.Dup;
+	}
 
 	public sealed class OpcodeCli : ModifyFlagsRegisterOpcode {
 		public override bool SetsFlag => true;
@@ -73,13 +59,6 @@ namespace Chips.Runtime.Specifications {
 		public override string Register => nameof(Registers.A);
 
 		public override OpcodeID Code => OpcodeID.Ldzi;
-
-		public override void Compile(CompilationContext context, OpcodeArgumentCollection args) {
-			EmitRegisterAccess(context);
-
-			context.Cursor.Emit(CilOpCodes.Ldc_I4_0);
-			context.EmitNumberRegisterAssignment<IntegerRegister, int>();
-		}
 	}
 
 	// ldind

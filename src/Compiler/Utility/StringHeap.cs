@@ -1,4 +1,5 @@
-﻿using Chips.Utility;
+﻿using Chips.Runtime.Types;
+using Chips.Utility;
 using System;
 using System.IO;
 using System.Text;
@@ -85,23 +86,6 @@ namespace Chips.Compiler.Utility {
 		public string ReadString(BinaryReader reader) {
 			StringMetadata token = StringMetadata.Deserialize(reader);
 			return GetString(token);
-		}
-	}
-
-	public readonly struct StringMetadata {
-		public readonly int Offset;
-
-		public StringMetadata(int offset) {
-			Offset = offset;
-		}
-
-		public void Serialize(BinaryWriter writer) {
-			writer.Write(Offset);
-		}
-
-		public static StringMetadata Deserialize(BinaryReader reader) {
-			int offset = reader.ReadInt32();
-			return new(offset);
 		}
 	}
 }

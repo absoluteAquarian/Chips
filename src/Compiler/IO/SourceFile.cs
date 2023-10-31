@@ -1,5 +1,5 @@
-﻿using Chips.Compiler.Parsing.States;
-using Chips.Utility;
+﻿using Chips.Compiler.Parsing;
+using Chips.Compiler.Parsing.States;
 using System;
 using System.IO;
 
@@ -19,13 +19,13 @@ namespace Chips.Compiler.IO {
 			context.resolver.Clear();
 			context.SetMethod(null!);
 
-			using StreamReader reader = new StreamReader(File.OpenRead(file));
+			using SourceReader reader = new SourceReader(new StreamReader(File.OpenRead(file)));
 
 			BytecodeFile code = new BytecodeFile(codeFilePath);
 
 			BaseState state = new FileScope();
 
-			while (!reader.EndOfStream) {
+			while (!reader.BaseReader.EndOfStream) {
 				ChipsCompiler.CompilingSourceLineOverride = null;
 
 				try {
@@ -56,7 +56,7 @@ namespace Chips.Compiler.IO {
 				// State failed, skip to next line
 				ChipsCompiler.Error($"State \"{state.GetType().Name}\" failed to parse the text, skipping to next line and applying previous state");
 				reader.ReadUntilNewline();
-				reader.Read();
+				reader.BaseReader.Read();
 				state = state?.Previous ?? new FileScope();
 			}
 

@@ -1,6 +1,5 @@
 ﻿using Chips.Compiler.Compilation;
 using Chips.Compiler.Utility;
-using Chips.Utility;
 using System.Collections.Generic;
 using System.IO;
 

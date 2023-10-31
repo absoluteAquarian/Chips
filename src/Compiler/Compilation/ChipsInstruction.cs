@@ -32,7 +32,7 @@ namespace Chips.Compiler.Compilation {
 					writer.Write((byte)code);
 				}
 
-				ChipsCompiler.opcodes[Opcode].SerializeArguments(writer, Operands, resolver, heap);
+				ChipsCompiler.compilingOpcodes[Opcode].SerializeArguments(writer, Operands, resolver, heap);
 				return true;
 			} catch {
 				// An error was thrown; the instruction is malformed
@@ -48,7 +48,7 @@ namespace Chips.Compiler.Compilation {
 			if (code is 0xFD)
 				opcode = (OpcodeID)((code << 8) | reader.ReadByte());
 
-			if (!ChipsCompiler.opcodes.TryGetValue(opcode, out var opcodeInstance))
+			if (!ChipsCompiler.compilingOpcodes.TryGetValue(opcode, out var opcodeInstance))
 				throw ChipsCompiler.ErrorAndThrow(new InvalidDataException($"Opcode {opcode:X4} is not supported"));
 
 			OpcodeArgumentCollection? operands = opcodeInstance.DeserializeArguments(reader, resolver, heap);

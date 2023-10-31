@@ -3,6 +3,7 @@ using AsmResolver.DotNet.Signatures;
 using AsmResolver.DotNet.Signatures.Types;
 using AsmResolver.PE.DotNet.Cil;
 using Chips.Compiler;
+using Chips.Compiler.Compilation;
 using Chips.Compiler.Utility;
 using Chips.Runtime.Types;
 using Chips.Runtime.Types.NumberProcessing;
@@ -10,11 +11,30 @@ using Chips.Runtime.Utility;
 using Chips.Utility.Reflection;
 using System;
 using System.Collections.Generic;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 
 namespace Chips.Runtime.Specifications {
 	internal static class InstructionHelper {
 		private static readonly ConditionalWeakTable<CilMethodBody, Dictionary<string, int>> _namedBodyLocals = new();
+
+		private static readonly Dictionary<OpcodeID, ConstructorInfo> _getConstructorForOpcode = new();
+
+		public static ConstructorInfo GetOrCreateConstructor(this CompilingOpcode opcode, Type[]? parameterTypes = null) {
+			var runtimeOpcode = opcode.GetRuntimeOpcode();
+			var code = runtimeOpcode.Code;
+
+			if (_getConstructorForOpcode.TryGetValue(code, out var info))
+				return info;
+
+			parameterTypes ??= Type.EmptyTypes;
+
+			var constructor = runtimeOpcode.GetType().GetConstructor(BindingFlags.Public | BindingFlags.Instance, parameterTypes)
+				?? throw new InvalidOperationException($"Opcode {code} does not have a constructor with the specified parameter types");
+
+			_getConstructorForOpcode.Add(code, constructor);
+			return constructor;
+		}
 
 		public static void EmitNopAndDelayedResolver(this CompilationContext context, Func<CilMethodBody, int, IDelayedInstructionResolver> getResolver) {
 			context.Cursor.Emit(CilOpCodes.Nop);
@@ -28,15 +48,22 @@ namespace Chips.Runtime.Specifications {
 		}
 
 		public static void EmitNumberRegisterAssignment<TRegister, TArg>(this CompilationContext context) where TRegister : Register {
-			context.Cursor.Emit(CilOpCodes.Call, context.importer.ImportMethod(typeof(TRegister).GetCachedMethod("Set", typeof(TArg))!));
+			context.Cursor.Emit(CilOpCodes.Call, context.importer.ImportMethod(typeof(TRegister).GetCachedMethod("Set", typeof(TArg))
+				?? throw new InvalidOperationException($"Type {typeof(TRegister).FullName} does not have a Set method")));
 		}
 
 		public static void EmitRegisterValueAssignment<TRegister>(this CompilationContext context) where TRegister : Register {
-			context.Cursor.Emit(CilOpCodes.Call, context.importer.ImportMethod(typeof(TRegister).GetCachedProperty("Value")!.SetMethod!));
+			context.Cursor.Emit(CilOpCodes.Call, context.importer.ImportMethod(typeof(TRegister).GetCachedProperty("Value")!.SetMethod
+				?? throw new InvalidOperationException($"Type {typeof(TRegister).FullName} does not have a Value property")));
 		}
 
 		public static void EmitRegisterValueRetrieval<TRegister>(this CompilationContext context) where TRegister : Register {
-			context.Cursor.Emit(CilOpCodes.Call, context.importer.ImportMethod(typeof(TRegister).GetCachedProperty("Value")!.GetMethod!));
+			context.Cursor.Emit(CilOpCodes.Call, context.importer.ImportMethod(typeof(TRegister).GetCachedProperty("Value")!.GetMethod
+				?? throw new InvalidOperationException($"Type {typeof(TRegister).FullName} does not have a Value property")));
+		}
+
+		public static void EmitINumberValueRetrieval<T>(this CompilationContext context) where T : INumber, INumber<T> {
+			context.Cursor.Emit(CilOpCodes.Call, context.importer.ImportMethod(typeof(T).GetCachedProperty(nameof(INumber<T>.ActualValue))!.GetMethod!));
 		}
 
 		public static void EmitBoxToUnderlyingType(this CompilationContext context) {

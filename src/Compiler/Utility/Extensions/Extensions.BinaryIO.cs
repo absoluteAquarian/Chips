@@ -1,9 +1,8 @@
 ﻿using AsmResolver.DotNet;
-using Chips.Compiler.Utility;
-using System;
 using System.IO;
+using System;
 
-namespace Chips.Utility {
+namespace Chips.Compiler.Utility {
 	partial class Extensions {
 		public static void Write(this BinaryWriter writer, ITypeDefOrRef? type, StringHeap heap) {
 			ArgumentNullException.ThrowIfNull(type);

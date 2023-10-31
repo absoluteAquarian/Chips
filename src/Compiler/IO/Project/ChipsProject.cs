@@ -1,6 +1,5 @@
 ﻿using AsmResolver.DotNet;
-using Chips.Compiler.Utility;
-using Chips.Utility;
+using Chips.Compiler.Parsing;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -49,13 +48,13 @@ namespace Chips.Compiler.IO.Project {
 			if (Path.GetExtension(file) != ".chpproj")
 				throw new IOException("File extension was not \".chpproj\"");
 
-			using StreamReader reader = new(File.OpenRead(file));
+			using SourceReader reader = new SourceReader(new StreamReader(File.OpenRead(file)));
 
 			ChipsProject project = new(file);
 
-			while (!reader.EndOfStream) {
+			while (!reader.BaseReader.EndOfStream) {
 				// Check for comments
-				if (reader.Peek() == '#') {
+				if (reader.BaseReader.Peek() == '#') {
 					ReadComment(reader);
 					continue;
 				}
@@ -89,15 +88,11 @@ namespace Chips.Compiler.IO.Project {
 			return project;
 		}
 
-		private static void ReadComment(StreamReader reader) {
-			while (reader.Peek() != '\n')
-				reader.Read();
-
-			// Consume the newline
-			reader.Read();
+		private static void ReadComment(SourceReader reader) {
+			reader.ReadUntilNewline();
 		}
 
-		private static void ReadSource(StreamReader reader, ChipsProject project) {
+		private static void ReadSource(SourceReader reader, ChipsProject project) {
 			string scope = reader.ReadWord();
 
 			bool include = scope switch {
@@ -111,7 +106,7 @@ namespace Chips.Compiler.IO.Project {
 			project.sources.AddFiles(path, include);
 		}
 
-		private static void ReadReference(StreamReader reader, ChipsProject project) {
+		private static void ReadReference(SourceReader reader, ChipsProject project) {
 			string path = reader.ReadWordOrQuotedString(out _);
 
 			project.assemblies.Add(path);

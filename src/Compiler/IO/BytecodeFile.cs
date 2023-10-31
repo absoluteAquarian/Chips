@@ -32,6 +32,13 @@ namespace Chips.Compiler.IO {
 			Initialize(context);
 
 			throw new Exception("CIL writing has not been implemented yet");
+
+			// TODO: for opcodes that use the "nint Method" property, emit "new TOpcode()", emit the arguments and then call the method
+			/*   newobj      TObject..ctor()
+			 *   callvirt    nint TObject::get_Method()
+			 *   <load arguments>
+			 *   calli       <return type> <parameter types>
+			 */
 		}
 
 		private void Initialize(CompilationContext context) {

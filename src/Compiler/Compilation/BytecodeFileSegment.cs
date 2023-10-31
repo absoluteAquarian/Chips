@@ -1,7 +1,6 @@
 ﻿using AsmResolver.DotNet;
 using AsmResolver.PE.DotNet.Metadata.Tables.Rows;
 using Chips.Compiler.Utility;
-using Chips.Utility;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
