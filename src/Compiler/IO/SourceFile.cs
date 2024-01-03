@@ -32,7 +32,7 @@ namespace Chips.Compiler.IO {
 					if (state.ParseNext(reader, context, code, out BaseState? next)) {
 						if (next is null) {
 							next = new FileScope();
-							throw ChipsCompiler.ErrorAndThrow(new ParsingException($"State {state.GetType().Name} produced a null next state, defaulting to FileScope"));
+							throw new ParsingException($"State {state.GetType().Name} produced a null next state, defaulting to FileScope");
 						}
 
 						if (!object.ReferenceEquals(state, next)) {
@@ -45,8 +45,9 @@ namespace Chips.Compiler.IO {
 						// State failed
 						goto fail;
 					}
-				} catch {
+				} catch (Exception ex) {
 					// Exceptions should already be reported to the error list, so just swallow them
+					ChipsCompiler.ErrorAndThrow(ex);
 					goto fail;
 				}
 
@@ -54,10 +55,8 @@ namespace Chips.Compiler.IO {
 				fail:
 
 				// State failed, skip to next line
-				ChipsCompiler.Error($"State \"{state.GetType().Name}\" failed to parse the text, skipping to next line and applying previous state");
 				reader.ReadUntilNewline();
 				reader.BaseReader.Read();
-				state = state?.Previous ?? new FileScope();
 			}
 
 			// Update the byte arrays representing the bytecode file

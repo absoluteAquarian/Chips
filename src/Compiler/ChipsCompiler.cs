@@ -48,6 +48,10 @@ namespace Chips {
 
 			// Load the opcodes and assign them in the dictionary
 			foreach (Type type in typeof(ChipsCompiler).Assembly.GetExportedTypes().Where(static t => t.IsSubclassOf(typeof(CompilingOpcode)))) {
+				// Filter invalid types
+				if (type.IsAbstract || type.ContainsGenericParameters)
+					continue;
+
 				System.Reflection.ConstructorInfo constructor = type.GetConstructor(Type.EmptyTypes)
 					?? throw new InvalidOperationException($"Compiling opcode {type.Name} does not have a parameterless constructor");
 
