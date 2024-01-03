@@ -37,9 +37,17 @@ namespace Chips.Runtime.Utility {
 		public static bool IsFloatingPoint(object? arg)
 			=> arg is float or double or decimal;
 
-		internal static bool ShouldUpcast(INumber target, INumber number)
-			=> (target is IInteger && number is IFloat)  // Integers should always be upcast to floats
-				|| (target is IInteger && number is IUnsignedInteger && target.NumericSize == number.NumericSize)  // Signed integers should always be upcast to unsigned integers of the same size
-				|| target.NumericSize < number.NumericSize;  // Upcast if the target's size is smaller than the number's size
+		public static bool ShouldUpcast(INumber target, INumber number) {
+			// Integers should always be upcast to floats
+			if (target is IInteger && number is IFloat)
+				return true;
+
+			// Signed integers should always be upcast to unsigned integers of the same size
+			if (target is IInteger && number is IUnsignedInteger && target.NumericSize == number.NumericSize)
+				return true;
+
+			// Upcast if the target's size is smaller than the number's size, but prevent floats from being "upcast" to integers
+			return target.NumericSize < number.NumericSize && !(target is IFloat && number is IInteger);
+		}
 	}
 }

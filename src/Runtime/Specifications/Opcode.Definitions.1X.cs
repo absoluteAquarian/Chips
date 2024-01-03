@@ -1,9 +1,14 @@
 ﻿using Chips.Runtime.Types;
+using System;
 
 namespace Chips.Runtime.Specifications {
-	// push
+	public sealed class OpcodePush : Opcode {
+		public override OpcodeID Code => OpcodeID.Push;
+	}
 
-	// pop
+	public sealed class OpcodePopToRegister : Opcode {
+		public override OpcodeID Code => OpcodeID.Pop_reg;
+	}
 
 	public sealed class OpcodePop : Opcode {
 		public override OpcodeID Code => OpcodeID.Pop;
@@ -61,7 +66,11 @@ namespace Chips.Runtime.Specifications {
 		public override OpcodeID Code => OpcodeID.Ldzi;
 	}
 
-	// ldind
+	public sealed class OpcodeLdind : TypeOperandOpcode {
+		public override OpcodeID Code => OpcodeID.Ldind;
+
+		public override bool AllowsNull => false;
+	}
 
 	public sealed class OpcodeLdelaX : LoadElementInArrayOpcode {
 		public override bool LoadsAddress => true;
@@ -71,11 +80,23 @@ namespace Chips.Runtime.Specifications {
 		public override OpcodeID Code => OpcodeID.Ldela_X;
 	}
 
-	// bzs
+	public sealed class OpcodeBzs : Opcode {
+		public override OpcodeID Code => OpcodeID.Bzs;
+	}
 
-	// bge
+	public sealed class OpcodeBge : Opcode {
+		public override OpcodeID Code => OpcodeID.Bge;
+	}
 
-	// tostr
+	public sealed class OpcodeTostr : Opcode {
+		public override OpcodeID Code => OpcodeID.Tostr;
+	}
 
-	// kbkey
+	public sealed class OpcodeKbkey : Opcode {
+		public override OpcodeID Code => OpcodeID.Kbkey;
+
+		public override unsafe nint Method => (nint)(delegate*<void>)&Implementation.Kbkey;
+
+		// Method signature matches the default implementation for GetMethodSignature
+	}
 }

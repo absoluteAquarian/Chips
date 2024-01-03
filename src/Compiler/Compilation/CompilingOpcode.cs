@@ -43,10 +43,10 @@ namespace Chips.Compiler.Compilation {
 		/// <summary>
 		/// Deserialize the argument collection from the data stream here
 		/// </summary>
+		/// <param name="context">An object containing information about the current method being read</param>
 		/// <param name="reader">The data stream</param>
-		/// <param name="resolver">An object for resolving assemblies and types</param>
 		/// <returns>A collection of arguments.  Return <see langword="null"/> to indicate that this opcode has no arguments</returns>
-		public abstract OpcodeArgumentCollection? DeserializeArguments(BinaryReader reader, TypeResolver resolver, StringHeap heap);
+		public abstract OpcodeArgumentCollection? DeserializeArguments(CompilationContext context, BinaryReader reader);
 
 		/// <summary>
 		/// Parse the arguments from the string representation here
@@ -59,10 +59,10 @@ namespace Chips.Compiler.Compilation {
 		/// <summary>
 		/// Serialize the argument collection to the data stream here
 		/// </summary>
+		/// <param name="context">An object containing information about the current method being written</param>
 		/// <param name="writer">The data stream</param>
 		/// <param name="args">The collection of arguments</param>
-		/// <param name="resolver">An object for resolving assemblies and types</param>
-		public abstract void SerializeArguments(BinaryWriter writer, OpcodeArgumentCollection args, TypeResolver resolver, StringHeap heap);
+		public abstract void SerializeArguments(CompilationContext context, BinaryWriter writer, OpcodeArgumentCollection args);
 	}
 
 	/// <summary>
@@ -81,11 +81,11 @@ namespace Chips.Compiler.Compilation {
 	public abstract class BasicCompilingOpcode<TOpcode> : CompilingOpcode<TOpcode> where TOpcode : Opcode, new() {
 		public sealed override int ExpectedArgumentCount => 0;
 
-		public sealed override OpcodeArgumentCollection? DeserializeArguments(BinaryReader reader, TypeResolver resolver, StringHeap heap) => null;
+		public sealed override OpcodeArgumentCollection? DeserializeArguments(CompilationContext context, BinaryReader reader) => null;
 
 		public sealed override OpcodeArgumentCollection? ParseArguments(CompilationContext context, string[] args) => null;
 
-		public sealed override void SerializeArguments(BinaryWriter writer, OpcodeArgumentCollection args, TypeResolver resolver, StringHeap heap) { }
+		public sealed override void SerializeArguments(CompilationContext context, BinaryWriter writer, OpcodeArgumentCollection args) { }
 	}
 
 	/// <summary>
@@ -107,17 +107,17 @@ namespace Chips.Compiler.Compilation {
 			context.EmitRegisterLoad(GetDirectRuntimeOpcode().Register);
 		}
 
-		public sealed override OpcodeArgumentCollection? DeserializeArguments(BinaryReader reader, TypeResolver resolver, StringHeap heap) {
+		public sealed override OpcodeArgumentCollection? DeserializeArguments(CompilationContext context, BinaryReader reader) {
 			try {
 				return new OpcodeArgumentCollection()
-					.Add(DeserializeArgument(reader, resolver, heap));
+					.Add(DeserializeArgument(context, reader));
 			} catch (Exception ex) {
 				ChipsCompiler.ErrorAndThrow(ex);
 				throw;
 			}
 		}
 
-		protected abstract T DeserializeArgument(BinaryReader reader, TypeResolver resolver, StringHeap heap);
+		protected abstract T DeserializeArgument(CompilationContext context, BinaryReader reader);
 
 		public sealed override OpcodeArgumentCollection? ParseArguments(CompilationContext context, string[] args) {
 			try {
@@ -131,7 +131,7 @@ namespace Chips.Compiler.Compilation {
 
 		protected abstract T ParseArgument(CompilationContext context, string arg);
 
-		public sealed override void SerializeArguments(BinaryWriter writer, OpcodeArgumentCollection args, TypeResolver resolver, StringHeap heap) {
+		public sealed override void SerializeArguments(CompilationContext context, BinaryWriter writer, OpcodeArgumentCollection args) {
 			var registerName = GetDirectRuntimeOpcode().Register;
 
 			Register register = typeof(Registers).RetrieveStaticField<Register>(registerName)!;
@@ -142,14 +142,14 @@ namespace Chips.Compiler.Compilation {
 				throw ChipsCompiler.ErrorAndThrow(new ArgumentException($"Register \"{registerName}\" does not accept values of type \"{arg?.GetType().GetSimplifiedGenericTypeName() ?? "null"}\""));
 
 			try {
-				SerializeArgument(writer, arg, resolver, heap);
+				SerializeArgument(writer, arg, context);
 			} catch (Exception ex) {
 				ChipsCompiler.ErrorAndThrow(ex);
 				throw;
 			}
 		}
 
-		protected abstract void SerializeArgument(BinaryWriter writer, T arg, TypeResolver resolver, StringHeap heap);
+		protected abstract void SerializeArgument(BinaryWriter writer, T arg, CompilationContext context);
 	}
 
 	/// <summary>
@@ -191,8 +191,8 @@ namespace Chips.Compiler.Compilation {
 				context.Cursor.Emit(opcode.LoadsAddress ? CilOpCodes.Ldflda : CilOpCodes.Ldfld, importedField);
 		}
 
-		public sealed override OpcodeArgumentCollection? DeserializeArguments(BinaryReader reader, TypeResolver resolver, StringHeap heap) {
-			var field = reader.ReadFieldDefinition(resolver, heap);
+		public sealed override OpcodeArgumentCollection? DeserializeArguments(CompilationContext context, BinaryReader reader) {
+			var field = reader.ReadFieldDefinition(context.resolver, context.heap);
 			ChipsCompiler.AddDelayedResolver(field);
 
 			return new OpcodeArgumentCollection()
@@ -204,12 +204,12 @@ namespace Chips.Compiler.Compilation {
 				.Add(new DelayedFieldResolver(context.resolver, args[0]));
 		}
 
-		public sealed override void SerializeArguments(BinaryWriter writer, OpcodeArgumentCollection args, TypeResolver resolver, StringHeap heap) {
+		public sealed override void SerializeArguments(CompilationContext context, BinaryWriter writer, OpcodeArgumentCollection args) {
 			var arg = args[0];
 			if (arg is not IFieldDescriptor field)
 				throw ChipsCompiler.ErrorAndThrow(new ArgumentException("Argument was not an IFieldDescriptor instance"));
 
-			writer.Write(field, heap);
+			writer.Write(field, context.heap);
 		}
 	}
 
@@ -231,7 +231,7 @@ namespace Chips.Compiler.Compilation {
 				context.Cursor.Emit(opcode.LoadsAddress ? CilOpCodes.Ldarga : CilOpCodes.Ldarg, arg);
 		}
 
-		public sealed override OpcodeArgumentCollection? DeserializeArguments(BinaryReader reader, TypeResolver resolver, StringHeap heap) {
+		public sealed override OpcodeArgumentCollection? DeserializeArguments(CompilationContext context, BinaryReader reader) {
 			return new OpcodeArgumentCollection()
 				.Add(reader.ReadUInt16());
 		}
@@ -241,8 +241,8 @@ namespace Chips.Compiler.Compilation {
 				.Add(StringSerialization.ParseSimpleSmallIntegerArgument(context, args[0]));
 		}
 
-		public sealed override void SerializeArguments(BinaryWriter writer, OpcodeArgumentCollection args, TypeResolver resolver, StringHeap heap) {
-			writer.Write((ushort)args[0]!);
+		public sealed override void SerializeArguments(CompilationContext context, BinaryWriter writer, OpcodeArgumentCollection args) {
+			writer.Write(args.GetValue<ushort>(0));
 		}
 	}
 
@@ -261,16 +261,16 @@ namespace Chips.Compiler.Compilation {
 				context.EmitRegisterLoad("Y");
 
 			context.EmitRegisterValueRetrieval<IntegerRegister>();
-			context.EmitCastTo<IntPtr_T>();
-			context.EmitUnderlyingTypeValueRetrieval<IntPtr_T>();
+			context.EmitCastToIntPtr();
 
 			// Instruction will be delayed in order to ensure that the stack is set up properly for later instructions
-			// Variable capturing
-			bool loadsAddress = opcode.LoadsAddress;
-			context.EmitNopAndDelayedResolver((body, index) => loadsAddress ? new DelayedArrayLoadAddressResolver(body, index) : new DelayedArrayLoadResolver(body, index));
+			if (opcode.LoadsAddress)
+				context.EmitNopAndDelayedResolver<DelayedArrayLoadAddressResolver>();
+			else
+				context.EmitNopAndDelayedResolver<DelayedArrayLoadResolver>();
 		}
 
-		public sealed override OpcodeArgumentCollection? DeserializeArguments(BinaryReader reader, TypeResolver resolver, StringHeap heap) => null;
+		public sealed override OpcodeArgumentCollection? DeserializeArguments(CompilationContext context, BinaryReader reader) => null;
 
 		public sealed override OpcodeArgumentCollection? ParseArguments(CompilationContext context, string[] args) {
 			var opcode = GetDirectRuntimeOpcode();
@@ -286,7 +286,7 @@ namespace Chips.Compiler.Compilation {
 			return null;
 		}
 
-		public sealed override void SerializeArguments(BinaryWriter writer, OpcodeArgumentCollection args, TypeResolver resolver, StringHeap heap) { }
+		public sealed override void SerializeArguments(CompilationContext context, BinaryWriter writer, OpcodeArgumentCollection args) { }
 	}
 
 	/// <summary>
@@ -304,11 +304,11 @@ namespace Chips.Compiler.Compilation {
 				context.EmitFlagRetrieval(opcode.Flag);
 		}
 
-		public sealed override OpcodeArgumentCollection? DeserializeArguments(BinaryReader reader, TypeResolver resolver, StringHeap heap) => null;
+		public sealed override OpcodeArgumentCollection? DeserializeArguments(CompilationContext context, BinaryReader reader) => null;
 
 		public sealed override OpcodeArgumentCollection? ParseArguments(CompilationContext context, string[] args) => null;
 
-		public sealed override void SerializeArguments(BinaryWriter writer, OpcodeArgumentCollection args, TypeResolver resolver, StringHeap heap) { }
+		public sealed override void SerializeArguments(CompilationContext context, BinaryWriter writer, OpcodeArgumentCollection args) { }
 	}
 
 	/// <summary>
@@ -317,10 +317,10 @@ namespace Chips.Compiler.Compilation {
 	public abstract class TypeOperandCompilingOpcode<TOpcode> : CompilingOpcode<TOpcode> where TOpcode : TypeOperandOpcode, new() {
 		public sealed override int ExpectedArgumentCount => 1;
 
-		public sealed override OpcodeArgumentCollection? DeserializeArguments(BinaryReader reader, TypeResolver resolver, StringHeap heap) {
+		public sealed override OpcodeArgumentCollection? DeserializeArguments(CompilationContext context, BinaryReader reader) {
 			var opcode = GetDirectRuntimeOpcode();
 
-			var type = heap.ReadString(reader);
+			var type = context.heap.ReadString(reader);
 
 			if (type == "") {
 				if (!opcode.AllowsNull)
@@ -329,7 +329,7 @@ namespace Chips.Compiler.Compilation {
 				return new OpcodeArgumentCollection().Add(null);
 			}
 
-			var typeDef = reader.ReadTypeDefinition(resolver, heap);
+			var typeDef = reader.ReadTypeDefinition(context.resolver, context.heap);
 			ChipsCompiler.AddDelayedResolver(typeDef);
 
 			return new OpcodeArgumentCollection()
@@ -350,7 +350,7 @@ namespace Chips.Compiler.Compilation {
 				.Add(new DelayedTypeResolver(context.resolver, args[0], false));
 		}
 
-		public sealed override void SerializeArguments(BinaryWriter writer, OpcodeArgumentCollection args, TypeResolver resolver, StringHeap heap) {
+		public sealed override void SerializeArguments(CompilationContext context, BinaryWriter writer, OpcodeArgumentCollection args) {
 			var opcode = GetDirectRuntimeOpcode();
 
 			var arg = args[0];
@@ -358,11 +358,65 @@ namespace Chips.Compiler.Compilation {
 				if (!opcode.AllowsNull)
 					throw ChipsCompiler.ErrorAndThrow(new ArgumentException($"Opcode \"{opcode.Name}\" does not allow null as an argument"));
 
-				heap.WriteString(writer, "");
+				context.heap.WriteString(writer, "");
 			} else if (arg is ITypeDefOrRef type)
-				writer.Write(type, heap);
+				writer.Write(type, context.heap);
 			else
 				throw ChipsCompiler.ErrorAndThrow(new ArgumentException("Argument was not an ITypeDefOrRef instance"));
+		}
+	}
+
+	/// <summary>
+	/// An implementation of <see cref="CompilingOpcode"/> which represents an instruction that uses a register as an argument
+	/// </summary>
+	public abstract class RegisterOperandCompilingOpcode<TOpcode> : CompilingOpcode<TOpcode> where TOpcode : Opcode, new() {
+		public sealed override int ExpectedArgumentCount => 1;
+
+		public sealed override OpcodeArgumentCollection? DeserializeArguments(CompilationContext context, BinaryReader reader) {
+			try {
+				return new OpcodeArgumentCollection()
+					.Add(Registers.GetRegisterFromID(reader.ReadByte()));
+			} catch (Exception ex) {
+				ChipsCompiler.ErrorAndThrow(ex);
+				throw;
+			}
+		}
+
+		public sealed override OpcodeArgumentCollection? ParseArguments(CompilationContext context, string[] args) {
+			if (args[0] is not string register)
+				throw ChipsCompiler.ErrorAndThrow(new ArgumentException("Argument was not a string"));
+
+			return new OpcodeArgumentCollection()
+				.Add(StringSerialization.ParseRegisterArgument(context, register));
+		}
+
+		public sealed override void SerializeArguments(CompilationContext context, BinaryWriter writer, OpcodeArgumentCollection args) {
+			writer.Write((byte)args.GetValue<Register>(0).ID);
+		}
+	}
+
+	/// <summary>
+	/// An implementation of <see cref="CompilingOpcode"/> which represents an instruction that uses a label as an argument
+	/// </summary>
+	public abstract class LabelOperandCompilingOpcode<TOpcode> : CompilingOpcode<TOpcode> where TOpcode : Opcode, new() {
+		public sealed override int ExpectedArgumentCount => 1;
+
+		public sealed override OpcodeArgumentCollection? DeserializeArguments(CompilationContext context, BinaryReader reader) {
+			int index = reader.ReadUInt16();
+
+			return new OpcodeArgumentCollection()
+				.Add(context.ActiveMethod.Labels[index]);
+		}
+
+		public sealed override OpcodeArgumentCollection? ParseArguments(CompilationContext context, string[] args) {
+			return new OpcodeArgumentCollection()
+				.Add(args[0]);
+		}
+
+		public sealed override void SerializeArguments(CompilationContext context, BinaryWriter writer, OpcodeArgumentCollection args) {
+			var label = context.ActiveMethod.FindLabel(args.GetValue<string>(0));
+
+			writer.Write((ushort)label.Index);
 		}
 	}
 }

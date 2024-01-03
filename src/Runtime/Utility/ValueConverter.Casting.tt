@@ -12,14 +12,17 @@ using System;
 using System.Runtime.CompilerServices;
 
 namespace Chips.Runtime.Utility {
-	public static partial class ValueConverter {
+	partial class ValueConverter {
 <# foreach (var type in types) {
 #>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public static <#= type.Name #>_T CastTo<#= type.Name #>_T<T>(this T number) where T : INumber => new(Convert.To<#= type.Name #>(number?.Value ?? throw new ArgumentNullException(nameof(number))));
+		public static <#= type.Name #>_T CastTo<#= type.Name #>_T<T>(this T number) where T : INumber => new(number.To<#= type.Name #>());
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static <#= type.Name #>_T CastTo<#= type.Name #>_T(this <#= type.Name #> number) => new(number);
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static <#= type.Name #> CastTo<#= type.Name #>(INumber number) => number.To<#= type.Name #>();
 
 <#
 } #>

@@ -1,4 +1,4 @@
-﻿using Chips.Compiler.Utility;
+﻿using AsmResolver.PE.DotNet.Cil;
 using Chips.Runtime.Specifications;
 using System.IO;
 
@@ -8,6 +8,8 @@ namespace Chips.Compiler.Compilation {
 		public readonly OpcodeArgumentCollection Operands;
 
 		public int Offset { get; internal set; }
+
+		internal CilInstruction FirstCilInstruction { get; set; }
 
 		internal ChipsInstruction(OpcodeID opcode, params object?[] operands) {
 			Opcode = opcode;
@@ -20,7 +22,7 @@ namespace Chips.Compiler.Compilation {
 			Operands = operands ?? new();
 		}
 
-		public bool Write(BinaryWriter writer, TypeResolver resolver, StringHeap heap) {
+		public bool Write(CompilationContext context, BinaryWriter writer) {
 			try {
 				ushort code = (ushort)Opcode;
 				if (code <= byte.MaxValue) {
@@ -32,7 +34,7 @@ namespace Chips.Compiler.Compilation {
 					writer.Write((byte)code);
 				}
 
-				ChipsCompiler.compilingOpcodes[Opcode].SerializeArguments(writer, Operands, resolver, heap);
+				ChipsCompiler.compilingOpcodes[Opcode].SerializeArguments(context, writer, Operands);
 				return true;
 			} catch {
 				// An error was thrown; the instruction is malformed
@@ -40,7 +42,7 @@ namespace Chips.Compiler.Compilation {
 			}
 		}
 
-		public static ChipsInstruction Read(BinaryReader reader, TypeResolver resolver, StringHeap heap) {
+		public static ChipsInstruction Read(CompilationContext context, BinaryReader reader) {
 			OpcodeID opcode = (OpcodeID)reader.ReadByte();
 
 			// Read extended opcode if necessary
@@ -51,7 +53,7 @@ namespace Chips.Compiler.Compilation {
 			if (!ChipsCompiler.compilingOpcodes.TryGetValue(opcode, out var opcodeInstance))
 				throw ChipsCompiler.ErrorAndThrow(new InvalidDataException($"Opcode {opcode:X4} is not supported"));
 
-			OpcodeArgumentCollection? operands = opcodeInstance.DeserializeArguments(reader, resolver, heap);
+			OpcodeArgumentCollection? operands = opcodeInstance.DeserializeArguments(context, reader);
 
 			return new ChipsInstruction(opcode, operands);
 		}

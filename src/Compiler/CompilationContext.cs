@@ -1,5 +1,6 @@
 ﻿using AsmResolver.DotNet;
 using AsmResolver.DotNet.Code.Cil;
+using Chips.Compiler.Compilation;
 using Chips.Compiler.Utility;
 
 namespace Chips.Compiler {
@@ -10,17 +11,28 @@ namespace Chips.Compiler {
 
 		public CILCursor Cursor { get; private set; }
 
+		public BytecodeMethodBody ActiveMethod { get; private set; }
+
 		internal CompilationContext(ReferenceImporter importer) {
 			this.importer = importer;
 			resolver = new();
 			heap = new();
 		}
 
-		public void SetMethod(CilMethodBody method) {
-			if (method is not null)
+		public void SetCILMethod(CilMethodBody method) {
+			if (method is not null) {
 				Cursor = new CILCursor(method);
-			else
+				ActiveMethod = null!;
+			} else
 				Cursor = null!;
+		}
+
+		public void SetChipsMethod(BytecodeMethodBody method) {
+			if (method is not null) {
+				Cursor = null!;
+				ActiveMethod = method;
+			} else
+				ActiveMethod = null!;
 		}
 	}
 }

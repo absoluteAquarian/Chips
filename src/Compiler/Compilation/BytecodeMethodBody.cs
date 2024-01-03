@@ -1,11 +1,12 @@
 ﻿using Chips.Runtime.Specifications;
+using System;
 using System.Collections.Generic;
 
 namespace Chips.Compiler.Compilation {
 	/// <summary>
 	/// An object representing the instructions of a Chips method
 	/// </summary>
-	internal sealed class BytecodeMethodBody {
+	public sealed class BytecodeMethodBody {
 		public readonly BytecodeMethodSegment Method;
 		public readonly List<ChipsInstruction> Instructions;
 
@@ -26,6 +27,15 @@ namespace Chips.Compiler.Compilation {
 		}
 
 		public ChipsLabel ReserveLabel() => ReserveLabel("CHP_" + Instructions.Count);
+
+		public ChipsLabel FindLabel(string name) {
+			foreach (ChipsLabel label in Labels) {
+				if (label.Name == name)
+					return label;
+			}
+
+			throw new ArgumentException("Label not found: " + name);
+		}
 
 		public ChipsInstruction Emit(OpcodeID opcode, object? arg) {
 			var instruction = new ChipsInstruction(opcode, arg) {

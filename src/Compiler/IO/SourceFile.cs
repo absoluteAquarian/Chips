@@ -17,7 +17,7 @@ namespace Chips.Compiler.IO {
 
 			context.heap.Clear();
 			context.resolver.Clear();
-			context.SetMethod(null!);
+			context.SetCILMethod(null!);
 
 			using SourceReader reader = new SourceReader(new StreamReader(File.OpenRead(file)));
 

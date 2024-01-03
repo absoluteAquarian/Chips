@@ -1,5 +1,6 @@
 ﻿using Chips.Runtime.Types.NumberProcessing;
 using Chips.Runtime.Utility;
+using Chips.Utility;
 using System;
 
 namespace Chips.Runtime.Types {
@@ -7,6 +8,8 @@ namespace Chips.Runtime.Types {
 		public int ID { get; init; }
 
 		public abstract bool AcceptsValue(object? value);
+
+		public abstract void SetValue(object? value);
 	}
 
 	public abstract class Register<T> : Register {
@@ -25,6 +28,13 @@ namespace Chips.Runtime.Types {
 		protected abstract bool HasValueChanged(T oldValue, T newValue);
 
 		protected abstract void OnValueChanged(T newValue);
+
+		public override void SetValue(object? value) {
+			if (AcceptsValue(value))
+				Value = (T)value!;
+			else
+				throw new ArgumentException($"Register {Registers.GetRegisterNameFromID(ID)} cannot accept values of type \"{typeof(T).GetSimplifiedGenericTypeName()}\"");
+		}
 	}
 
 	public sealed class IntegerRegister : Register<IInteger> {
@@ -50,6 +60,11 @@ namespace Chips.Runtime.Types {
 		public void Set(uint value) => Value = value.CastToUInt32_T();
 		public void Set(long value) => Value = value.CastToInt64_T();
 		public void Set(ulong value) => Value = value.CastToUInt64_T();
+
+		public override void SetValue(object? value) {
+			value = ValueConverter.CheckedBoxToUnderlyingType(value);
+			base.SetValue(value);
+		}
 	}
 
 	public sealed class FloatRegister : Register<IFloat> {
@@ -70,6 +85,11 @@ namespace Chips.Runtime.Types {
 		public void Set(float value) => Value = value.CastToSingle_T();
 		public void Set(double value) => Value = value.CastToDouble_T();
 		public void Set(decimal value) => Value = value.CastToDecimal_T();
+
+		public override void SetValue(object? value) {
+			value = ValueConverter.CheckedBoxToUnderlyingType(value);
+			base.SetValue(value);
+		}
 	}
 
 	public sealed class StringRegister : Register<string> {
@@ -142,6 +162,10 @@ namespace Chips.Runtime.Types {
 		protected override void OnValueChanged(byte newValue) { }
 
 		public override bool AcceptsValue(object? value) {
+			throw new NotSupportedException("Flags register does not support writing to it");
+		}
+
+		public override void SetValue(object? value) {
 			throw new NotSupportedException("Flags register does not support writing to it");
 		}
 	}

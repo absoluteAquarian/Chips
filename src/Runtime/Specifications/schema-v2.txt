@@ -64,46 +64,67 @@ const      | constant field/local modifier
 
 OPCODES
 ====================
-       ________________________________________________________________________________________________________________________________________________
-_______|___x0___|___x1___|___x2___|___x3___|___x4___|___x5___|___x6___|___x7___|___x8___|___x9___|___xA___|___xB___|___xC___|___xD___|___xE___|___xF___|
-|  0x  |    nop |    brk |  ldc.i |  ldc.f |  ldc.s |   ldfi |   ldfs |   ldrg |   ldlc |  ldmtd |  ldz.s |   ldel |   comp |     is |   conv |  kbrdy |
-|  1x  |   push |    pop |    pop |    dup |    cli |  ldfia |  ldfsa |  ldrga |  ldlca |  ldz.i |  ldind |  ldela |    bzs |    bge |  tostr |  kbkey |
-|  2x  |    clc |    clv |    cln |    clz |    cls |   stfi |   stfs |   strg |   stlc |  ldz.f |  stind |   stel |    bzc |    ble |  tostr | kbline |
-|  3x  |    stc |   inca |   deca |   inci |   deci |    cat |    cat |   find |   find | ldz.iu |  split |    rem |    bcs |   call |  calli |  print |
-|  4x  |    add |    sub |    mul |    div |    mod |    rep |    and |     or |    xor |  ldz.d |  mul.s |   ldel |    bcc |    ret |        | printl |
-|  5x  |    add |    sub |    mul |    div |    mod |    rep |    and |     or |    xor |  ldz.l |   trim |  ldela |    bns |        |        |        |
-|  6x  |  add.f |  sub.f |  mul.f |  div.f |  mod.f |  rep.f |    not |    neg |  neg.f | ldz.lu | trim.s |   stel |    bnc |        |        |        |
-|  7x  |  add.f |  sub.f |  mul.f |  div.f |  mod.f |  rep.f |    asr |    asl |    ror |    rol | trim.e |        |    bvs |        |        |        |
-|  8x  |   traf |   trad |   trfi |   trfl |   trax |   tray |    asr |    asl |        |  ldz.m |        |        |    bvc |        |        |        |
-|  9x  |  nwarr |  nwobj |    len |  ldc.d |   trxa |   trya |        |        |        |        |        |        |    bss |        |        |        |
-|  Ax  |  add.d |  sub.d | ldc.iu |  ldc.m |        |        |        |        |        |        |        |        |    bsc |        |        |        |
-|  Bx  |  mul.d |  div.d |  ldc.l |        |        |        |        |        |        |        |        |        |    bis |        |        |        |
-|  Cx  |  mod.d |  rep.d | ldc.lu |        |        |        |        |        |        |        |        |        |    bic |        |        |        |
-|  Dx  |        |        |        |        |        |        |        |        |        |        |        |        |        |        |        |        |
-|  Ex  |        |        |        |        |        |        |        |        |        |        |        |        |        |        |        |        |
-|  Fx  |        |        |        |        |        |        |        |        |        |        |        |        |        |  <tb1> |   wait |   halt |
---------------------------------------------------------------------------------------------------------------------------------------------------------
+       _________________________________________________________________________________________________________________________________________________________________________________
+_______|____x0____|____x1____|____x2____|____x3____|____x4____|____x5____|____x6____|____x7____|____x8____|____x9____|____xA____|____xB____|____xC____|____xD____|____xE____|____xF____|
+|  0x  |      nop |      brk |    ldc.i |    ldc.f |    ldc.s |     ldfi |     ldfs |     ldrg |     ldlc |    ldmtd |    ldz.s |     ldel |     comp |       is |     conv |    kbrdy |
+|  1x  |     push |      pop |      pop |      dup |      cli |    ldfia |    ldfsa |    ldrga |    ldlca |    ldz.i |    ldind |    ldela |      bzs |      bge |    tostr |    kbkey |
+|  2x  |      clc |      clv |      cln |      clz |      cls |     stfi |     stfs |     strg |     stlc |    ldz.f |    stind |     stel |      bzc |      ble |    tostr |   kbline |
+|  3x  |      stc |     inca |     deca |     inci |     deci |      cat |      cat |     find |     find |   ldz.iu |    split |      rem |      bcs |     call |    calli |    print |
+|  4x  |      add |      sub |      mul |      div |      mod |      rep |      and |       or |      xor |    ldz.d |    mul.s |     ldel |      bcc |      ret |          |   printl |
+|  5x  |      add |      sub |      mul |      div |      mod |      rep |      and |       or |      xor |    ldz.l |     trim |    ldela |      bns |      bgt |          |          |
+|  6x  |    add.f |    sub.f |    mul.f |    div.f |    mod.f |    rep.f |      not |      neg |    neg.f |   ldz.lu |   trim.s |     stel |      bnc |      blt |          |          |
+|  7x  |    add.f |    sub.f |    mul.f |    div.f |    mod.f |    rep.f |      asr |      asl |      ror |      rol |   trim.e |          |      bvs |          |          |          |
+|  8x  |     traf |     trad |     trfi |     trfl |     trax |     tray |      asr |      asl |          |    ldz.m |          |          |      bvc |          |          |          |
+|  9x  |   newarr |   newobj |      len |    ldc.d |     trxa |     trya |          |          |          |          |          |          |      bss |          |          |          |
+|  Ax  |    add.d |    sub.d |   ldc.iu |    ldc.m |          |          |          |          |          |          |          |          |      bsc |          |          |          |
+|  Bx  |    mul.d |    div.d |    ldc.l |          |          |          |          |          |          |          |          |          |      bis |          |          |          |
+|  Cx  |    mod.d |    rep.d |   ldc.lu |          |          |          |          |          |          |          |          |          |      bic |          |          |          |
+|  Dx  |          |          |          |          |          |          |          |          |          |          |          |          |          |          |          |          |
+|  Ex  |          |          |          |          |          |          |          |          |          |          |          |          |          |          |          |          |
+|  Fx  |          |          |          |          |          |          |          |          |          |          |          |          |   <ext>  |   <ext>  |     wait |     halt |
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Extended Table (0xFC) - Type Operands
+	   _________________________________________________________________________________________________________________________________________________________________________________
+_______|____x0____|____x1____|____x2____|____x3____|____x4____|____x5____|____x6____|____x7____|____x8____|____x9____|____xA____|____xB____|____xC____|____xD____|____xE____|____xF____|
+|  0x  |  ldind.i | ldind.bi | ldind.si | ldind.li | ldind.ni |          |          |          |          |          |          |          |          |          |          |          |
+|  1x  |  ldind.u | ldind.bu | ldind.su | ldind.lu | ldind.nu |          |          |          |          |          |          |          |          |          |          |          |
+|  2x  |  ldind.f |  ldind.d |  ldind.m |          |          |          |          |          |          |          |          |          |          |          |          |          |
+|  3x  |  ldind.o |          |          |          |          |          |          |          |          |          |          |          |          |          |          |          |
+|  4x  |   conv.i |  conv.bi |  conv.si |  conv.li |  conv.ni |          |          |          |          |          |          |          |          |          |          |          |
+|  5x  |   conv.u |  conv.bu |  conv.su |  conv.lu |  conv.nu |          |          |          |          |          |          |          |          |          |          |          |
+|  6x  |   conv.f |   conv.d |   conv.m |          |          |          |          |          |          |          |          |          |          |          |          |          |
+|  7x  |          |          |          |          |          |          |          |          |          |          |          |          |          |          |          |          |
+|  8x  |          |          |          |          |          |          |          |          |          |          |          |          |          |          |          |          |
+|  9x  |          |          |          |          |          |          |          |          |          |          |          |          |          |          |          |          |
+|  Ax  |          |          |          |          |          |          |          |          |          |          |          |          |          |          |          |          |
+|  Bx  |          |          |          |          |          |          |          |          |          |          |          |          |          |          |          |          |
+|  Cx  |          |          |          |          |          |          |          |          |          |          |          |          |          |          |          |          |
+|  Dx  |          |          |          |          |          |          |          |          |          |          |          |          |          |          |          |          |
+|  Ex  |          |          |          |          |          |          |          |          |          |          |          |          |          |          |          |          |
+|  Fx  |          |          |          |          |          |          |          |          |          |          |          |          |          |          |          |          |
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 Extended Table (0xFD) - Arithmetic
-       ________________________________________________________________________________________________________________________________________________
-_______|___x0___|___x1___|___x2___|___x3___|___x4___|___x5___|___x6___|___x7___|___x8___|___x9___|___xA___|___xB___|___xC___|___xD___|___xE___|___xF___|
-|  0x  |  add.l |  sub.l |  mul.l |  div.l |  mod.l |  rep.l |  and.l |   or.l |  xor.l |        |        |        |        |        |        |        |
-|  1x  | add.iu | sub.iu | mul.iu | div.iu | mod.iu | rep.iu | and.iu |  or.iu | xor.iu |        |        |        |        |        |        |        |
-|  2x  | add.lu | sub.lu | mul.lu | div.lu | mod.lu | rep.lu | and.lu |  or.lu | xor.lu |        |        |        |        |        |        |        |
-|  3x  |  add.m |  sub.m |  mul.m |  div.m |  mod.m |  rep.m |        |        |        |        |        |        |        |        |        |        |
-|  4x  |        |        |        |        |        |        |        |        |        |        |        |        |        |        |        |        |
-|  5x  |        |        |        |        |        |        |        |        |        |        |        |        |        |        |        |        |
-|  6x  |        |        |        |        |        |        |        |        |        |        |        |        |        |        |        |        |
-|  7x  |        |        |        |        |        |        |        |        |        |        |        |        |        |        |        |        |
-|  8x  |        |        |        |        |        |        |        |        |        |        |        |        |        |        |        |        |
-|  9x  |        |        |        |        |        |        |        |        |        |        |        |        |        |        |        |        |
-|  Ax  |        |        |        |        |        |        |        |        |        |        |        |        |        |        |        |        |
-|  Bx  |        |        |        |        |        |        |        |        |        |        |        |        |        |        |        |        |
-|  Cx  |        |        |        |        |        |        |        |        |        |        |        |        |        |        |        |        |
-|  Dx  |        |        |        |        |        |        |        |        |        |        |        |        |        |        |        |        |
-|  Ex  |        |        |        |        |        |        |        |        |        |        |        |        |        |        |        |        |
-|  Fx  |        |        |        |        |        |        |        |        |        |        |        |        |        |        |        |        |
---------------------------------------------------------------------------------------------------------------------------------------------------------
+       _________________________________________________________________________________________________________________________________________________________________________________
+_______|____x0____|____x1____|____x2____|____x3____|____x4____|____x5____|____x6____|____x7____|____x8____|____x9____|____xA____|____xB____|____xC____|____xD____|____xE____|____xF____|
+|  0x  |    add.l |    sub.l |    mul.l |    div.l |    mod.l |    rep.l |    and.l |     or.l |    xor.l |          |          |          |          |          |          |          |
+|  1x  |   add.iu |   sub.iu |   mul.iu |   div.iu |   mod.iu |   rep.iu |   and.iu |    or.iu |   xor.iu |          |          |          |          |          |          |          |
+|  2x  |   add.lu |   sub.lu |   mul.lu |   div.lu |   mod.lu |   rep.lu |   and.lu |    or.lu |   xor.lu |          |          |          |          |          |          |          |
+|  3x  |    add.m |    sub.m |    mul.m |    div.m |    mod.m |    rep.m |          |          |          |          |          |          |          |          |          |          |
+|  4x  |          |          |          |          |          |          |          |          |          |          |          |          |          |          |          |          |
+|  5x  |          |          |          |          |          |          |          |          |          |          |          |          |          |          |          |          |
+|  6x  |          |          |          |          |          |          |          |          |          |          |          |          |          |          |          |          |
+|  7x  |          |          |          |          |          |          |          |          |          |          |          |          |          |          |          |          |
+|  8x  |          |          |          |          |          |          |          |          |          |          |          |          |          |          |          |          |
+|  9x  |          |          |          |          |          |          |          |          |          |          |          |          |          |          |          |          |
+|  Ax  |          |          |          |          |          |          |          |          |          |          |          |          |          |          |          |          |
+|  Bx  |          |          |          |          |          |          |          |          |          |          |          |          |          |          |          |          |
+|  Cx  |          |          |          |          |          |          |          |          |          |          |          |          |          |          |          |          |
+|  Dx  |          |          |          |          |          |          |          |          |          |          |          |          |          |          |          |          |
+|  Ex  |          |          |          |          |          |          |          |          |          |          |          |          |          |          |          |          |
+|  Fx  |          |          |          |          |          |          |          |          |          |          |          |          |          |          |          |          |
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 -- A --
 ADD [40]
@@ -165,6 +186,9 @@ ASR [86]
 BGE [1D]
 * Syntax: bge <label>
 * Jumps to a label if the Zero flag is set or the Negative flag is cleared
+BGT [5D]
+* Syntax: bgt <label>
+* Jumps to a label if both the Zero flag and the Negative flag are cleared
 BIC [BC]
 * Syntax: bic <label>
 * Jumps to a label if the Invalid flag is cleared
@@ -174,6 +198,9 @@ BIS [AC]
 BLE [2D]
 * Syntax: ble <label>
 * Jumps to a label if the Zero flag or Negative flag is set
+BLT [6D]
+* Syntax: blt <label>
+* Jumps to a label if the Zero flag is cleared and the Negative flag is set
 BNC [6C]
 * Syntax: bnc <label>
 * Jumps to a label if the Negative flag is cleared
@@ -237,11 +264,64 @@ COMP [0C]
   * The Negative flag is set to A<B
 CONV [0E]
 * Syntax: conv <type>
-* Pops a value, then attempts to cast it to a specified type
+* Pops a value, then attempts to convert it to a specified type
   * If the type is "object", the value is boxed
   * If the value is a boxed object, unbox.any/castclass is used
   * If the value has an explicit or implicit conversion to the specified type, the conversion is used
-  * Otherwise, a runtime error is thrown
+  * Otherwise, the conversion failed and the object is pushed as-is
+* The Conversion flag is set to whether the conversion was successful
+CONV.BI [FC 41]
+* Syntax: conv.bi
+* Pops a value, then attempts to convert it to a signed 8-bit integer
+  * Shorthand for "conv sbyte"
+CONV.BU [FC 51]
+* Syntax: conv.bu
+* Pops a value, then attempts to convert it to an unsigned 8-bit integer
+  * Shorthand for "conv byte"
+CONV.D [FC 61]
+* Syntax: conv.d
+* Pops a value, then attempts to convert it to a double-precision floating-point number
+  * Shorthand for "conv double"
+CONV.F [FC 60]
+* Syntax: conv.f
+* Pops a value, then attempts to convert it to a single-precision floating-point number
+  * Shorthand for "conv float"
+CONV.I [FC 40]
+* Syntax: conv.i
+* Pops a value, then attempts to convert it to a signed 32-bit integer
+  * Shorthand for "conv int"
+CONV.LI [FC 43]
+* Syntax: conv.li
+* Pops a value, then attempts to convert it to a signed 64-bit integer
+  * Shorthand for "conv long"
+CONV.LU [FC 53]
+* Syntax: conv.lu
+* Pops a value, then attempts to convert it to an unsigned 64-bit integer
+  * Shorthand for "conv ulong"
+CONV.M [FC 62]
+* Syntax: conv.m
+* Pops a value, then attempts to convert it to a decimal number
+  * Shorthand for "conv decimal"
+CONV.NI [FC 44]
+* Syntax: conv.ni
+* Pops a value, then attempts to convert it to a native integer
+  * Shorthand for "conv nint"
+CONV.NU [FC 54]
+* Syntax: conv.nu
+* Pops a value, then attempts to convert it to an unsigned native integer
+  * Shorthand for "conv nuint"
+CONV.SI [FC 42]
+* Syntax: conv.si
+* Pops a value, then attempts to convert it to a signed 16-bit integer
+  * Shorthand for "conv short"
+CONV.SU [FC 52]
+* Syntax: conv.su
+* Pops a value, then attempts to convert it to an unsigned 16-bit integer
+  * Shorthand for "conv ushort"
+CONV.U [FC 50]
+* Syntax: conv.u
+* Pops a value, then attempts to convert it to an unsigned 32-bit integer
+  * Shorthand for "conv uint"
 
 -- D --
 DECA [32]
@@ -312,6 +392,7 @@ IS [0D]
 KBKEY [1F]
 * Syntax: kbkey
 * Blocks until a key has been pressed, then puts the pressed key in &S
+  * If the Zero flag is set, the key is not echoed to the console
 KBLINE [2F]
 * Syntax: kbline
 * Blocks until ENTER has been pressed, then puts the inputted string in &S
@@ -369,8 +450,50 @@ LDFSA [16]
 * Syntax: ldfsa <token>
 * Loads the address of a static field into &A
 LDIND [1A]
-* Syntax: ldind
-* Loads the value at the address in &A
+* Syntax: ldind <type>
+* Pushes the value at the address in &A as the specified type
+LDIND.BI [FC 01]
+* Syntax: ldind.bi
+* Pushes a signed 8-bit integer at the address in &A
+LDIND.BU [FC 11]
+* Syntax: ldind.bu
+* Pushes an unsighed 8-bit integer at the address in &A
+LDIND.D [FC 21]
+* Syntax: ldind.d
+* Pushes a double-precision floating-point number at the address in &I
+LDIND.F [FC 20]
+* Syntax: ldind.f
+* Pushes a single-precision floating-point number at the address in &I
+LDIND.I [FC 00]
+* Syntax: ldind.i
+* Pushes a signed 32-bit integer at the address in &A
+LDIND.LI [FC 03]
+* Syntax: ldind.li
+* Pushes a signed 64-bit integer at the address in &I
+LDIND.LU [FC 13]
+* Syntax: ldind.lu
+* Pushes an unsigned 64-bit integer at the address in &I
+LDIND.M [FC 22]
+* Syntax: ldind.m
+* Pushes a decimal number at the address in &I
+LDIND.NI [FC 04]
+* Syntax: ldind.ni
+* Pushes a native integer at the address in &A
+LDIND.NU [FC 14]
+* Syntax: ldind.nu
+* Pushes an unsigned native integer at the address in &A
+LDIND.O [FC 30]
+* Syntax: ldind.o
+* Pushes an object of an unknown type at the address in &S
+LDIND.SI [FC 02]
+* Syntax: ldind.si
+* Pushes a signed 16-bit integer at the address in &A
+LDIND.SU [FC 12]
+* Syntax: ldind.su
+* Pushes an unsigned 16-bit integer at the address in &A
+LDIND.U [FC 10]
+* Syntax: ldind.u
+* Pushes an unsigned 32-bit integer at the address in &A
 LDLC [08]
 * Syntax: ldlc <int>
 * Pushes a local
@@ -488,10 +611,10 @@ NOT [66]
 NOP [00]
 * Syntax: nop
 * Direct translation of "nop" CIL opcode
-NWARR [90]
+NEWARR [90]
 * Syntax: newarr <type>
 * Pushes a new array of the specified type using &A as the length of the array
-NWOBJ [91]
+NEWOBJ [91]
 * Syntax: newobj <token>
 * Pushes a new object created using the constructor specified, popping values as needed
 

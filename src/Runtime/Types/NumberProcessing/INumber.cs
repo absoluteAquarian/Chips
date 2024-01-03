@@ -11,6 +11,8 @@
 
 		int NumericSize { get; }
 
+		INumber Cast(INumber number);
+
 		INumber Upcast(INumber number);
 
 		INumber Abs();
@@ -18,6 +20,12 @@
 		INumber Add(INumber number);
 
 		void Compare(INumber number);
+
+		bool CompareEquals(INumber number);
+
+		bool CompareGreaterThan(INumber number);
+
+		bool CompareLessThan(INumber number);
 
 		INumber Decrement();
 
@@ -32,6 +40,32 @@
 		INumber Negate();
 
 		INumber Subtract(INumber number);
+
+		sbyte ToSByte();
+
+		byte ToByte();
+
+		short ToInt16();
+
+		ushort ToUInt16();
+		
+		int ToInt32();
+
+		uint ToUInt32();
+
+		long ToInt64();
+
+		ulong ToUInt64();
+
+		nint ToIntPtr();
+
+		nuint ToUIntPtr();
+
+		float ToSingle();
+
+		double ToDouble();
+
+		decimal ToDecimal();
 	}
 
 	/// <summary>

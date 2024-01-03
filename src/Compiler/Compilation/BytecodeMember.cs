@@ -1,5 +1,5 @@
 ﻿namespace Chips.Compiler.Compilation {
-	internal enum BytecodeMember : byte {
+	public enum BytecodeMember : byte {
 		Namespace,
 		Type,
 		Field,

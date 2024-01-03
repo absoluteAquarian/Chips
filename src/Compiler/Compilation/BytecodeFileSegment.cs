@@ -6,7 +6,7 @@ using System.IO;
 using System.Text;
 
 namespace Chips.Compiler.Compilation {
-	internal abstract class BytecodeFileSegment {
+	public abstract class BytecodeFileSegment {
 		public readonly BytecodeMember memberType;
 
 		public BytecodeFileSegment(BytecodeMember memberType) {
@@ -20,15 +20,15 @@ namespace Chips.Compiler.Compilation {
 		public static BytecodeMember ReadSegmentIdentifier(BinaryReader reader) => (BytecodeMember)reader.ReadByte();
 	}
 
-	internal abstract class BytecodeTopLevelSegment : BytecodeFileSegment {
+	public abstract class BytecodeTopLevelSegment : BytecodeFileSegment {
 		protected BytecodeTopLevelSegment(BytecodeMember memberType) : base(memberType) { }
 	}
 
-	internal abstract class BytecodeTypeMemberSegment : BytecodeFileSegment {
+	public abstract class BytecodeTypeMemberSegment : BytecodeFileSegment {
 		protected BytecodeTypeMemberSegment(BytecodeMember memberType) : base(memberType) { }
 	}
 
-	internal sealed class BytecodeNamespaceSegment : BytecodeTopLevelSegment {
+	public sealed class BytecodeNamespaceSegment : BytecodeTopLevelSegment {
 		public readonly string name;
 
 		private readonly List<BytecodeFileSegment> members = new();
@@ -76,7 +76,7 @@ namespace Chips.Compiler.Compilation {
 		}
 	}
 
-	internal sealed class BytecodeTypeSegment : BytecodeTypeMemberSegment {
+	public sealed class BytecodeTypeSegment : BytecodeTypeMemberSegment {
 		public readonly BytecodeNamespaceSegment enclosingNamespace;
 		public readonly BytecodeTypeSegment? enclosingType;
 		public readonly string name;
@@ -171,7 +171,7 @@ namespace Chips.Compiler.Compilation {
 		}
 	}
 
-	internal sealed class BytecodeFieldSegment : BytecodeTypeMemberSegment {
+	public sealed class BytecodeFieldSegment : BytecodeTypeMemberSegment {
 		public readonly BytecodeTypeSegment declaringType;
 		public readonly string name;
 		public readonly ITypeDefOrRef type;
@@ -200,7 +200,7 @@ namespace Chips.Compiler.Compilation {
 		}
 	}
 
-	internal sealed class BytecodeMethodSegment : BytecodeTypeMemberSegment {
+	public sealed class BytecodeMethodSegment : BytecodeTypeMemberSegment {
 		public readonly BytecodeTypeSegment declaringType;
 		public readonly string name;
 		public readonly MethodAttributes attributes;
@@ -255,7 +255,7 @@ namespace Chips.Compiler.Compilation {
 
 			int instructionCount = reader.Read7BitEncodedInt();
 			for (int i = 0; i < instructionCount; i++)
-				segment.body.Instructions.Add(ChipsInstruction.Read(reader, context.resolver, context.heap));
+				segment.body.Instructions.Add(ChipsInstruction.Read(context, reader));
 
 			return segment;
 		}
@@ -279,11 +279,11 @@ namespace Chips.Compiler.Compilation {
 
 			writer.Write7BitEncodedInt(body.Instructions.Count);
 			foreach (var instruction in body.Instructions)
-				instruction.Write(writer, context.resolver, context.heap);
+				instruction.Write(context, writer);
 		}
 	}
 
-	internal sealed class BytecodeVariableSegment : BytecodeFileSegment {
+	public sealed class BytecodeVariableSegment : BytecodeFileSegment {
 		public readonly string name;
 		public readonly ITypeDefOrRef type;
 
@@ -306,7 +306,7 @@ namespace Chips.Compiler.Compilation {
 		}
 	}
 
-	internal sealed class BytecodeTypeAliasSegment : BytecodeTopLevelSegment {
+	public sealed class BytecodeTypeAliasSegment : BytecodeTopLevelSegment {
 		public readonly string alias;
 		public readonly ITypeDefOrRef resolvedAlias;
 
@@ -329,7 +329,7 @@ namespace Chips.Compiler.Compilation {
 		}
 	}
 
-	internal sealed class BytecodeNamespaceImportSegment : BytecodeTopLevelSegment {
+	public sealed class BytecodeNamespaceImportSegment : BytecodeTopLevelSegment {
 		public readonly string importedNamespace;
 
 		public BytecodeNamespaceImportSegment(string importedNamespace) : base(BytecodeMember.ExternNamespace) {

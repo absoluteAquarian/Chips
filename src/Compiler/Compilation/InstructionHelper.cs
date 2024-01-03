@@ -8,6 +8,7 @@ using Chips.Compiler.Utility;
 using Chips.Runtime.Types;
 using Chips.Runtime.Types.NumberProcessing;
 using Chips.Runtime.Utility;
+using Chips.Utility;
 using Chips.Utility.Reflection;
 using System;
 using System.Collections.Generic;
@@ -43,27 +44,60 @@ namespace Chips.Runtime.Specifications {
 			ChipsCompiler.AddDelayedResolver(getResolver(body, index));
 		}
 
+		public static void EmitNopAndDelayedResolver<T>(this CompilationContext context) where T : IDelayedInstructionResolver<T> {
+			context.Cursor.Emit(CilOpCodes.Nop);
+			var body = context.Cursor.Body;
+			var index = context.Cursor.Index;
+			ChipsCompiler.AddDelayedResolver(T.Create(body, index));
+		}
+
+		public static void EmitNopAndDelayedResolver<T, TArg>(this CompilationContext context, TArg arg) where T : IDelayedInstructionResolver<T, TArg> {
+			context.Cursor.Emit(CilOpCodes.Nop);
+			var body = context.Cursor.Body;
+			var index = context.Cursor.Index;
+			ChipsCompiler.AddDelayedResolver(T.Create(body, index, arg));
+		}
+
+		public static void EmitNopAndDelayedResolver<T, TArg1, TArg2>(this CompilationContext context, TArg1 arg1, TArg2 arg2) where T : IDelayedInstructionResolver<T, TArg1, TArg2> {
+			context.Cursor.Emit(CilOpCodes.Nop);
+			var body = context.Cursor.Body;
+			var index = context.Cursor.Index;
+			ChipsCompiler.AddDelayedResolver(T.Create(body, index, arg1, arg2));
+		}
+
 		public static void EmitRegisterLoad(this CompilationContext context, string register) {
-			context.Cursor.Emit(CilOpCodes.Ldsfld, context.importer.ImportField(typeof(Registers).GetCachedField(register)!));
+			context.Cursor.Emit(CilOpCodes.Ldsfld, context.importer.ImportField(typeof(Registers).GetCachedField(register)
+				?? throw new InvalidOperationException($"Register \"{register}\" does not exist")));
+		}
+
+		public static void EmitNumberRegisterAssignment(this CompilationContext context, Register register, Type arg) {
+			context.Cursor.Emit(CilOpCodes.Call, context.importer.ImportMethod(register.GetType().GetCachedMethod("Set", arg)
+				?? throw new InvalidOperationException($"Type \"{register.GetType().GetSimplifiedGenericTypeName()}\" does not have a Set method")));
 		}
 
 		public static void EmitNumberRegisterAssignment<TRegister, TArg>(this CompilationContext context) where TRegister : Register {
 			context.Cursor.Emit(CilOpCodes.Call, context.importer.ImportMethod(typeof(TRegister).GetCachedMethod("Set", typeof(TArg))
-				?? throw new InvalidOperationException($"Type {typeof(TRegister).FullName} does not have a Set method")));
+				?? throw new InvalidOperationException($"Type \"{typeof(TRegister).GetSimplifiedGenericTypeName()}\" does not have a Set method with the provided argument type")));
+		}
+
+		public static void EmitRegisterValueAssignment(this CompilationContext context, Register register) {
+			context.Cursor.Emit(CilOpCodes.Call, context.importer.ImportMethod(register.GetType().GetCachedProperty("Value")?.SetMethod
+				?? throw new InvalidOperationException($"Type \"{register.GetType().GetSimplifiedGenericTypeName()}\" does not have a Value property")));
 		}
 
 		public static void EmitRegisterValueAssignment<TRegister>(this CompilationContext context) where TRegister : Register {
-			context.Cursor.Emit(CilOpCodes.Call, context.importer.ImportMethod(typeof(TRegister).GetCachedProperty("Value")!.SetMethod
-				?? throw new InvalidOperationException($"Type {typeof(TRegister).FullName} does not have a Value property")));
+			context.Cursor.Emit(CilOpCodes.Call, context.importer.ImportMethod(typeof(TRegister).GetCachedProperty("Value")?.SetMethod
+				?? throw new InvalidOperationException($"Type \"{typeof(TRegister).GetSimplifiedGenericTypeName()}\" does not have a Value property")));
+		}
+
+		public static void EmitRegisterValueRetrieval(this CompilationContext context, Register register) {
+			context.Cursor.Emit(CilOpCodes.Call, context.importer.ImportMethod(register.GetType().GetCachedProperty("Value")?.GetMethod
+				?? throw new InvalidOperationException($"Type \"{register.GetType().GetSimplifiedGenericTypeName()}\" does not have a Value property")));
 		}
 
 		public static void EmitRegisterValueRetrieval<TRegister>(this CompilationContext context) where TRegister : Register {
-			context.Cursor.Emit(CilOpCodes.Call, context.importer.ImportMethod(typeof(TRegister).GetCachedProperty("Value")!.GetMethod
-				?? throw new InvalidOperationException($"Type {typeof(TRegister).FullName} does not have a Value property")));
-		}
-
-		public static void EmitINumberValueRetrieval<T>(this CompilationContext context) where T : INumber, INumber<T> {
-			context.Cursor.Emit(CilOpCodes.Call, context.importer.ImportMethod(typeof(T).GetCachedProperty(nameof(INumber<T>.ActualValue))!.GetMethod!));
+			context.Cursor.Emit(CilOpCodes.Call, context.importer.ImportMethod(typeof(TRegister).GetCachedProperty("Value")?.GetMethod
+				?? throw new InvalidOperationException($"Type \"{typeof(TRegister).GetSimplifiedGenericTypeName()}\" does not have a Value property")));
 		}
 
 		public static void EmitBoxToUnderlyingType(this CompilationContext context) {
@@ -71,42 +105,103 @@ namespace Chips.Runtime.Specifications {
 		}
 
 		public static void EmitUnderlyingTypeValueRetrieval<TNumber>(this CompilationContext context) where TNumber : INumber {
-			var property = typeof(TNumber).GetCachedProperty("ActualValue");
-			if (property?.GetMethod is null)
-				throw new InvalidOperationException($"Type {typeof(TNumber).FullName} does not have an ActualValue property");
-			else
-				context.Cursor.Emit(CilOpCodes.Call, context.importer.ImportMethod(property.GetMethod));
+			context.Cursor.Emit(CilOpCodes.Call, context.importer.ImportMethod(typeof(TNumber).GetCachedProperty("ActualValue")?.GetMethod
+				?? throw new InvalidOperationException($"Type \"{typeof(TNumber).GetSimplifiedGenericTypeName()}\" does not have an ActualValue property")));
 		}
 
 		public static void EmitFlagAssignment(this CompilationContext context, string flag) {
-			context.Cursor.Emit(CilOpCodes.Call, context.importer.ImportMethod(typeof(FlagsRegister).GetCachedProperty(flag)!.SetMethod!));
+			context.Cursor.Emit(CilOpCodes.Call, context.importer.ImportMethod(typeof(FlagsRegister).GetCachedProperty(flag)?.SetMethod
+				?? throw new InvalidOperationException($"Flag \"{flag}\" does not exist")));
 		}
 
 		public static void EmitFlagAssignment(this CompilationContext context, string flag, bool set) {
 			context.EmitRegisterLoad(nameof(Registers.F));
 			context.Cursor.Emit(set ? CilOpCodes.Ldc_I4_1 : CilOpCodes.Ldc_I4_0);
-			context.Cursor.Emit(CilOpCodes.Call, context.importer.ImportMethod(typeof(FlagsRegister).GetCachedProperty(flag)!.SetMethod!));
+			context.Cursor.Emit(CilOpCodes.Call, context.importer.ImportMethod(typeof(FlagsRegister).GetCachedProperty(flag)?.SetMethod
+				?? throw new InvalidOperationException($"Flag \"{flag}\" does not exist")));
 		}
 
 		public static void EmitFlagRetrieval(this CompilationContext context, string flag) {
 			context.EmitRegisterLoad(nameof(Registers.F));
-			context.Cursor.Emit(CilOpCodes.Call, context.importer.ImportMethod(typeof(FlagsRegister).GetCachedProperty(flag)!.GetMethod!));
+			context.Cursor.Emit(CilOpCodes.Call, context.importer.ImportMethod(typeof(FlagsRegister).GetCachedProperty(flag)?.GetMethod
+				?? throw new InvalidOperationException($"Flag \"{flag}\" does not exist")));
 		}
 
 		public static void EmitZero<T>(this CompilationContext context) where T : INumber, INumberConstants<T> {
-			context.Cursor.Emit(CilOpCodes.Call, context.importer.ImportMethod(typeof(T).GetCachedProperty("Zero")!.GetMethod!));
+			context.Cursor.Emit(CilOpCodes.Call, context.importer.ImportMethod(typeof(T).GetCachedProperty(nameof(INumberConstants<T>.Zero))?.GetMethod
+				?? throw new InvalidOperationException($"Type \"{typeof(T).GetSimplifiedGenericTypeName()}\" does not have a Zero property")));
 		}
 
 		public static void EmitUpcastTo<T>(this CompilationContext context) where T : INumber {
-			context.Cursor.Emit(CilOpCodes.Call, context.importer.ImportMethod(typeof(T).GetCachedMethod(nameof(INumber.Upcast))!));
+			context.Cursor.Emit(CilOpCodes.Call, context.importer.ImportMethod(typeof(T).GetCachedMethod(nameof(INumber.Upcast))
+				?? throw new InvalidOperationException($"Type \"{typeof(T).GetSimplifiedGenericTypeName()}\" does not have an Upcast method")));
 		}
 
 		public static void EmitCastTo<T>(this CompilationContext context) where T : INumber {
-			context.Cursor.Emit(CilOpCodes.Call, context.importer.ImportMethod(typeof(ValueConverter).GetCachedMethod($"CastTo{typeof(T).Name}", 1, ReflectionCache.T.Type)!));
+			context.Cursor.Emit(CilOpCodes.Call, context.importer.ImportMethod(typeof(ValueConverter).GetCachedMethod($"CastTo{typeof(T).Name}", 1, ReflectionCache.T.Type)
+				?? throw new InvalidOperationException($"Type \"{typeof(ValueConverter).GetSimplifiedGenericTypeName()}\" does not have a CastTo{typeof(T).Name} method")));
+		}
+
+		public static void EmitCastToSByte(this CompilationContext context) {
+			context.Cursor.Emit(CilOpCodes.Call, context.importer.ImportMethod(typeof(ValueConverter).GetCachedMethod(nameof(ValueConverter.CastToSByte))!));
+		}
+
+		public static void EmitCastToByte(this CompilationContext context) {
+			context.Cursor.Emit(CilOpCodes.Call, context.importer.ImportMethod(typeof(ValueConverter).GetCachedMethod(nameof(ValueConverter.CastToByte))!));
+		}
+
+		public static void EmitCastToInt16(this CompilationContext context) {
+			context.Cursor.Emit(CilOpCodes.Call, context.importer.ImportMethod(typeof(ValueConverter).GetCachedMethod(nameof(ValueConverter.CastToInt16))!));
+		}
+
+		public static void EmitCastToUInt16(this CompilationContext context) {
+			context.Cursor.Emit(CilOpCodes.Call, context.importer.ImportMethod(typeof(ValueConverter).GetCachedMethod(nameof(ValueConverter.CastToUInt16))!));
+		}
+
+		public static void EmitCastToInt32(this CompilationContext context) {
+			context.Cursor.Emit(CilOpCodes.Call, context.importer.ImportMethod(typeof(ValueConverter).GetCachedMethod(nameof(ValueConverter.CastToInt32))!));
+		}
+
+		public static void EmitCastToUInt32(this CompilationContext context) {
+			context.Cursor.Emit(CilOpCodes.Call, context.importer.ImportMethod(typeof(ValueConverter).GetCachedMethod(nameof(ValueConverter.CastToUInt32))!));
+		}
+
+		public static void EmitCastToInt64(this CompilationContext context) {
+			context.Cursor.Emit(CilOpCodes.Call, context.importer.ImportMethod(typeof(ValueConverter).GetCachedMethod(nameof(ValueConverter.CastToInt64))!));
+		}
+
+		public static void EmitCastToUInt64(this CompilationContext context) {
+			context.Cursor.Emit(CilOpCodes.Call, context.importer.ImportMethod(typeof(ValueConverter).GetCachedMethod(nameof(ValueConverter.CastToUInt64))!));
+		}
+
+		public static void EmitCastToIntPtr(this CompilationContext context) {
+			context.Cursor.Emit(CilOpCodes.Call, context.importer.ImportMethod(typeof(ValueConverter).GetCachedMethod(nameof(ValueConverter.CastToIntPtr))!));
+		}
+
+		public static void EmitCastToUIntPtr(this CompilationContext context) {
+			context.Cursor.Emit(CilOpCodes.Call, context.importer.ImportMethod(typeof(ValueConverter).GetCachedMethod(nameof(ValueConverter.CastToUIntPtr))!));
+		}
+
+		public static void EmitCastToSingle(this CompilationContext context) {
+			context.Cursor.Emit(CilOpCodes.Call, context.importer.ImportMethod(typeof(ValueConverter).GetCachedMethod(nameof(ValueConverter.CastToSingle))!));
+		}
+
+		public static void EmitCastToDouble(this CompilationContext context) {
+			context.Cursor.Emit(CilOpCodes.Call, context.importer.ImportMethod(typeof(ValueConverter).GetCachedMethod(nameof(ValueConverter.CastToDouble))!));
+		}
+
+		public static void EmitCastToDecimal(this CompilationContext context) {
+			context.Cursor.Emit(CilOpCodes.Call, context.importer.ImportMethod(typeof(ValueConverter).GetCachedMethod(nameof(ValueConverter.CastToDecimal))!));
 		}
 
 		public static void EmitFunctionCall<T>(this CompilationContext context, string name) {
-			context.Cursor.Emit(CilOpCodes.Callvirt, context.importer.ImportMethod(typeof(T).GetCachedMethod(name)!));
+			context.Cursor.Emit(CilOpCodes.Callvirt, context.importer.ImportMethod(typeof(T).GetCachedMethod(name)
+				?? throw new InvalidOperationException($"Type \"{typeof(T).GetSimplifiedGenericTypeName()}\" does not have a {name} method")));
+		}
+
+		public static void EmitFunctionCall<T>(this CompilationContext context, string name, Type[] arguments) {
+			context.Cursor.Emit(CilOpCodes.Callvirt, context.importer.ImportMethod(typeof(T).GetCachedMethod(name, arguments)
+				?? throw new InvalidOperationException($"Type \"{typeof(T).GetSimplifiedGenericTypeName()}\" does not have a {name} method with the provided argument types")));
 		}
 
 		private static readonly SignatureComparer _signatureComparer = new(SignatureComparisonFlags.AcceptNewerVersions);
@@ -169,6 +264,6 @@ namespace Chips.Runtime.Specifications {
 			return -1;
 		}
 
-		public static Exception ThrowNotImplemented(this Opcode opcode) => new InvalidOperationException($"Opcode {opcode.Code} is not implemented, cannot compile");
+		public static Exception ThrowNotImplemented(this CompilingOpcode opcode) => new InvalidOperationException($"CompilingOpcode \"{opcode.GetType().Name}\" des not have a Compile implementation");
 	}
 }

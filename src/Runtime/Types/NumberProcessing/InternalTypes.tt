@@ -21,10 +21,10 @@ namespace Chips.Runtime.Types.NumberProcessing {
 	[TextTemplateGenerated]
 <# if (!type.Name.EndsWith("IntPtr")) {
 #>
-	public struct <#= type.Name #>_T : I<#= type.Name.StartsWith("U") || type.Name == "Byte" ? "Unsigned" : "" #>Integer<<#= type.Name #>>, INumberConstants<<#= type.Name #>_T> {
+	public partial struct <#= type.Name #>_T : I<#= type.Name.StartsWith("U") || type.Name == "Byte" ? "Unsigned" : "" #>Integer<<#= type.Name #>>, INumberConstants<<#= type.Name #>_T> {
 <# } else {
 #>
-	public unsafe struct <#= type.Name #>_T : I<#= type.Name.StartsWith("U") ? "Unsigned" : "" #>Integer<<#= type.Name #>>, INumberConstants<<#= type.Name #>_T> {
+	public unsafe partial struct <#= type.Name #>_T : I<#= type.Name.StartsWith("U") ? "Unsigned" : "" #>Integer<<#= type.Name #>>, INumberConstants<<#= type.Name #>_T> {
 <#
 } #>
 		private <#= type.Name #> value;
@@ -59,8 +59,12 @@ namespace Chips.Runtime.Types.NumberProcessing {
 		public <#= type.Name #>_T(Int32 value) {
 			this.value = (<#= type.Name #>)value;
 		}
+
 <#
 } #>
+		public readonly INumber Cast(INumber number) {
+			return ValueConverter.CastTo<#= type.Name #>_T(number);
+		}
 
 		public readonly INumber Upcast(INumber number) {
 			return TypeTracking.ShouldUpcast(number, this) ? ValueConverter.CastTo<#= type.Name #>_T(number) : number;
@@ -84,7 +88,7 @@ namespace Chips.Runtime.Types.NumberProcessing {
 } #>
 
 		public readonly INumber Add(INumber number) {
-			//For sizes larger than int, this block should be removed by the compiler
+			// For sizes larger than int, this block should be removed by the compiler
 			if (sizeof(<#= type.Name #>) < sizeof(int)) {
 				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
 				return upcast.Add(number);
@@ -93,28 +97,11 @@ namespace Chips.Runtime.Types.NumberProcessing {
 			if (TypeTracking.ShouldUpcast(this, number))
 				return number.Add(this);
 
-			<#= type.Name #>_T convert = ValueConverter.CastTo<#= type.Name #>_T(number);
-
-<# if (!type.Name.StartsWith("U") && type.Name != "Byte") {
-#>
-			if ((value < 0 && convert.value < 0 && value + convert.value > 0) || (value > 0 && convert.value > 0 && value + convert.value < 0)) {
-				Registers.F.Overflow = true;
-				return new <#= type.Name #>_T(value < 0 ? <#= type.Name #>.MinValue : <#= type.Name #>.MaxValue);
-			}
-<# } else {
-#>
-			if (value + convert.value < value) {
-				Registers.F.Overflow = true;
-				return new <#= type.Name #>_T(<#= type.Name #>.MaxValue);
-			}
-<#
-} #>
-
-			return new <#= type.Name #>_T(unchecked(value + convert.value));
+			return new <#= type.Name #>_T(ConstrainedArithmetic.Add(value, number.To<#= type.Name #>()));
 		}
 
 		public readonly IInteger And(IInteger number) {
-			//For sizes larger than int, this block should be removed by the compiler
+			// For sizes larger than int, this block should be removed by the compiler
 			if (sizeof(<#= type.Name #>) < sizeof(int)) {
 				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
 				return ((IInteger)upcast!).And(number);
@@ -126,8 +113,7 @@ namespace Chips.Runtime.Types.NumberProcessing {
 			if (TypeTracking.ShouldUpcast(this, number))
 				return number.And(this);
 
-			<#= type.Name #>_T convert = ValueConverter.CastTo<#= type.Name #>_T(number);
-			return new <#= type.Name #>_T(value & convert.value);
+			return new <#= type.Name #>_T(value & number.To<#= type.Name #>());
 		}
 
 		public readonly IInteger ArithmeticRotateLeft() {
@@ -159,7 +145,7 @@ namespace Chips.Runtime.Types.NumberProcessing {
 			=> new <#= type.Name #>_T(value >> 1);
 
 		public readonly void Compare(INumber number) {
-			//For sizes larger than int, this block should be removed by the compiler
+			// For sizes larger than int, this block should be removed by the compiler
 			if (sizeof(<#= type.Name #>) < sizeof(int)) {
 				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
 				upcast.Compare(number);
@@ -171,25 +157,54 @@ namespace Chips.Runtime.Types.NumberProcessing {
 				return;
 			}
 
-			INumber sub = this.Subtract(number);
+			Registers.F.Negative = this.CompareLessThan(number);
+			Registers.F.Zero = this.CompareEquals(number);
+		}
 
-<# if (!type.Name.StartsWith("U") && type.Name != "Byte") {
-#>
-			Registers.F.Negative = sub.IsNegative;
-			Registers.F.Zero = sub.IsZero;
-<# } else {
-#>
-			Registers.F.Negative = sub.Divide(this).IsZero;  // If (this - number) is less than this, then (sub / this) will be 0 due to integer division
-			Registers.F.Zero = sub.IsZero;
-<#
-} #>
+		public readonly bool CompareEquals(INumber number) {
+			// For sizes larger than int, this block should be removed by the compiler
+			if (sizeof(<#= type.Name #>) < sizeof(int)) {
+				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
+				return upcast.CompareEquals(number);
+			}
+
+			if (TypeTracking.ShouldUpcast(this, number))
+				return number.CompareEquals(this);
+
+			return value == number.To<#= type.Name #>();
+		}
+
+		public readonly bool CompareGreaterThan(INumber number) {
+			// For sizes larger than int, this block should be removed by the compiler
+			if (sizeof(<#= type.Name #>) < sizeof(int)) {
+				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
+				return upcast.CompareGreaterThan(number);
+			}
+
+			if (TypeTracking.ShouldUpcast(this, number))
+				return number.Upcast(this).CompareGreaterThan(number);
+
+			return value > number.To<#= type.Name #>();
+		}
+
+		public readonly bool CompareLessThan(INumber number) {
+			// For sizes larger than int, this block should be removed by the compiler
+			if (sizeof(<#= type.Name #>) < sizeof(int)) {
+				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
+				return upcast.CompareLessThan(number);
+			}
+
+			if (TypeTracking.ShouldUpcast(this, number))
+				return number.Upcast(this).CompareLessThan(number);
+
+			return value < number.To<#= type.Name #>();
 		}
 
 		public readonly INumber Decrement()
 			=> new <#= type.Name #>_T(unchecked(value - 1));
 
 		public readonly INumber Divide(INumber number) {
-			//For sizes larger than int, this block should be removed by the compiler
+			// For sizes larger than int, this block should be removed by the compiler
 			if (sizeof(<#= type.Name #>) < sizeof(int)) {
 				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
 				return upcast.Divide(number);
@@ -198,15 +213,14 @@ namespace Chips.Runtime.Types.NumberProcessing {
 			if (TypeTracking.ShouldUpcast(this, number))
 				return number.Upcast(this).Divide(number);
 
-			<#= type.Name #>_T convert = ValueConverter.CastTo<#= type.Name #>_T(number);
-			return new <#= type.Name #>_T(value / convert.value);
+			return new <#= type.Name #>_T(value / number.To<#= type.Name #>());
 		}
 
 		public readonly INumber Increment()
 			=> new <#= type.Name #>_T(unchecked(value + 1));
 
 		public readonly INumber Modulus(INumber number) {
-			//For sizes larger than int, this block should be removed by the compiler
+			// For sizes larger than int, this block should be removed by the compiler
 			if (sizeof(<#= type.Name #>) < sizeof(int)) {
 				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
 				return upcast.Modulus(number);
@@ -215,12 +229,11 @@ namespace Chips.Runtime.Types.NumberProcessing {
 			if (TypeTracking.ShouldUpcast(this, number))
 				return number.Upcast(this).Modulus(number);
 
-			<#= type.Name #>_T convert = ValueConverter.CastTo<#= type.Name #>_T(number);
-			return new <#= type.Name #>_T(value % convert.value);
+			return new <#= type.Name #>_T(value % number.To<#= type.Name #>());
 		}
 
 		public readonly INumber Multiply(INumber number) {
-			//For sizes larger than int, this block should be removed by the compiler
+			// For sizes larger than int, this block should be removed by the compiler
 			if (sizeof(<#= type.Name #>) < sizeof(int)) {
 				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
 				return upcast.Multiply(number);
@@ -229,14 +242,13 @@ namespace Chips.Runtime.Types.NumberProcessing {
 			if (TypeTracking.ShouldUpcast(this, number))
 				return number.Multiply(this);
 
-			<#= type.Name #>_T convert = ValueConverter.CastTo<#= type.Name #>_T(number);
-			return new <#= type.Name #>_T(unchecked(value * convert.value));
+			return new <#= type.Name #>_T(unchecked(value * number.To<#= type.Name #>()));
 		}
 
 		public readonly INumber Negate() {
 <# if (!type.Name.StartsWith("U") && type.Name != "Byte") {
 #>
-			//For sizes larger than int, this block should be removed by the compiler
+			// For sizes larger than int, this block should be removed by the compiler
 			if (sizeof(<#= type.Name #>) < sizeof(int)) {
 				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
 				return upcast.Negate();
@@ -251,7 +263,7 @@ namespace Chips.Runtime.Types.NumberProcessing {
 		}
 
 		public readonly IInteger Not() {
-			//For sizes larger than int, this block should be removed by the compiler
+			// For sizes larger than int, this block should be removed by the compiler
 			if (sizeof(<#= type.Name #>) < sizeof(int)) {
 				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
 				return ((IInteger)upcast!).Not();
@@ -261,7 +273,7 @@ namespace Chips.Runtime.Types.NumberProcessing {
 		}
 
 		public readonly IInteger Or(IInteger number) {
-			//For sizes larger than int, this block should be removed by the compiler
+			// For sizes larger than int, this block should be removed by the compiler
 			if (sizeof(<#= type.Name #>) < sizeof(int)) {
 				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
 				return ((IInteger)upcast!).Or(number);
@@ -273,12 +285,11 @@ namespace Chips.Runtime.Types.NumberProcessing {
 			if (TypeTracking.ShouldUpcast(this, number))
 				return number.Or(this);
 
-			<#= type.Name #>_T convert = ValueConverter.CastTo<#= type.Name #>_T(number);
-			return new <#= type.Name #>_T(value | convert.value);
+			return new <#= type.Name #>_T(value | number.To<#= type.Name #>());
 		}
 
 		public readonly INumber Subtract(INumber number) {
-			//For sizes larger than int, this block should be removed by the compiler
+			// For sizes larger than int, this block should be removed by the compiler
 			if (sizeof(<#= type.Name #>) < sizeof(int)) {
 				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
 				return upcast.Subtract(number);
@@ -287,12 +298,23 @@ namespace Chips.Runtime.Types.NumberProcessing {
 			if (TypeTracking.ShouldUpcast(this, number))
 				return number.Upcast(this).Subtract(number);
 
-			<#= type.Name #>_T convert = ValueConverter.CastTo<#= type.Name #>_T(number);
-			return new <#= type.Name #>_T(unchecked(value - convert.value));
+			return new <#= type.Name #>_T(ConstrainedArithmetic.Subtract(value, number.To<#= type.Name #>()));
 		}
 
+<# foreach (var typeTo in iTypes) {
+#>
+		public readonly <#= typeTo.Name #> To<#= typeTo.Name #>() => (<#= typeTo.Name #>)value;
+
+<#
+} #>
+<# foreach (var typeTo in fTypes) {
+#>
+		public readonly <#= typeTo.Name #> To<#= typeTo.Name #>() => (<#= typeTo.Name #>)value;
+
+<#
+} #>
 		public readonly IInteger Xor(IInteger number) {
-			//For sizes larger than int, this block should be removed by the compiler
+			// For sizes larger than int, this block should be removed by the compiler
 			if (sizeof(<#= type.Name #>) < sizeof(int)) {
 				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
 				return ((IInteger)upcast!).Xor(number);
@@ -304,8 +326,7 @@ namespace Chips.Runtime.Types.NumberProcessing {
 			if (TypeTracking.ShouldUpcast(this, number))
 				return number.Xor(this);
 
-			<#= type.Name #>_T convert = ValueConverter.CastTo<#= type.Name #>_T(number);
-			return new <#= type.Name #>_T(value ^ convert.value);
+			return new <#= type.Name #>_T(value ^ number.To<#= type.Name #>());
 		}
 	}
 
@@ -360,6 +381,10 @@ namespace Chips.Runtime.Types.NumberProcessing {
 
 <#
 } #>
+		public readonly INumber Cast(INumber number) {
+			return ValueConverter.CastTo<#= type.Name #>_T(number);
+		}
+
 		public readonly INumber Upcast(INumber number) {
 			return TypeTracking.ShouldUpcast(number, this) ? ValueConverter.CastTo<#= type.Name #>_T(number) : number;
 		}
@@ -391,8 +416,7 @@ namespace Chips.Runtime.Types.NumberProcessing {
 			if (TypeTracking.ShouldUpcast(this, number))
 				return number.Add(this);
 
-			<#= type.Name #>_T convert = ValueConverter.CastTo<#= type.Name #>_T(number);
-			return new <#= type.Name #>_T(value + convert.value);
+			return new <#= type.Name #>_T(ConstrainedArithmetic.Add(value, number.To<#= type.Name #>()));
 		}
 
 		public readonly IFloat Asin()
@@ -429,13 +453,12 @@ namespace Chips.Runtime.Types.NumberProcessing {
 			if (TypeTracking.ShouldUpcast(this, divisor))
 				return ((IFloat)divisor.Upcast(this)).Atan2(divisor);
 
-			<#= type.Name #>_T convert = ValueConverter.CastTo<#= type.Name #>_T(divisor);
 <# if (type.Name != "Decimal") {
 #>
-			return new <#= type.Name #>_T(Math<#= type.Name == "Single" ? "F" : " "#>.Atan2(value, convert.value));
+			return new <#= type.Name #>_T(Math<#= type.Name == "Single" ? "F" : " "#>.Atan2(value, divisor.To<#= type.Name #>()));
 <# } else {
 #>
-			return new <#= type.Name #>_T(DecimalMath.DecimalEx.ATan2(value, convert.value));
+			return new <#= type.Name #>_T(DecimalMath.DecimalEx.ATan2(value, divisor.To<#= type.Name #>()));
 <#
 } #>
 		}
@@ -459,10 +482,29 @@ namespace Chips.Runtime.Types.NumberProcessing {
 				return;
 			}
 
-			INumber sub = this.Subtract(number);
+			Registers.F.Negative = this.CompareLessThan(number);
+			Registers.F.Zero = this.CompareEquals(number);
+		}
 
-			Registers.F.Negative = sub.IsNegative;
-			Registers.F.Zero = sub.IsZero;
+		public readonly bool CompareEquals(INumber number) {
+			if (TypeTracking.ShouldUpcast(this, number))
+				return number.CompareEquals(this);
+
+			return value == number.To<#= type.Name #>();
+		}
+
+		public readonly bool CompareGreaterThan(INumber number) {
+			if (TypeTracking.ShouldUpcast(this, number))
+				return number.Upcast(this).CompareGreaterThan(number);
+
+			return value > number.To<#= type.Name #>();
+		}
+
+		public readonly bool CompareLessThan(INumber number) {
+			if (TypeTracking.ShouldUpcast(this, number))
+				return number.Upcast(this).CompareLessThan(number);
+
+			return value < number.To<#= type.Name #>();
 		}
 
 		public readonly IFloat Cos()
@@ -492,8 +534,7 @@ namespace Chips.Runtime.Types.NumberProcessing {
 			if (TypeTracking.ShouldUpcast(this, number))
 				return number.Upcast(this).Divide(number);
 
-			<#= type.Name #>_T convert = ValueConverter.CastTo<#= type.Name #>_T(number);
-			return new <#= type.Name #>_T(value / convert.value);
+			return new <#= type.Name #>_T(value / number.To<#= type.Name #>());
 		}
 
 		public readonly IFloat Exp()
@@ -559,16 +600,14 @@ namespace Chips.Runtime.Types.NumberProcessing {
 			if (TypeTracking.ShouldUpcast(this, number))
 				return number.Upcast(this).Modulus(number);
 
-			<#= type.Name #>_T convert = ValueConverter.CastTo<#= type.Name #>_T(number);
-			return new <#= type.Name #>_T(value % convert.value);
+			return new <#= type.Name #>_T(value % number.To<#= type.Name #>());
 		}
 
 		public readonly INumber Multiply(INumber number) {
 			if (TypeTracking.ShouldUpcast(this, number))
 				return number.Multiply(this);
 
-			<#= type.Name #>_T convert = ValueConverter.CastTo<#= type.Name #>_T(number);
-			return new <#= type.Name #>_T(value * convert.value);
+			return new <#= type.Name #>_T(value * number.To<#= type.Name #>());
 		}
 
 		public readonly INumber Negate()
@@ -578,13 +617,12 @@ namespace Chips.Runtime.Types.NumberProcessing {
 			if (TypeTracking.ShouldUpcast(this, exponent))
 				return ((IFloat)exponent.Upcast(this)).Pow(exponent);
 
-			<#= type.Name #>_T convert = ValueConverter.CastTo<#= type.Name #>_T(exponent);
 <# if (type.Name != "Decimal") {
 #>
-			return new <#= type.Name #>_T(Math<#= type.Name == "Single" ? "F" : "" #>.Pow(value, convert.value));
+			return new <#= type.Name #>_T(Math<#= type.Name == "Single" ? "F" : "" #>.Pow(value, exponent.To<#= type.Name #>()));
 <# } else {
 #>
-			return new <#= type.Name #>_T(DecimalMath.DecimalEx.Pow(value, convert.value));
+			return new <#= type.Name #>_T(DecimalMath.DecimalEx.Pow(value, exponent.To<#= type.Name #>()));
 <#
 } #>
 		}
@@ -626,8 +664,7 @@ namespace Chips.Runtime.Types.NumberProcessing {
 			if (TypeTracking.ShouldUpcast(this, number))
 				return number.Upcast(this).Subtract(number);
 
-			<#= type.Name #>_T convert = ValueConverter.CastTo<#= type.Name #>_T(number);
-			return new <#= type.Name #>_T(value - convert.value);
+			return new <#= type.Name #>_T(ConstrainedArithmetic.Subtract(value, number.To<#= type.Name #>()));
 		}
 
 		public readonly IFloat Tan()
@@ -649,8 +686,21 @@ namespace Chips.Runtime.Types.NumberProcessing {
 			=> throw new InvalidOperationException("Performing \"tanh\" on decimal values is not supported");
 <#
 } #>
+
+<# foreach (var typeTo in iTypes) {
+#>
+		public readonly <#= typeTo.Name #> To<#= typeTo.Name #>() => (<#= typeTo.Name #>)value;
+
+<#
+} #>
+<# foreach (var typeTo in fTypes) {
+#>
+		public readonly <#= typeTo.Name #> To<#= typeTo.Name #>() => (<#= typeTo.Name #>)value;
+
+<#
+} #>
 	}
-	
+
 <#
 } #>
 }

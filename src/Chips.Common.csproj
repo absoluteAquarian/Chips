@@ -32,8 +32,10 @@
   <ItemGroup>
     <Compile Remove="Runtime/**" />
     <Content Remove="Runtime/**" />
+	<None Remove="Runtime/**" />
     <Compile Remove="Compiler/**" />
     <Content Remove="Compiler/**" />
+	<None Remove="Compiler/**" />
   </ItemGroup>
 
 </Project>

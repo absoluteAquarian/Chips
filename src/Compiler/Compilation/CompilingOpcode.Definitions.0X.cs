@@ -6,6 +6,8 @@ using Chips.Utility;
 using System.IO;
 using System;
 using Chips.Runtime.Types.NumberProcessing;
+using AsmResolver.DotNet;
+using Chips.Runtime;
 
 namespace Chips.Compiler.Compilation {
 	public sealed class CompilingOpcodeNop : BasicCompilingOpcode<OpcodeNop> {
@@ -29,7 +31,7 @@ namespace Chips.Compiler.Compilation {
 			context.EmitNumberRegisterAssignment<IntegerRegister, int>();
 		}
 
-		protected override int DeserializeArgument(BinaryReader reader, TypeResolver resolver, StringHeap heap) {
+		protected override int DeserializeArgument(CompilationContext context, BinaryReader reader) {
 			return reader.ReadInt32();
 		}
 
@@ -39,7 +41,7 @@ namespace Chips.Compiler.Compilation {
 				: i;
 		}
 
-		protected override void SerializeArgument(BinaryWriter writer, int arg, TypeResolver resolver, StringHeap heap) {
+		protected override void SerializeArgument(BinaryWriter writer, int arg, CompilationContext context) {
 			writer.Write(arg);
 		}
 	}
@@ -53,7 +55,7 @@ namespace Chips.Compiler.Compilation {
 			context.EmitNumberRegisterAssignment<FloatRegister, float>();
 		}
 
-		protected override float DeserializeArgument(BinaryReader reader, TypeResolver resolver, StringHeap heap) {
+		protected override float DeserializeArgument(CompilationContext context, BinaryReader reader) {
 			return reader.ReadSingle();
 		}
 
@@ -63,7 +65,7 @@ namespace Chips.Compiler.Compilation {
 				: f;
 		}
 
-		protected override void SerializeArgument(BinaryWriter writer, float arg, TypeResolver resolver, StringHeap heap) {
+		protected override void SerializeArgument(BinaryWriter writer, float arg, CompilationContext context) {
 			writer.Write(arg);
 		}
 	}
@@ -76,7 +78,7 @@ namespace Chips.Compiler.Compilation {
 			context.EmitRegisterValueAssignment<StringRegister>();
 		}
 
-		protected override StringMetadata DeserializeArgument(BinaryReader reader, TypeResolver resolver, StringHeap heap) {
+		protected override StringMetadata DeserializeArgument(CompilationContext context, BinaryReader reader) {
 			return StringMetadata.Deserialize(reader);
 		}
 
@@ -88,7 +90,7 @@ namespace Chips.Compiler.Compilation {
 			return context.heap.GetOrAdd(arg.SanitizeString());
 		}
 
-		protected override void SerializeArgument(BinaryWriter writer, StringMetadata arg, TypeResolver resolver, StringHeap heap) {
+		protected override void SerializeArgument(BinaryWriter writer, StringMetadata arg, CompilationContext context) {
 			arg.Serialize(writer);
 		}
 	}
@@ -121,19 +123,19 @@ namespace Chips.Compiler.Compilation {
 			/*    C# code:
 			 *    
 			 *    __compare = ValueConverter.CheckedBoxToUnderlyingType((object)value2);
-			 *    ValueConverter.CheckedBoxToUnderlyingType((object)value1).Compare(__compare);
+			 *    _ = ValueConverter.CheckedBoxToUnderlyingType((object)value1).Compare(__compare);
 			 */
 
 			int local = context.CreateOrGetLocal<INumber>("__compare");
 
 			// Instruction will be delayed in order to ensure that the stack is set up properly for later instructions
-			context.EmitNopAndDelayedResolver(static (body, index) => new DelayedBoxResolver(body, index));
+			context.EmitNopAndDelayedResolver<DelayedBoxResolver>();
 
 			context.EmitBoxToUnderlyingType();
 			context.Cursor.Emit(CilOpCodes.Stloc, local);
 
 			// Instruction will be delayed in order to ensure that the stack is set up properly for later instructions
-			context.EmitNopAndDelayedResolver(static (body, index) => new DelayedBoxResolver(body, index));
+			context.EmitNopAndDelayedResolver<DelayedBoxResolver>();
 
 			context.EmitBoxToUnderlyingType();
 
@@ -142,37 +144,33 @@ namespace Chips.Compiler.Compilation {
 			context.EmitFunctionCall<INumber>(nameof(INumber.Compare));
 		}
 
-		public override OpcodeArgumentCollection? DeserializeArguments(BinaryReader reader, TypeResolver resolver, StringHeap heap) => null;
+		public override OpcodeArgumentCollection? DeserializeArguments(CompilationContext context, BinaryReader reader) => null;
 
 		public override OpcodeArgumentCollection? ParseArguments(CompilationContext context, string[] args) => null;
 
-		public override void SerializeArguments(BinaryWriter writer, OpcodeArgumentCollection args, TypeResolver resolver, StringHeap heap) { }
+		public override void SerializeArguments(CompilationContext context, BinaryWriter writer, OpcodeArgumentCollection args) { }
 	}
 
 	public sealed class CompilingOpcodeIs : TypeOperandCompilingOpcode<OpcodeIs> {
 		public override void Compile(CompilationContext context, OpcodeArgumentCollection args) {
 			if (args[0] is null) {
 				// Check against null directly
-				context.EmitRegisterLoad("F");
+				context.EmitRegisterLoad(nameof(Registers.F));
 				context.Cursor.Emit(CilOpCodes.Ldnull);
 				context.Cursor.Emit(CilOpCodes.Ceq);
 				context.EmitFlagAssignment(nameof(FlagsRegister.Conversion));
 				return;
 			}
 
-			var resolver = (DelayedTypeResolver)args[0]!;
+			var resolver = args.GetValue<DelayedTypeResolver>(0);
 			
 			/*    C# code:
 			 *    
 			 *    Registers.F.Conversion = value is ArgType;
 			 */
 
-			context.EmitRegisterLoad("F");
-
-			// Local capturing
-			var r = resolver;
-			context.EmitNopAndDelayedResolver((body, index) => new DelayedIsinstResolver(body, index, r));
-
+			context.EmitRegisterLoad(nameof(Registers.F));
+			context.EmitNopAndDelayedResolver<DelayedIsinstResolver, ITypeDefOrRef>(resolver);
 			context.EmitFlagAssignment(nameof(FlagsRegister.Conversion));
 		}
 	}
@@ -181,18 +179,18 @@ namespace Chips.Compiler.Compilation {
 
 	public sealed class CompilingOpcodeConv : TypeOperandCompilingOpcode<OpcodeConv> {
 		public override void Compile(CompilationContext context, OpcodeArgumentCollection args) {
-			var resolver = (DelayedTypeResolver)args[0]!;
+			var resolver = args.GetValue<DelayedTypeResolver>(0);
 
 			if (resolver.metadata == "object") {
 				// Box or castclass
-				context.EmitNopAndDelayedResolver(static (body, index) => new DelayedBoxOrImplicitObjectResolver(body, index));
+				context.EmitNopAndDelayedResolver<DelayedBoxOrImplicitObjectResolver>();
 			}
 		}
 	}
 
 	public sealed class CompilingOpcodeKbrdy : BasicCompilingOpcode<OpcodeKbrdy> {
 		public override void Compile(CompilationContext context, OpcodeArgumentCollection args) {
-			throw new NotImplementedException();
+			throw this.ThrowNotImplemented();
 		}
 	}
 }

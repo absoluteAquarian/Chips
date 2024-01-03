@@ -1,9 +1,13 @@
 ﻿using AsmResolver.DotNet;
 using AsmResolver.DotNet.Code.Cil;
+using AsmResolver.DotNet.Signatures;
 using AsmResolver.DotNet.Signatures.Types;
 using AsmResolver.PE.DotNet.Cil;
 using AsmResolver.PE.DotNet.Metadata.Tables.Rows;
+using Chips.Compiler.Compilation;
+using Chips.Runtime.Types.NumberProcessing;
 using System;
+using System.Linq;
 
 namespace Chips.Compiler.Utility {
 	public interface IDelayedInstructionResolver {
@@ -14,6 +18,18 @@ namespace Chips.Compiler.Utility {
 		public CilInstruction Instruction => Body.Instructions[InstructionIndex];
 
 		void Resolve(StrictEvaluationStackSimulator stack);
+	}
+
+	public interface IDelayedInstructionResolver<T> : IDelayedInstructionResolver where T : IDelayedInstructionResolver<T> {
+		abstract static IDelayedInstructionResolver Create(CilMethodBody body, int instructionIndex);
+	}
+
+	public interface IDelayedInstructionResolver<T, TArg> : IDelayedInstructionResolver where T : IDelayedInstructionResolver<T, TArg> {
+		abstract static IDelayedInstructionResolver Create(CilMethodBody body, int instructionIndex, TArg arg);
+	}
+
+	public interface IDelayedInstructionResolver<T, TArg1, TArg2> : IDelayedInstructionResolver where T : IDelayedInstructionResolver<T, TArg1, TArg2> {
+		abstract static IDelayedInstructionResolver Create(CilMethodBody body, int instructionIndex, TArg1 arg1, TArg2 arg2);
 	}
 
 	public abstract class DelayedArrayIndexerResolver : IDelayedInstructionResolver {
@@ -233,28 +249,40 @@ namespace Chips.Compiler.Utility {
 		}
 	}
 
-	public sealed class DelayedArrayLoadResolver : DelayedArrayIndexerResolver {
+	public sealed class DelayedArrayLoadResolver : DelayedArrayIndexerResolver, IDelayedInstructionResolver<DelayedArrayLoadResolver> {
 		public override bool LoadsValue => true;
 		public override bool LoadsAddress => false;
 
 		public DelayedArrayLoadResolver(CilMethodBody body, int instructionIndex) : base(body, instructionIndex) { }
+
+		public static IDelayedInstructionResolver Create(CilMethodBody body, int instructionIndex) {
+			return new DelayedArrayLoadResolver(body, instructionIndex);
+		}
 	}
 
-	public sealed class DelayedArrayStoreResolver : DelayedArrayIndexerResolver {
+	public sealed class DelayedArrayStoreResolver : DelayedArrayIndexerResolver, IDelayedInstructionResolver<DelayedArrayStoreResolver> {
 		public override bool LoadsValue => false;
 		public override bool LoadsAddress => false;
 
 		public DelayedArrayStoreResolver(CilMethodBody body, int instructionIndex) : base(body, instructionIndex) { }
+
+		public static IDelayedInstructionResolver Create(CilMethodBody body, int instructionIndex) {
+			return new DelayedArrayStoreResolver(body, instructionIndex);
+		}
 	}
 
-	public sealed class DelayedArrayLoadAddressResolver : DelayedArrayIndexerResolver {
+	public sealed class DelayedArrayLoadAddressResolver : DelayedArrayIndexerResolver, IDelayedInstructionResolver<DelayedArrayLoadAddressResolver> {
 		public override bool LoadsValue => false;
 		public override bool LoadsAddress => true;
 
 		public DelayedArrayLoadAddressResolver(CilMethodBody body, int instructionIndex) : base(body, instructionIndex) { }
+
+		public static IDelayedInstructionResolver Create(CilMethodBody body, int instructionIndex) {
+			return new DelayedArrayLoadAddressResolver(body, instructionIndex);
+		}
 	}
 
-	public sealed class DelayedBoxResolver : IDelayedInstructionResolver {
+	public sealed class DelayedBoxResolver : IDelayedInstructionResolver<DelayedBoxResolver> {
 		public CilMethodBody Body { get; }
 
 		public int InstructionIndex { get; set; }
@@ -262,6 +290,10 @@ namespace Chips.Compiler.Utility {
 		public DelayedBoxResolver(CilMethodBody body, int instructionIndex) {
 			Body = body;
 			InstructionIndex = instructionIndex;
+		}
+
+		public static IDelayedInstructionResolver Create(CilMethodBody body, int instructionIndex) {
+			return new DelayedBoxResolver(body, instructionIndex);
 		}
 
 		public void Resolve(StrictEvaluationStackSimulator stack) {
@@ -278,7 +310,7 @@ namespace Chips.Compiler.Utility {
 		}
 	}
 
-	public sealed class DelayedBoxOrImplicitObjectResolver : IDelayedInstructionResolver {
+	public sealed class DelayedBoxOrImplicitObjectResolver : IDelayedInstructionResolver<DelayedBoxOrImplicitObjectResolver> {
 		public CilMethodBody Body { get; }
 
 		public int InstructionIndex { get; set; }
@@ -286,6 +318,10 @@ namespace Chips.Compiler.Utility {
 		public DelayedBoxOrImplicitObjectResolver(CilMethodBody body, int instructionIndex) {
 			Body = body;
 			InstructionIndex = instructionIndex;
+		}
+
+		public static IDelayedInstructionResolver Create(CilMethodBody body, int instructionIndex) {
+			return new DelayedBoxOrImplicitObjectResolver(body, instructionIndex);
 		}
 
 		public void Resolve(StrictEvaluationStackSimulator stack) {
@@ -302,7 +338,7 @@ namespace Chips.Compiler.Utility {
 		}
 	}
 
-	public sealed class DelayedUnboxResolver : IDelayedInstructionResolver {
+	public sealed class DelayedUnboxResolver : IDelayedInstructionResolver<DelayedUnboxResolver> {
 		public CilMethodBody Body { get; }
 
 		public int InstructionIndex { get; set; }
@@ -310,6 +346,10 @@ namespace Chips.Compiler.Utility {
 		public DelayedUnboxResolver(CilMethodBody body, int instructionIndex) {
 			Body = body;
 			InstructionIndex = instructionIndex;
+		}
+
+		public static IDelayedInstructionResolver Create(CilMethodBody body, int instructionIndex) {
+			return new DelayedUnboxResolver(body, instructionIndex);
 		}
 
 		public void Resolve(StrictEvaluationStackSimulator stack) {
@@ -326,7 +366,7 @@ namespace Chips.Compiler.Utility {
 		}
 	}
 
-	public sealed class DelayedIsinstResolver : IDelayedInstructionResolver {
+	public sealed class DelayedIsinstResolver : IDelayedInstructionResolver<DelayedIsinstResolver, ITypeDefOrRef> {
 		public CilMethodBody Body { get; }
 
 		public int InstructionIndex { get; set; }
@@ -339,6 +379,10 @@ namespace Chips.Compiler.Utility {
 			Type = type;
 		}
 
+		public static IDelayedInstructionResolver Create(CilMethodBody body, int instructionIndex, ITypeDefOrRef arg) {
+			return new DelayedIsinstResolver(body, instructionIndex, arg);
+		}
+
 		public void Resolve(StrictEvaluationStackSimulator stack) {
 			var instruction = ((IDelayedInstructionResolver)this).Instruction;
 
@@ -348,7 +392,7 @@ namespace Chips.Compiler.Utility {
 		}
 	}
 
-	public sealed class DelayedUnboxOrCastclassResolver : IDelayedInstructionResolver {
+	public sealed class DelayedUnboxOrCastclassResolver : IDelayedInstructionResolver<DelayedUnboxOrCastclassResolver, ITypeDefOrRef> {
 		public CilMethodBody Body { get; }
 
 		public int InstructionIndex { get; set; }
@@ -359,6 +403,10 @@ namespace Chips.Compiler.Utility {
 			Body = body;
 			InstructionIndex = instructionIndex;
 			Type = type;
+		}
+
+		public static IDelayedInstructionResolver Create(CilMethodBody body, int instructionIndex, ITypeDefOrRef arg) {
+			return new DelayedUnboxOrCastclassResolver(body, instructionIndex, arg);
 		}
 
 		public void Resolve(StrictEvaluationStackSimulator stack) {
@@ -373,6 +421,139 @@ namespace Chips.Compiler.Utility {
 				instruction.ReplaceWith(CilOpCodes.Unbox_Any, Type);
 			} else
 				instruction.ReplaceWith(CilOpCodes.Castclass, Type);
+		}
+	}
+
+	public sealed class DelayedINumberValueRetrievalResolver : IDelayedInstructionResolver<DelayedINumberValueRetrievalResolver> {
+		public CilMethodBody Body { get; }
+
+		public int InstructionIndex { get; set; }
+
+		public DelayedINumberValueRetrievalResolver(CilMethodBody body, int instructionIndex) {
+			Body = body;
+			InstructionIndex = instructionIndex;
+		}
+
+		public static IDelayedInstructionResolver Create(CilMethodBody body, int instructionIndex) {
+			return new DelayedINumberValueRetrievalResolver(body, instructionIndex);
+		}
+
+		public void Resolve(StrictEvaluationStackSimulator stack) {
+			var instruction = ((IDelayedInstructionResolver)this).Instruction;
+
+			// Expected stack: [ INumber, ... ]
+
+			var type = stack.Peek();
+
+			if (type?.Resolve() is not TypeDefinition def || !def.Implements(typeof(INumber).FullName!))
+				throw new Exception($"Expected INumber on stack, got \"{type?.Name ?? "null"}\" instead");
+
+			if (def.Properties.FirstOrDefault(static p => p.Name?.Equals("ActualValue") ?? false) is not PropertyDefinition { GetMethod: MethodDefinition getMethod })
+				throw new Exception($"Expected INumber on stack to have an ActualValue property");
+
+			instruction.ReplaceWith(CilOpCodes.Call, getMethod);
+		}
+	}
+
+	public abstract class DelayedBranchResolver : IDelayedInstructionResolver {
+		public CilMethodBody Body { get; }
+
+		public int InstructionIndex { get; set; }
+
+		public BytecodeMethodBody ChipsBody { get; }
+
+		public ChipsLabel Label { get; }
+
+		public abstract CilOpCode Opcode { get; }
+
+		public DelayedBranchResolver(CilMethodBody body, int instructionIndex, BytecodeMethodBody chipsBody, ChipsLabel label) {
+			Body = body;
+			InstructionIndex = instructionIndex;
+			ChipsBody = chipsBody;
+			Label = label;
+		}
+
+		public void Resolve(StrictEvaluationStackSimulator stack) {
+			var instruction = ((IDelayedInstructionResolver)this).Instruction;
+
+			// Determine the CilInstruction from the ChipsLabel
+			var chipsOffset = Label.OpcodeOffset;
+			var chipsInstruction = ChipsBody.Instructions[chipsOffset];
+			var instructionReference = chipsInstruction.FirstCilInstruction;
+
+			instruction.ReplaceWith(Opcode, new CilInstructionLabel(instructionReference));
+		}
+	}
+
+	public sealed class DelayedBranchIfTrueResolver : DelayedBranchResolver, IDelayedInstructionResolver<DelayedBranchIfTrueResolver, BytecodeMethodBody, ChipsLabel> {
+		public override CilOpCode Opcode => CilOpCodes.Brtrue;
+
+		public DelayedBranchIfTrueResolver(CilMethodBody body, int instructionIndex, BytecodeMethodBody chipsBody, ChipsLabel label) : base(body, instructionIndex, chipsBody, label) { }
+
+		public static IDelayedInstructionResolver Create(CilMethodBody body, int instructionIndex, BytecodeMethodBody arg1, ChipsLabel arg2) {
+			return new DelayedBranchIfTrueResolver(body, instructionIndex, arg1, arg2);
+		}
+	}
+
+	public sealed class DelayedBranchIfFalseResolver : DelayedBranchResolver, IDelayedInstructionResolver<DelayedBranchIfFalseResolver, BytecodeMethodBody, ChipsLabel> {
+		public override CilOpCode Opcode => CilOpCodes.Brfalse;
+
+		public DelayedBranchIfFalseResolver(CilMethodBody body, int instructionIndex, BytecodeMethodBody chipsBody, ChipsLabel label) : base(body, instructionIndex, chipsBody, label) { }
+
+		public static IDelayedInstructionResolver Create(CilMethodBody body, int instructionIndex, BytecodeMethodBody arg1, ChipsLabel arg2) {
+			return new DelayedBranchIfFalseResolver(body, instructionIndex, arg1, arg2);
+		}
+	}
+
+	public sealed class DelayedLdobjResolver : IDelayedInstructionResolver<DelayedLdobjResolver, ITypeDefOrRef> {
+		public CilMethodBody Body { get; }
+
+		public int InstructionIndex { get; set; }
+
+		public ITypeDefOrRef Type { get; }
+
+		public DelayedLdobjResolver(CilMethodBody body, int instructionIndex, ITypeDefOrRef type) {
+			Body = body;
+			InstructionIndex = instructionIndex;
+			Type = type;
+		}
+
+		public static IDelayedInstructionResolver Create(CilMethodBody body, int instructionIndex, ITypeDefOrRef arg) {
+			return new DelayedLdobjResolver(body, instructionIndex, arg);
+		}
+
+		private static SignatureComparer _typeComparer = new SignatureComparer(SignatureComparisonFlags.VersionAgnostic);
+
+		public void Resolve(StrictEvaluationStackSimulator stack) {
+			var instruction = ((IDelayedInstructionResolver)this).Instruction;
+
+			var signature = Type.ToTypeSignature();
+			var factory = ChipsCompiler.ManifestModule.CorLibTypeFactory;
+
+			if (_typeComparer.Equals(signature, factory.IntPtr))
+				instruction.ReplaceWith(CilOpCodes.Ldind_I);
+			else if (_typeComparer.Equals(signature, factory.SByte) || _typeComparer.Equals(signature, factory.Boolean))
+				instruction.ReplaceWith(CilOpCodes.Ldind_I1);
+			else if (_typeComparer.Equals(signature, factory.Int16))
+				instruction.ReplaceWith(CilOpCodes.Ldind_I2);
+			else if (_typeComparer.Equals(signature, factory.Int32))
+				instruction.ReplaceWith(CilOpCodes.Ldind_I4);
+			else if (_typeComparer.Equals(signature, factory.Int64) || _typeComparer.Equals(signature, factory.UInt64))
+				instruction.ReplaceWith(CilOpCodes.Ldind_I8);
+			else if (_typeComparer.Equals(signature, factory.Single))
+				instruction.ReplaceWith(CilOpCodes.Ldind_R4);
+			else if (_typeComparer.Equals(signature, factory.Double))
+				instruction.ReplaceWith(CilOpCodes.Ldind_R8);
+			else if (_typeComparer.Equals(signature, factory.Byte))
+				instruction.ReplaceWith(CilOpCodes.Ldind_U1);
+			else if (_typeComparer.Equals(signature, factory.UInt16))
+				instruction.ReplaceWith(CilOpCodes.Ldind_U2);
+			else if (_typeComparer.Equals(signature, factory.UInt32))
+				instruction.ReplaceWith(CilOpCodes.Ldind_U4);
+			else if (signature.IsValueType)
+				instruction.ReplaceWith(CilOpCodes.Ldobj, Type);
+			else
+				instruction.ReplaceWith(CilOpCodes.Ldind_Ref);
 		}
 	}
 

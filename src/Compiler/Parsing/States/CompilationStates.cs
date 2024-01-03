@@ -720,7 +720,7 @@ namespace Chips.Compiler.Parsing.States {
 
 			var possibleOpcodes = ChipsCompiler.FindOpcode(opcode);
 
-			if (!possibleOpcodes.Any())
+			if (possibleOpcodes.Count == 0)
 				throw ChipsCompiler.ErrorAndThrow(new ParsingException($"Unknown opcode: {opcode.DesanitizeString()}"));
 
 			string[] arguments = reader.ReadManyWordsOrQuotedStrings(preprocessEscapedQuotes: true, terminateOnComment: true)
@@ -728,34 +728,20 @@ namespace Chips.Compiler.Parsing.States {
 				.ToArray()!;
 
 			int argCount = arguments.Length;
-			if (!possibleOpcodes.Any(o => o.ExpectedArgumentCount == argCount))
+			if (possibleOpcodes.Find(o => o.ExpectedArgumentCount == argCount) is not CompilingOpcode foundOpcode)
 				throw ChipsCompiler.ErrorAndThrow(new ParsingException($"No definition for opcode \"{opcode}\" expects {argCount} arguments"));
 
 			var method = GetMethod();
 			var scope = method.GetMethod();
 			var body = scope.Segment.body.Instructions;
 
-			bool anySuccess = false;
-			List<CompilationException> caughtExceptions = new();
-			foreach (CompilingOpcode possibleOpcode in possibleOpcodes) {
-				int count = ChipsCompiler.ErrorCount;
-				try {
-					var args = possibleOpcode.ParseArguments(context, arguments) ?? new();
+			try {
+				var args = foundOpcode.ParseArguments(context, arguments) ?? new();
 
-					ChipsInstruction instr = new ChipsInstruction(possibleOpcode.GetRuntimeOpcode().Code, args);
-					body.Add(instr);
-					anySuccess = true;
-					break;
-				} catch {
-					// Consume the error
-					var caught = ChipsCompiler.RestoreExceptionState(count);
-					caughtExceptions.AddRange(caught);
-				}
-			}
-
-			if (!anySuccess) {
-				string innerExceptions = string.Join("\n  -->", caughtExceptions.Select(static e => e.Reason));
-				throw ChipsCompiler.ErrorAndThrow(new ParsingException($"No definition of opcode \"{opcode}\" could parse the provided arguments\n  --> {innerExceptions}"));
+				ChipsInstruction instr = new ChipsInstruction(foundOpcode.GetRuntimeOpcode().Code, args);
+				body.Add(instr);
+			} catch (Exception ex) {
+				throw ChipsCompiler.ErrorAndThrow(new ParsingException($"No definition of opcode \"{opcode}\" could parse the provided arguments\n  --> {ex}"));
 			}
 
 			ChipsCompiler.CompilingSourceLineOverride = null;

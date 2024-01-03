@@ -46,6 +46,7 @@ namespace Chips {
 		static ChipsCompiler() {
 			compilingOpcodes = new();
 
+			// Load the opcodes and assign them in the dictionary
 			foreach (Type type in typeof(ChipsCompiler).Assembly.GetExportedTypes().Where(static t => t.IsSubclassOf(typeof(CompilingOpcode)))) {
 				System.Reflection.ConstructorInfo constructor = type.GetConstructor(Type.EmptyTypes)
 					?? throw new InvalidOperationException($"Compiling opcode {type.Name} does not have a parameterless constructor");
@@ -178,6 +179,9 @@ namespace Chips {
 						resolver.Resolve(stack);
 
 						int newSize = resolver.Body.Instructions.Count;
+
+						if (newSize < oldSize)
+							throw new InvalidOperationException("Instruction resolvers cannot remove instructions");
 
 						offsetAdjustment += newSize - oldSize;
 
@@ -315,37 +319,6 @@ namespace Chips {
 			ArgumentNullException.ThrowIfNull(exception);
 			exceptions.Add(new CompilationException(exception.GetType().FullName + ": " + exception.Message));
 			return exception;
-		}
-
-		internal static int ErrorCount => exceptions.Count;
-
-		internal static List<CompilationException> RestoreExceptionState(int count) {
-			List<CompilationException> removedExceptions = exceptions.GetRange(count, exceptions.Count - count);
-			exceptions.RemoveRange(count, exceptions.Count - count);
-			return removedExceptions;
-		}
-
-		public static bool OpcodeIsDefined(string code) {
-			for (int i = 0; i < opcodeNames.Length; i++)
-				if (opcodeNames[i] == code)
-					return true;
-
-			return false;
-		}
-
-		public static IEnumerable<CompilingOpcode> FindOpcode(string name) {
-			foreach (var (id, code) in compilingOpcodes) {
-				string opcodeName = id.ToString().ToLower();
-				
-				int index = opcodeName.IndexOf('_');
-				if (index > 0)
-					opcodeName = opcodeName[..index];
-
-				opcodeName = RemapOpcodeName(opcodeName);
-
-				if (opcodeName == name)
-					yield return code;
-			}
 		}
 
 		public static Dictionary<string, string> ParseArguments(string[] args) {
