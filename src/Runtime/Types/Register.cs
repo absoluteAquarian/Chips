@@ -44,8 +44,10 @@ namespace Chips.Runtime.Types {
 		}
 
 		protected override void OnValueChanged(IInteger newValue) {
-			Registers.F.Zero = newValue.IsZero;
-			Registers.F.Negative = newValue.IsNegative;
+			if (newValue.IsZero)
+				Registers.F.Zero = true;
+			else if (newValue.IsNegative)
+				Registers.F.Negative = true;
 		}
 
 		public override bool AcceptsValue(object? value) {
@@ -73,9 +75,14 @@ namespace Chips.Runtime.Types {
 		}
 
 		protected override void OnValueChanged(IFloat newValue) {
-			Registers.F.Zero = newValue.IsZero;
-			Registers.F.Negative = newValue.IsNegative;
-			Registers.F.InvalidFloat = newValue.IsNaN;
+			if (newValue.IsZero)
+				Registers.F.Zero = true;
+			else if (newValue.IsNegative)
+				Registers.F.Negative = true;
+			else if (newValue.IsNaN)
+				Registers.F.InvalidFloat = true;
+			else if (newValue.IsInfinity)
+				Registers.F.Overflow = true;
 		}
 
 		public override bool AcceptsValue(object? value) {
@@ -98,7 +105,8 @@ namespace Chips.Runtime.Types {
 		}
 
 		protected override void OnValueChanged(string newValue) {
-			Registers.F.Zero = newValue is null;
+			if (newValue is null)
+				Registers.F.Zero = true;
 		}
 
 		public override bool AcceptsValue(object? value) {

@@ -30,28 +30,6 @@ namespace Chips.Runtime.Utility {
 } #>
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		private static <#= type.Name #> CheckFlagsAndReturn(<#= type.Name #> value) {
-			if (value == 0)
-				Registers.F.Zero = true;
-<# if (type.Name == "Single" || type.Name == "Double") {
-#>
-			else if (value < 0)
-				Registers.F.Negative = true;
-			else if (<#= type.Name #>.IsNaN(value))
-				Registers.F.InvalidFloat = true;
-			else if (<#= type.Name #>.IsInfinity(value))
-				Registers.F.Overflow = true;
-<# } else if (!type.Name.StartsWith("U") && type.Name != "Byte") {
-#>
-			else if (value < 0)
-				Registers.F.Negative = true;
-<#
-} #>
-
-			return value;
-		}
-
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static <#= type.Name #> Add(<#= type.Name #> a, <#= type.Name #> b) {
 <# if (type.Name.StartsWith("U") || type.Name == "Byte") {
 #>
@@ -62,7 +40,7 @@ namespace Chips.Runtime.Utility {
 				return <#= type.Name #>.MaxValue;
 			}
 
-			return CheckFlagsAndReturn(sum);
+			return sum;
 <# } else if (type.Name == "Single" || type.Name == "Double") {
 #>
 			if (b < 0)
@@ -75,7 +53,7 @@ namespace Chips.Runtime.Utility {
 			//   not NaN   + Infinity  = Infinity
 			//   -Infinity + not NaN  = -Infinity
 			//   not NaN   + -Infinity = -Infinity
-			return CheckFlagsAndReturn(a + b);
+			return a + b;
 <# } else if (type.Name == "Decimal") {
 #>
 			if (b < 0)
@@ -83,7 +61,7 @@ namespace Chips.Runtime.Utility {
 
 			// Throws exception on overflow
 			try {
-				return CheckFlagsAndReturn(a + b);
+				return a + b;
 			} catch {
 				Registers.F.Overflow = true;
 				return a > 0 ? decimal.MaxValue : decimal.MinValue;
@@ -100,7 +78,7 @@ namespace Chips.Runtime.Utility {
 				return a > 0 ? <#= type.Name #>.MaxValue : <#= type.Name #>.MinValue;
 			}
 
-			return CheckFlagsAndReturn(sum);
+			return sum;
 <#
 }#>
 		}
@@ -116,7 +94,7 @@ namespace Chips.Runtime.Utility {
 				return <#= type.Name #>.MaxValue;
 			}
 
-			return CheckFlagsAndReturn(sum);
+			return sum;
 <# } else if (type.Name == "Single" || type.Name == "Double") {
 #>
 			if (b < 0)
@@ -129,7 +107,7 @@ namespace Chips.Runtime.Utility {
 			//   not NaN   - Infinity  = Infinity
 			//   -Infinity - not NaN  = -Infinity
 			//   not NaN   - -Infinity = -Infinity
-			return CheckFlagsAndReturn(a - b);
+			return a - b;
 <# } else if (type.Name == "Decimal") {
 #>
 			if (b < 0 && b != <#= type.Name #>.MinValue)
@@ -137,7 +115,7 @@ namespace Chips.Runtime.Utility {
 
 			// Throws exception on overflow
 			try {
-				return CheckFlagsAndReturn(a - b);
+				return a - b;
 			} catch {
 				Registers.F.Overflow = true;
 				return a > 0 ? decimal.MaxValue : decimal.MinValue;
@@ -154,7 +132,7 @@ namespace Chips.Runtime.Utility {
 				return a > 0 ? <#= type.Name #>.MaxValue : <#= type.Name #>.MinValue;
 			}
 
-			return CheckFlagsAndReturn(sum);
+			return sum;
 <#
 }#>
 		}

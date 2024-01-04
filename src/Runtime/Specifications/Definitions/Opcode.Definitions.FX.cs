@@ -1,3 +1,33 @@
 ﻿namespace Chips.Runtime.Specifications {
-	
+	// 0xF0
+
+	// 0xF1
+
+	// 0xF2
+
+	// 0xF3
+
+	// 0xF4
+
+	// 0xF5
+
+	// 0xF6
+
+	// 0xF7
+
+	// 0xF8
+
+	// 0xF9
+
+	// 0xFA
+
+	// 0xFB
+
+	// 0xFC (Extended Table - Type Operands)
+
+	// 0xFD (Extended Table - Arithmetic)
+
+	// wait
+
+	// halt
 }

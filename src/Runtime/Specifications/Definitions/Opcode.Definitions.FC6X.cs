@@ -1,3 +1,33 @@
 ﻿namespace Chips.Runtime.Specifications {
-	
+	// conv.f
+
+	// conv.d
+
+	// conv.m
+
+	// 0xFC63
+
+	// 0xFC64
+
+	// 0xFC65
+
+	// 0xFC66
+
+	// 0xFC67
+
+	// 0xFC68
+
+	// 0xFC69
+
+	// 0xFC6A
+
+	// 0xFC6B
+
+	// 0xFC6C
+
+	// 0xFC6D
+
+	// 0xFC6E
+
+	// 0xFC6F
 }

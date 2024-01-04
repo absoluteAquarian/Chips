@@ -1,3 +1,33 @@
 ﻿namespace Chips.Runtime.Specifications {
-	
+	// add.d
+
+	// sub.d
+
+	// ldc.iu
+
+	// ldc.m
+
+	// 0xA4
+
+	// 0xA5
+
+	// 0xA6
+
+	// 0xA7
+
+	// 0xA8
+
+	// 0xA9
+
+	// 0xAA
+
+	// 0xAB
+
+	// bsc
+
+	// 0xAD
+
+	// 0xAE
+
+	// 0xAF
 }

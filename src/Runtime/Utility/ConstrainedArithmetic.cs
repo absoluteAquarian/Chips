@@ -14,16 +14,6 @@ namespace Chips.Runtime.Utility {
 
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		private static SByte CheckFlagsAndReturn(SByte value) {
-			if (value == 0)
-				Registers.F.Zero = true;
-			else if (value < 0)
-				Registers.F.Negative = true;
-
-			return value;
-		}
-
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static SByte Add(SByte a, SByte b) {
 			if (b < 0 && b != SByte.MinValue)
 				return Subtract(a, (SByte)(-b));
@@ -35,7 +25,7 @@ namespace Chips.Runtime.Utility {
 				return a > 0 ? SByte.MaxValue : SByte.MinValue;
 			}
 
-			return CheckFlagsAndReturn(sum);
+			return sum;
 		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -50,7 +40,7 @@ namespace Chips.Runtime.Utility {
 				return a > 0 ? SByte.MaxValue : SByte.MinValue;
 			}
 
-			return CheckFlagsAndReturn(sum);
+			return sum;
 		}
 		
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -64,16 +54,6 @@ namespace Chips.Runtime.Utility {
 
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		private static Int16 CheckFlagsAndReturn(Int16 value) {
-			if (value == 0)
-				Registers.F.Zero = true;
-			else if (value < 0)
-				Registers.F.Negative = true;
-
-			return value;
-		}
-
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static Int16 Add(Int16 a, Int16 b) {
 			if (b < 0 && b != Int16.MinValue)
 				return Subtract(a, (Int16)(-b));
@@ -85,7 +65,7 @@ namespace Chips.Runtime.Utility {
 				return a > 0 ? Int16.MaxValue : Int16.MinValue;
 			}
 
-			return CheckFlagsAndReturn(sum);
+			return sum;
 		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -100,7 +80,7 @@ namespace Chips.Runtime.Utility {
 				return a > 0 ? Int16.MaxValue : Int16.MinValue;
 			}
 
-			return CheckFlagsAndReturn(sum);
+			return sum;
 		}
 		
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -114,16 +94,6 @@ namespace Chips.Runtime.Utility {
 
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		private static Int32 CheckFlagsAndReturn(Int32 value) {
-			if (value == 0)
-				Registers.F.Zero = true;
-			else if (value < 0)
-				Registers.F.Negative = true;
-
-			return value;
-		}
-
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static Int32 Add(Int32 a, Int32 b) {
 			if (b < 0 && b != Int32.MinValue)
 				return Subtract(a, (Int32)(-b));
@@ -135,7 +105,7 @@ namespace Chips.Runtime.Utility {
 				return a > 0 ? Int32.MaxValue : Int32.MinValue;
 			}
 
-			return CheckFlagsAndReturn(sum);
+			return sum;
 		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -150,7 +120,7 @@ namespace Chips.Runtime.Utility {
 				return a > 0 ? Int32.MaxValue : Int32.MinValue;
 			}
 
-			return CheckFlagsAndReturn(sum);
+			return sum;
 		}
 		
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -164,16 +134,6 @@ namespace Chips.Runtime.Utility {
 
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		private static Int64 CheckFlagsAndReturn(Int64 value) {
-			if (value == 0)
-				Registers.F.Zero = true;
-			else if (value < 0)
-				Registers.F.Negative = true;
-
-			return value;
-		}
-
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static Int64 Add(Int64 a, Int64 b) {
 			if (b < 0 && b != Int64.MinValue)
 				return Subtract(a, (Int64)(-b));
@@ -185,7 +145,7 @@ namespace Chips.Runtime.Utility {
 				return a > 0 ? Int64.MaxValue : Int64.MinValue;
 			}
 
-			return CheckFlagsAndReturn(sum);
+			return sum;
 		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -200,17 +160,9 @@ namespace Chips.Runtime.Utility {
 				return a > 0 ? Int64.MaxValue : Int64.MinValue;
 			}
 
-			return CheckFlagsAndReturn(sum);
+			return sum;
 		}
 		
-
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		private static Byte CheckFlagsAndReturn(Byte value) {
-			if (value == 0)
-				Registers.F.Zero = true;
-
-			return value;
-		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static Byte Add(Byte a, Byte b) {
@@ -221,7 +173,7 @@ namespace Chips.Runtime.Utility {
 				return Byte.MaxValue;
 			}
 
-			return CheckFlagsAndReturn(sum);
+			return sum;
 		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -233,17 +185,9 @@ namespace Chips.Runtime.Utility {
 				return Byte.MaxValue;
 			}
 
-			return CheckFlagsAndReturn(sum);
+			return sum;
 		}
 		
-
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		private static UInt16 CheckFlagsAndReturn(UInt16 value) {
-			if (value == 0)
-				Registers.F.Zero = true;
-
-			return value;
-		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static UInt16 Add(UInt16 a, UInt16 b) {
@@ -254,7 +198,7 @@ namespace Chips.Runtime.Utility {
 				return UInt16.MaxValue;
 			}
 
-			return CheckFlagsAndReturn(sum);
+			return sum;
 		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -266,17 +210,9 @@ namespace Chips.Runtime.Utility {
 				return UInt16.MaxValue;
 			}
 
-			return CheckFlagsAndReturn(sum);
+			return sum;
 		}
 		
-
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		private static UInt32 CheckFlagsAndReturn(UInt32 value) {
-			if (value == 0)
-				Registers.F.Zero = true;
-
-			return value;
-		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static UInt32 Add(UInt32 a, UInt32 b) {
@@ -287,7 +223,7 @@ namespace Chips.Runtime.Utility {
 				return UInt32.MaxValue;
 			}
 
-			return CheckFlagsAndReturn(sum);
+			return sum;
 		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -299,17 +235,9 @@ namespace Chips.Runtime.Utility {
 				return UInt32.MaxValue;
 			}
 
-			return CheckFlagsAndReturn(sum);
+			return sum;
 		}
 		
-
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		private static UInt64 CheckFlagsAndReturn(UInt64 value) {
-			if (value == 0)
-				Registers.F.Zero = true;
-
-			return value;
-		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static UInt64 Add(UInt64 a, UInt64 b) {
@@ -320,7 +248,7 @@ namespace Chips.Runtime.Utility {
 				return UInt64.MaxValue;
 			}
 
-			return CheckFlagsAndReturn(sum);
+			return sum;
 		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -332,7 +260,7 @@ namespace Chips.Runtime.Utility {
 				return UInt64.MaxValue;
 			}
 
-			return CheckFlagsAndReturn(sum);
+			return sum;
 		}
 		
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -346,16 +274,6 @@ namespace Chips.Runtime.Utility {
 
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		private static IntPtr CheckFlagsAndReturn(IntPtr value) {
-			if (value == 0)
-				Registers.F.Zero = true;
-			else if (value < 0)
-				Registers.F.Negative = true;
-
-			return value;
-		}
-
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static IntPtr Add(IntPtr a, IntPtr b) {
 			if (b < 0 && b != IntPtr.MinValue)
 				return Subtract(a, (IntPtr)(-b));
@@ -367,7 +285,7 @@ namespace Chips.Runtime.Utility {
 				return a > 0 ? IntPtr.MaxValue : IntPtr.MinValue;
 			}
 
-			return CheckFlagsAndReturn(sum);
+			return sum;
 		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -382,17 +300,9 @@ namespace Chips.Runtime.Utility {
 				return a > 0 ? IntPtr.MaxValue : IntPtr.MinValue;
 			}
 
-			return CheckFlagsAndReturn(sum);
+			return sum;
 		}
 		
-
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		private static UIntPtr CheckFlagsAndReturn(UIntPtr value) {
-			if (value == 0)
-				Registers.F.Zero = true;
-
-			return value;
-		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static UIntPtr Add(UIntPtr a, UIntPtr b) {
@@ -403,7 +313,7 @@ namespace Chips.Runtime.Utility {
 				return UIntPtr.MaxValue;
 			}
 
-			return CheckFlagsAndReturn(sum);
+			return sum;
 		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -415,23 +325,9 @@ namespace Chips.Runtime.Utility {
 				return UIntPtr.MaxValue;
 			}
 
-			return CheckFlagsAndReturn(sum);
+			return sum;
 		}
 		
-
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		private static Single CheckFlagsAndReturn(Single value) {
-			if (value == 0)
-				Registers.F.Zero = true;
-			else if (value < 0)
-				Registers.F.Negative = true;
-			else if (Single.IsNaN(value))
-				Registers.F.InvalidFloat = true;
-			else if (Single.IsInfinity(value))
-				Registers.F.Overflow = true;
-
-			return value;
-		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static Single Add(Single a, Single b) {
@@ -445,7 +341,7 @@ namespace Chips.Runtime.Utility {
 			//   not NaN   + Infinity  = Infinity
 			//   -Infinity + not NaN  = -Infinity
 			//   not NaN   + -Infinity = -Infinity
-			return CheckFlagsAndReturn(a + b);
+			return a + b;
 		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -460,23 +356,9 @@ namespace Chips.Runtime.Utility {
 			//   not NaN   - Infinity  = Infinity
 			//   -Infinity - not NaN  = -Infinity
 			//   not NaN   - -Infinity = -Infinity
-			return CheckFlagsAndReturn(a - b);
+			return a - b;
 		}
 		
-
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		private static Double CheckFlagsAndReturn(Double value) {
-			if (value == 0)
-				Registers.F.Zero = true;
-			else if (value < 0)
-				Registers.F.Negative = true;
-			else if (Double.IsNaN(value))
-				Registers.F.InvalidFloat = true;
-			else if (Double.IsInfinity(value))
-				Registers.F.Overflow = true;
-
-			return value;
-		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static Double Add(Double a, Double b) {
@@ -490,7 +372,7 @@ namespace Chips.Runtime.Utility {
 			//   not NaN   + Infinity  = Infinity
 			//   -Infinity + not NaN  = -Infinity
 			//   not NaN   + -Infinity = -Infinity
-			return CheckFlagsAndReturn(a + b);
+			return a + b;
 		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -505,19 +387,9 @@ namespace Chips.Runtime.Utility {
 			//   not NaN   - Infinity  = Infinity
 			//   -Infinity - not NaN  = -Infinity
 			//   not NaN   - -Infinity = -Infinity
-			return CheckFlagsAndReturn(a - b);
+			return a - b;
 		}
 		
-
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		private static Decimal CheckFlagsAndReturn(Decimal value) {
-			if (value == 0)
-				Registers.F.Zero = true;
-			else if (value < 0)
-				Registers.F.Negative = true;
-
-			return value;
-		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static Decimal Add(Decimal a, Decimal b) {
@@ -526,7 +398,7 @@ namespace Chips.Runtime.Utility {
 
 			// Throws exception on overflow
 			try {
-				return CheckFlagsAndReturn(a + b);
+				return a + b;
 			} catch {
 				Registers.F.Overflow = true;
 				return a > 0 ? decimal.MaxValue : decimal.MinValue;
@@ -540,7 +412,7 @@ namespace Chips.Runtime.Utility {
 
 			// Throws exception on overflow
 			try {
-				return CheckFlagsAndReturn(a - b);
+				return a - b;
 			} catch {
 				Registers.F.Overflow = true;
 				return a > 0 ? decimal.MaxValue : decimal.MinValue;
