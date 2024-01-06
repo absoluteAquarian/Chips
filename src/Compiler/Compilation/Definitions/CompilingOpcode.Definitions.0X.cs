@@ -122,26 +122,19 @@ namespace Chips.Compiler.Compilation {
 		public override void Compile(CompilationContext context, OpcodeArgumentCollection args) {
 			/*    C# code:
 			 *    
-			 *    __compare = ValueConverter.CheckedBoxToUnderlyingType((object)value2);
-			 *    _ = ValueConverter.CheckedBoxToUnderlyingType((object)value1).Compare(__compare);
+			 *    __compare = (object)value2;
+			 *    Implementation.Compare((object)VALUE, __compare);
 			 */
 
-			int local = context.CreateOrGetLocal<INumber>("__compare");
-
+			int local = context.CreateOrGetLocal<object>("__compare");
 			// Instruction will be delayed in order to ensure that the stack is set up properly for later instructions
-			context.EmitNopAndDelayedResolver<DelayedBoxResolver>();
-
-			context.EmitBoxToUnderlyingType();
+			context.EmitNopAndDelayedResolver<DelayedBoxOrImplicitObjectResolver>();
 			context.Cursor.Emit(CilOpCodes.Stloc, local);
 
 			// Instruction will be delayed in order to ensure that the stack is set up properly for later instructions
-			context.EmitNopAndDelayedResolver<DelayedBoxResolver>();
-
-			context.EmitBoxToUnderlyingType();
-
+			context.EmitNopAndDelayedResolver<DelayedBoxOrImplicitObjectResolver>();
 			context.Cursor.Emit(CilOpCodes.Ldloc, local);
-
-			context.EmitFunctionCall<INumber>(nameof(INumber.Compare));
+			context.EmitImplementationCall(nameof(Implementation.Compare));
 		}
 
 		public override OpcodeArgumentCollection? DeserializeArguments(CompilationContext context, BinaryReader reader) => null;

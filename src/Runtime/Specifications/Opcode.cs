@@ -53,32 +53,69 @@ namespace Chips.Runtime.Specifications {
 		public abstract string Register { get; }
 	}
 
+	public abstract class FieldAccessOpcode : Opcode {
+		public abstract bool AccessesStaticField { get; }
+	}
+
 	/// <summary>
 	/// An implementation of <see cref="Opcode"/> which represents an instruction that loads a field or field address to the stack
 	/// </summary>
-	public abstract class LoadFieldOpcode : Opcode {
+	public abstract class LoadFieldOpcode : FieldAccessOpcode {
 		public abstract bool LoadsAddress { get; }
+
+		public sealed override bool AccessesStaticField => LoadsStaticField;
 
 		public abstract bool LoadsStaticField { get; }
 	}
 
 	/// <summary>
-	/// An implementation of <see cref="Opcode"/> which represents an instruction that loads a method argument to the stack
+	/// An implementation of <see cref="Opcode"/> which represents an instruction that pops a value from the stack and stores it in a field
 	/// </summary>
-	public abstract class LoadMethodVariableOpcode : Opcode {
+	public abstract class StoreToFieldOpcode : FieldAccessOpcode {
+		public sealed override bool AccessesStaticField => StoresToStaticField;
+
+		public abstract bool StoresToStaticField { get; }
+	}
+
+	public abstract class MethodVariableAccessOpcode : Opcode {
+		public abstract bool AccessesLocal { get; }
+	}
+
+	/// <summary>
+	/// An implementation of <see cref="Opcode"/> which represents an instruction that loads a method argument or local to the stack
+	/// </summary>
+	public abstract class LoadMethodVariableOpcode : MethodVariableAccessOpcode {
 		public abstract bool LoadsAddress { get; }
+
+		public sealed override bool AccessesLocal => LoadsLocal;
 
 		public abstract bool LoadsLocal { get; }
 	}
 
 	/// <summary>
-	/// An implementation of <see cref="Opcode"/> which represents an instruction that loads an element from an array on the stack using the X or Y registers
+	/// An implementation of <see cref="Opcode"/> which represents an instruction that pops a value from the stack and stores it in a method argument or local
 	/// </summary>
-	public abstract class LoadElementInArrayOpcode : Opcode {
-		public abstract bool LoadsAddress { get; }
+	public abstract class StoreToMethodVariableOpcode : MethodVariableAccessOpcode {
+		public sealed override bool AccessesLocal => StoresToLocal;
 
+		public abstract bool StoresToLocal { get; }
+	}
+
+	public abstract class ArrayElementAccessOpcode : Opcode {
 		public abstract bool IndexWithXRegister { get; }
 	}
+
+	/// <summary>
+	/// An implementation of <see cref="Opcode"/> which represents an instruction that loads an element from an array on the stack using the X or Y registers
+	/// </summary>
+	public abstract class LoadElementInArrayOpcode : ArrayElementAccessOpcode {
+		public abstract bool LoadsAddress { get; }
+	}
+
+	/// <summary>
+	/// An implementation of <see cref="Opcode"/> which represents an instruction that pops a value from the stack and stores it in an element in an array using the X or Y registers
+	/// </summary>
+	public abstract class StoreToElementInArrayOpcode : ArrayElementAccessOpcode { }
 
 	/// <summary>
 	/// An implementation of <see cref="Opcode"/> which represents an instruction that loads or sets one of the flags in the F register

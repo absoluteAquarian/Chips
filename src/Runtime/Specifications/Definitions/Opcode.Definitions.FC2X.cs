@@ -9,11 +9,11 @@
 
 	// 0xFC24
 
-	// 0xFC25
+	// stind.f
 
-	// 0xFC26
+	// stind.d
 
-	// 0xFC27
+	// stind.m
 
 	// 0xFC28
 

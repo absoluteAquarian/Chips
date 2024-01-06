@@ -38,30 +38,30 @@ namespace Chips.Runtime.Specifications {
 		}
 
 		public static void EmitNopAndDelayedResolver(this CompilationContext context, Func<CilMethodBody, int, IDelayedInstructionResolver> getResolver) {
-			context.Cursor.Emit(CilOpCodes.Nop);
 			var body = context.Cursor.Body;
 			var index = context.Cursor.Index;
+			context.Cursor.Emit(CilOpCodes.Nop);
 			ChipsCompiler.AddDelayedResolver(getResolver(body, index));
 		}
 
 		public static void EmitNopAndDelayedResolver<T>(this CompilationContext context) where T : IDelayedInstructionResolver<T> {
-			context.Cursor.Emit(CilOpCodes.Nop);
 			var body = context.Cursor.Body;
 			var index = context.Cursor.Index;
+			context.Cursor.Emit(CilOpCodes.Nop);
 			ChipsCompiler.AddDelayedResolver(T.Create(body, index));
 		}
 
 		public static void EmitNopAndDelayedResolver<T, TArg>(this CompilationContext context, TArg arg) where T : IDelayedInstructionResolver<T, TArg> {
-			context.Cursor.Emit(CilOpCodes.Nop);
 			var body = context.Cursor.Body;
 			var index = context.Cursor.Index;
+			context.Cursor.Emit(CilOpCodes.Nop);
 			ChipsCompiler.AddDelayedResolver(T.Create(body, index, arg));
 		}
 
 		public static void EmitNopAndDelayedResolver<T, TArg1, TArg2>(this CompilationContext context, TArg1 arg1, TArg2 arg2) where T : IDelayedInstructionResolver<T, TArg1, TArg2> {
-			context.Cursor.Emit(CilOpCodes.Nop);
 			var body = context.Cursor.Body;
 			var index = context.Cursor.Index;
+			context.Cursor.Emit(CilOpCodes.Nop);
 			ChipsCompiler.AddDelayedResolver(T.Create(body, index, arg1, arg2));
 		}
 
@@ -204,6 +204,11 @@ namespace Chips.Runtime.Specifications {
 				?? throw new InvalidOperationException($"Type \"{typeof(T).GetSimplifiedGenericTypeName()}\" does not have a {name} method with the provided argument types")));
 		}
 
+		public static void EmitImplementationCall(this CompilationContext context, string name) {
+			context.Cursor.Emit(CilOpCodes.Call, context.importer.ImportMethod(typeof(Implementation).GetCachedMethod(name)
+				?? throw new InvalidOperationException($"Type \"{typeof(Implementation).GetSimplifiedGenericTypeName()}\" does not have a {name} method")));
+		}
+
 		private static readonly SignatureComparer _signatureComparer = new(SignatureComparisonFlags.AcceptNewerVersions);
 
 		public static int CreateOrGetLocal<T>(this CompilationContext context, string name) {
@@ -264,6 +269,6 @@ namespace Chips.Runtime.Specifications {
 			return -1;
 		}
 
-		public static Exception ThrowNotImplemented(this CompilingOpcode opcode) => new InvalidOperationException($"CompilingOpcode \"{opcode.GetType().Name}\" des not have a Compile implementation");
+		public static Exception ThrowNotImplemented(this CompilingOpcode opcode) => new InvalidOperationException($"CompilingOpcode \"{opcode.GetType().Name}\" does not have a Compile implementation");
 	}
 }

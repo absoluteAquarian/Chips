@@ -91,7 +91,7 @@ namespace Chips.Compiler.Compilation {
 		public override void Compile(CompilationContext context, OpcodeArgumentCollection args) {
 			/*     C# code:
 			 *     
-			 *     if (Registers.F.Zero || Registers.F.Negative)
+			 *     if (Registers.F.Zero || !Registers.F.Negative)
 			 *         goto LABEL;
 			 */
 
@@ -108,22 +108,12 @@ namespace Chips.Compiler.Compilation {
 		public override void Compile(CompilationContext context, OpcodeArgumentCollection args) {
 			/*    C# code:
 			 *    
-			 *    __tostr = (object)value;
-			 *    Registers.S.Value = __tostr.ToString();
+			 *    Implementation.ToString((object)value);
 			 */
-
-			int local = context.CreateOrGetLocal<object>("__tostr");
 
 			// Need to make sure that the value is an object
 			context.EmitNopAndDelayedResolver<DelayedBoxOrImplicitObjectResolver>();
-			context.Cursor.Emit(CilOpCodes.Stloc, local);
-
-			context.EmitRegisterLoad(nameof(Registers.S));
-
-			context.Cursor.Emit(CilOpCodes.Ldloc, local);
-			context.EmitFunctionCall<object>(nameof(object.ToString));
-
-			context.EmitRegisterValueAssignment<StringRegister>();
+			context.EmitImplementationCall(nameof(Implementation.ToString));
 		}
 	}
 

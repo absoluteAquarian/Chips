@@ -87,10 +87,10 @@ _______|____x0____|____x1____|____x2____|____x3____|____x4____|____x5____|____x6
 Extended Table (0xFC) - Type Operands
 	   _________________________________________________________________________________________________________________________________________________________________________________
 _______|____x0____|____x1____|____x2____|____x3____|____x4____|____x5____|____x6____|____x7____|____x8____|____x9____|____xA____|____xB____|____xC____|____xD____|____xE____|____xF____|
-|  0x  |  ldind.i | ldind.bi | ldind.si | ldind.li | ldind.ni |          |          |          |          |          |          |          |          |          |          |          |
-|  1x  |  ldind.u | ldind.bu | ldind.su | ldind.lu | ldind.nu |          |          |          |          |          |          |          |          |          |          |          |
-|  2x  |  ldind.f |  ldind.d |  ldind.m |          |          |          |          |          |          |          |          |          |          |          |          |          |
-|  3x  |  ldind.o |          |          |          |          |          |          |          |          |          |          |          |          |          |          |          |
+|  0x  |  ldind.i | ldind.bi | ldind.si | ldind.li | ldind.ni |  stind.i | stind.bi | stind.si | stind.li | stind.ni |          |          |          |          |          |          |
+|  1x  |  ldind.u | ldind.bu | ldind.su | ldind.lu | ldind.nu |  stind.u | stind.bu | stind.su | stind.lu | stind.nu |          |          |          |          |          |          |
+|  2x  |  ldind.f |  ldind.d |  ldind.m |          |          |  stind.f |  stind.d |  stind.m |          |          |          |          |          |          |          |          |
+|  3x  |  ldind.o |          |          |          |          |  stind.o |          |          |          |          |          |          |          |          |          |          |
 |  4x  |   conv.i |  conv.bi |  conv.si |  conv.li |  conv.ni |          |          |          |          |          |          |          |          |          |          |          |
 |  5x  |   conv.u |  conv.bu |  conv.su |  conv.lu |  conv.nu |          |          |          |          |          |          |          |          |          |          |          |
 |  6x  |   conv.f |   conv.d |   conv.m |          |          |          |          |          |          |          |          |          |          |          |          |          |
@@ -251,6 +251,9 @@ CLI [14]
 CLN [22]
 * Syntax: cln
 * Clears the Negative flag
+CLS [24]
+* Syntax: cls
+* Clears the Conversion flag
 CLV [21]
 * Syntax: clv
 * Clears the Overflow flag
@@ -724,8 +727,50 @@ STFS [26]
 * Syntax: stfs <token>
 * Pops a value and stores it in a static field
 STIND [2A]
-* Syntax: stind
-* Pops a value and stores it in the value at the address in &A
+* Syntax: stind <type>
+* Pops a value and stores it in the value at the address in &A as the specified type
+STIND.BI [FC 06]
+* Syntax: stind.bi
+* Pops a signed 8-bit integer and stores it at the address in &A
+STIND.BU [FC 16]
+* Syntax: stind.bu
+* Pops an unsigned 8-bit integer and stores it at the address in &A
+STIND.D [FC 26]
+* Syntax: stind.d
+* Pops a double-precision floating-point number and stores it at the address in &I
+STIND.F [FC 25]
+* Syntax: stind.f
+* Pops a single-precision floating-point number and stores it at the address in &I
+STIND.I [FC 05]
+* Syntax: stind.i
+* Pops a signed 32-bit integer and stores it at the address in &A
+STIND.LI [FC 08]
+* Syntax: stind.li
+* Pops a signed 64-bit integer and stores it at the address in &I
+STIND.LU [FC 18]
+* Syntax: stind.lu
+* Pops an unsigned 64-bit integer and stores it at the address in &I
+STIND.M [FC 27]
+* Syntax: stind.m
+* Pops a decimal number and stores it at the address in &I
+STIND.NI [FC 09]
+* Syntax: stind.ni
+* Pops a native integer and stores it at the address in &A
+STIND.NU [FC 19]
+* Syntax: stind.nu
+* Pops an unsigned native integer and stores it at the address in &A
+STIND.O [FC 35]
+* Syntax: stind.o
+* Pops an object of an unknown type and stores it at the address in &S
+STIND.SI [FC 06]
+* Syntax: stind.si
+* Pops a signed 16-bit integer and stores it at the address in &A
+STIND.SU [FC 16]
+* Syntax: stind.su
+* Pops an unsigned 16-bit integer and stores it at the address in &A
+STIND.U [FC 15]
+* Syntax: stind.u
+* Pops an unsigned 32-bit integer and stores it at the address in &A
 STLC [28]
 * Syntax: stlc <int>
 * Pops a value and stores it in a local

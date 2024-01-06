@@ -557,6 +557,52 @@ namespace Chips.Compiler.Utility {
 		}
 	}
 
+	public sealed class DelayedStobjResolver : IDelayedInstructionResolver<DelayedStobjResolver, ITypeDefOrRef> {
+		public CilMethodBody Body { get; }
+
+		public int InstructionIndex { get; set; }
+
+		public ITypeDefOrRef Type { get; }
+
+		public DelayedStobjResolver(CilMethodBody body, int instructionIndex, ITypeDefOrRef type) {
+			Body = body;
+			InstructionIndex = instructionIndex;
+			Type = type;
+		}
+
+		public static IDelayedInstructionResolver Create(CilMethodBody body, int instructionIndex, ITypeDefOrRef arg) {
+			return new DelayedStobjResolver(body, instructionIndex, arg);
+		}
+
+		private static SignatureComparer _typeComparer = new SignatureComparer(SignatureComparisonFlags.VersionAgnostic);
+
+		public void Resolve(StrictEvaluationStackSimulator stack) {
+			var instruction = ((IDelayedInstructionResolver)this).Instruction;
+
+			var signature = Type.ToTypeSignature();
+			var factory = ChipsCompiler.ManifestModule.CorLibTypeFactory;
+
+			if (_typeComparer.Equals(signature, factory.IntPtr))
+				instruction.ReplaceWith(CilOpCodes.Stind_I);
+			else if (_typeComparer.Equals(signature, factory.SByte) || _typeComparer.Equals(signature, factory.Byte) || _typeComparer.Equals(signature, factory.Boolean))
+				instruction.ReplaceWith(CilOpCodes.Stind_I1);
+			else if (_typeComparer.Equals(signature, factory.Int16) || _typeComparer.Equals(signature, factory.UInt16))
+				instruction.ReplaceWith(CilOpCodes.Stind_I2);
+			else if (_typeComparer.Equals(signature, factory.Int32) || _typeComparer.Equals(signature, factory.UInt32))
+				instruction.ReplaceWith(CilOpCodes.Stind_I4);
+			else if (_typeComparer.Equals(signature, factory.Int64) || _typeComparer.Equals(signature, factory.UInt64))
+				instruction.ReplaceWith(CilOpCodes.Stind_I8);
+			else if (_typeComparer.Equals(signature, factory.Single))
+				instruction.ReplaceWith(CilOpCodes.Stind_R4);
+			else if (_typeComparer.Equals(signature, factory.Double))
+				instruction.ReplaceWith(CilOpCodes.Stind_R8);
+			else if (signature.IsValueType)
+				instruction.ReplaceWith(CilOpCodes.Stobj, Type);
+			else
+				instruction.ReplaceWith(CilOpCodes.Stind_Ref);
+		}
+	}
+
 	public sealed class MethodStackScanner : IDelayedInstructionResolver {
 		public CilMethodBody Body { get; }
 

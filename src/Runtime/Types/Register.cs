@@ -62,6 +62,8 @@ namespace Chips.Runtime.Types {
 		public void Set(uint value) => Value = value.CastToUInt32_T();
 		public void Set(long value) => Value = value.CastToInt64_T();
 		public void Set(ulong value) => Value = value.CastToUInt64_T();
+		public void Set(nint value) => Value = value.CastToIntPtr_T();
+		public void Set(nuint value) => Value = value.CastToUIntPtr_T();
 
 		public override void SetValue(object? value) {
 			value = ValueConverter.CheckedBoxToUnderlyingType(value);

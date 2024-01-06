@@ -9,15 +9,15 @@
 
 	// ldind.nu
 
-	// 0xFC15
+	// stind.u
 
-	// 0xFC16
+	// stind.bu
 
-	// 0xFC17
+	// stind.su
 
-	// 0xFC18
+	// stind.lu
 
-	// 0xFC19
+	// stind.nu
 
 	// 0xFC1A
 

@@ -9,15 +9,15 @@
 
 	// ldind.ni
 
-	// 0xFC05
+	// stind.i
 
-	// 0xFC06
+	// stind.bi
 
-	// 0xFC07
+	// stind.si
 
-	// 0xFC08
+	// stind.li
 
-	// 0xFC09
+	// stind.ni
 
 	// 0xFC0A
 

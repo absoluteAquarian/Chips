@@ -37,7 +37,7 @@ namespace Chips.Runtime.Utility {
 
 			if (sum < a) {
 				Registers.F.Overflow = true;
-				return <#= type.Name #>.MaxValue;
+				return sum;
 			}
 
 			return sum;
@@ -68,14 +68,14 @@ namespace Chips.Runtime.Utility {
 			}
 <# } else {
 #>
-			if (b < 0 && b != <#= type.Name #>.MinValue)
+			if (b < 0 && b > <#= type.Name #>.MinValue)
 				return Subtract(a, (<#= type.Name #>)(-b));
 
 			<#= type.Name #> sum = AddWithOverflowCheck(a, b, out bool overflow);
 
 			if (overflow) {
 				Registers.F.Overflow = true;
-				return a > 0 ? <#= type.Name #>.MaxValue : <#= type.Name #>.MinValue;
+				return sum;
 			}
 
 			return sum;
@@ -87,14 +87,14 @@ namespace Chips.Runtime.Utility {
 		public static <#= type.Name #> Subtract(<#= type.Name #> a, <#= type.Name #> b) {
 <# if (type.Name.StartsWith("U") || type.Name == "Byte") {
 #>
-			<#= type.Name #> sum = (<#= type.Name #>)(a - b);
+			<#= type.Name #> difference = (<#= type.Name #>)(a - b);
 
-			if (sum < a) {
+			if (difference > a) {
 				Registers.F.Overflow = true;
-				return <#= type.Name #>.MaxValue;
+				return difference;
 			}
 
-			return sum;
+			return difference;
 <# } else if (type.Name == "Single" || type.Name == "Double") {
 #>
 			if (b < 0)
@@ -122,17 +122,17 @@ namespace Chips.Runtime.Utility {
 			}
 <# } else {
 #>
-			if (b < 0)
+			if (b < 0 && b > <#= type.Name #>.MinValue)
 				return Add(a, (<#= type.Name #>)(-b));
 
-			<#= type.Name #> sum = AddWithOverflowCheck(a, (<#= type.Name #>)(-b), out bool overflow);
+			<#= type.Name #> difference = AddWithOverflowCheck(a, (<#= type.Name #>)(-b), out bool overflow);
 
 			if (overflow) {
 				Registers.F.Overflow = true;
-				return a > 0 ? <#= type.Name #>.MaxValue : <#= type.Name #>.MinValue;
+				return difference;
 			}
 
-			return sum;
+			return difference;
 <#
 }#>
 		}

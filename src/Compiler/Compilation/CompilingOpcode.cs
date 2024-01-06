@@ -9,6 +9,7 @@ using Chips.Runtime.Utility;
 using Chips.Utility;
 using System;
 using System.IO;
+using System.Reflection.Emit;
 
 namespace Chips.Compiler.Compilation {
 	public abstract class CompilingOpcode {
@@ -161,13 +162,10 @@ namespace Chips.Compiler.Compilation {
 		}
 	}
 
-	/// <summary>
-	/// An implementation of <see cref="CompilingOpcode"/> which represents an instruction that loads a field or field address to the stack
-	/// </summary>
-	public abstract class LoadFieldCompilingOpcode<TOpcode> : CompilingOpcode<TOpcode> where TOpcode : LoadFieldOpcode, new() {
+	public abstract class FieldAccessCompilingOpcode<TOpcode> : CompilingOpcode<TOpcode> where TOpcode : FieldAccessOpcode, new() {
 		public sealed override int ExpectedArgumentCount => 1;
 
-		public sealed override void Compile(CompilationContext context, OpcodeArgumentCollection args) {
+		protected void ValidateFieldArgument(CompilationContext context, OpcodeArgumentCollection args, out IFieldDescriptor importedField, out bool accessesStaticField) {
 			var opcode = GetDirectRuntimeOpcode();
 
 			FieldDefinition fieldDefinition;
@@ -179,16 +177,12 @@ namespace Chips.Compiler.Compilation {
 				throw ChipsCompiler.ErrorAndThrow(new ArgumentException($"Opcode \"{opcode.Name}\" could not evaluate its argument"));
 
 			// Field is static, but opcode expects an instance field or vice versa
-			if (fieldDefinition.IsStatic != opcode.LoadsStaticField)
-				throw ChipsCompiler.ErrorAndThrow(new ArgumentException($"Opcode \"{opcode.Name}\" expects an identifier for {(opcode.LoadsStaticField ? "a static" : "an instance")} field.  Field \"{fieldDefinition.Name}\" in type \"{fieldDefinition.DeclaringType!.Name}\" is {(fieldDefinition.IsStatic ? "a static" : "an instance")} field"));
+			if (fieldDefinition.IsStatic != opcode.AccessesStaticField)
+				throw ChipsCompiler.ErrorAndThrow(new ArgumentException($"Opcode \"{opcode.Name}\" expects an identifier for {(opcode.AccessesStaticField ? "a static" : "an instance")} field.  Field \"{fieldDefinition.Name}\" in type \"{fieldDefinition.DeclaringType!.Name}\" is {(fieldDefinition.IsStatic ? "a static" : "an instance")} field"));
 
 			// Emit the field access
-			var importedField = context.importer.ImportField(fieldDefinition);
-
-			if (opcode.LoadsStaticField)
-				context.Cursor.Emit(opcode.LoadsAddress ? CilOpCodes.Ldsflda : CilOpCodes.Ldsfld, importedField);
-			else
-				context.Cursor.Emit(opcode.LoadsAddress ? CilOpCodes.Ldflda : CilOpCodes.Ldfld, importedField);
+			importedField = context.importer.ImportField(fieldDefinition);
+			accessesStaticField = opcode.AccessesStaticField;
 		}
 
 		public sealed override OpcodeArgumentCollection? DeserializeArguments(CompilationContext context, BinaryReader reader) {
@@ -214,21 +208,44 @@ namespace Chips.Compiler.Compilation {
 	}
 
 	/// <summary>
-	/// An implementation of <see cref="CompilingOpcode"/> which represents an instruction that loads a method argument to the stack
+	/// An implementation of <see cref="CompilingOpcode"/> which represents an instruction that loads a field or field address to the stack
 	/// </summary>
-	public abstract class LoadMethodVariableCompilingOpcode<TOpcode> : CompilingOpcode<TOpcode> where TOpcode : LoadMethodVariableOpcode, new() {
-		public sealed override int ExpectedArgumentCount => 1;
-
+	public abstract class LoadFieldCompilingOpcode<TOpcode> : FieldAccessCompilingOpcode<TOpcode> where TOpcode : LoadFieldOpcode, new() {
 		public sealed override void Compile(CompilationContext context, OpcodeArgumentCollection args) {
+			ValidateFieldArgument(context, args, out var importedField, out bool loadsStaticField);
+
 			var opcode = GetDirectRuntimeOpcode();
 
-			if (args[0] is not ushort arg)
+			if (loadsStaticField)
+				context.Cursor.Emit(opcode.LoadsAddress ? CilOpCodes.Ldsflda : CilOpCodes.Ldsfld, importedField);
+			else
+				context.Cursor.Emit(opcode.LoadsAddress ? CilOpCodes.Ldflda : CilOpCodes.Ldfld, importedField);
+		}
+	}
+
+	/// <summary>
+	/// An implementation of <see cref="CompilingOpcode"/> which represents an instruction that pops a value from the stack and stores it to a field
+	/// </summary>
+	public abstract class StoreToFieldCompilingOpcode<TOpcode> : FieldAccessCompilingOpcode<TOpcode> where TOpcode : StoreToFieldOpcode, new() {
+		public sealed override void Compile(CompilationContext context, OpcodeArgumentCollection args) {
+			ValidateFieldArgument(context, args, out var importedField, out bool storesToStaticField);
+
+			context.Cursor.Emit(storesToStaticField ? CilOpCodes.Stsfld : CilOpCodes.Stfld, importedField);
+		}
+	}
+
+	public abstract class MethodVariableAccessCompilingOpcode<TOpcode> : CompilingOpcode<TOpcode> where TOpcode : MethodVariableAccessOpcode, new() {
+		public sealed override int ExpectedArgumentCount => 1;
+
+		protected void ValidateArgument(CompilationContext context, OpcodeArgumentCollection args, out ushort arg) {
+			var opcode = GetDirectRuntimeOpcode();
+
+			// TODO: referencing method arguments and locals by name instead of index
+
+			if (args[0] is not ushort a)
 				throw ChipsCompiler.ErrorAndThrow(new ArgumentException($"Opcode \"{opcode.Name}\" expects an unsigned 16-bit integer as the argument"));
 
-			if (opcode.LoadsLocal)
-				context.Cursor.Emit(opcode.LoadsAddress ? CilOpCodes.Ldloca : CilOpCodes.Ldloc, arg);
-			else
-				context.Cursor.Emit(opcode.LoadsAddress ? CilOpCodes.Ldarga : CilOpCodes.Ldarg, arg);
+			arg = a;
 		}
 
 		public sealed override OpcodeArgumentCollection? DeserializeArguments(CompilationContext context, BinaryReader reader) {
@@ -247,12 +264,103 @@ namespace Chips.Compiler.Compilation {
 	}
 
 	/// <summary>
-	/// An implementation of <see cref="CompilingOpcode"/> which represents an instruction that loads an element from an array on the stack using the X or Y registers
+	/// An implementation of <see cref="CompilingOpcode"/> which represents an instruction that loads a method argument or local to the stack
 	/// </summary>
-	public abstract class LoadElementInArrayCompilingOpcode<TOpcode> : CompilingOpcode<TOpcode> where TOpcode : LoadElementInArrayOpcode, new() {
-		public sealed override int ExpectedArgumentCount => 1;
-
+	public abstract class LoadMethodVariableCompilingOpcode<TOpcode> : MethodVariableAccessCompilingOpcode<TOpcode> where TOpcode : LoadMethodVariableOpcode, new() {
 		public sealed override void Compile(CompilationContext context, OpcodeArgumentCollection args) {
+			ValidateArgument(context, args, out ushort arg);
+
+			var opcode = GetDirectRuntimeOpcode();
+
+			if (opcode.LoadsAddress)
+				context.Cursor.Emit(opcode.LoadsLocal ? CilOpCodes.Ldloca : CilOpCodes.Ldarga, arg);
+			else {
+				CilOpCode cilOpCode = opcode.LoadsLocal ? GetLdloc(arg) : GetLdarg(arg);
+
+				switch (cilOpCode.Code) {
+					case CilCode.Ldloc_0:
+					case CilCode.Ldloc_1:
+					case CilCode.Ldloc_2:
+					case CilCode.Ldloc_3:
+					case CilCode.Ldarg_0:
+					case CilCode.Ldarg_1:
+					case CilCode.Ldarg_2:
+					case CilCode.Ldarg_3:
+						context.Cursor.Emit(cilOpCode);
+						break;
+					default:
+						context.Cursor.Emit(cilOpCode, arg);
+						break;
+				}
+			}
+		}
+
+		private static CilOpCode GetLdloc(ushort arg) {
+			return arg switch {
+				0 => CilOpCodes.Ldloc_0,
+				1 => CilOpCodes.Ldloc_1,
+				2 => CilOpCodes.Ldloc_2,
+				3 => CilOpCodes.Ldloc_3,
+				_ => arg <= byte.MaxValue ? CilOpCodes.Ldloc_S : CilOpCodes.Ldloc
+			};
+		}
+
+		private static CilOpCode GetLdarg(ushort arg) {
+			return arg switch {
+				0 => CilOpCodes.Ldarg_0,
+				1 => CilOpCodes.Ldarg_1,
+				2 => CilOpCodes.Ldarg_2,
+				3 => CilOpCodes.Ldarg_3,
+				_ => arg <= byte.MaxValue ? CilOpCodes.Ldarg_S : CilOpCodes.Ldarg
+			};
+		}
+	}
+
+	/// <summary>
+	/// An implementation of <see cref="CompilingOpcode"/> which represents an instruction that pops a value from the stack and stores it to a method argument or local
+	/// </summary>
+	public abstract class StoreToMethodVariableCompilingOpcode<TOpcode> : MethodVariableAccessCompilingOpcode<TOpcode> where TOpcode : StoreToMethodVariableOpcode, new() {
+		public sealed override void Compile(CompilationContext context, OpcodeArgumentCollection args) {
+			ValidateArgument(context, args, out ushort arg);
+
+			var opcode = GetDirectRuntimeOpcode();
+
+			context.Cursor.Emit(opcode.StoresToLocal ? GetStloc(arg) : GetStarg(arg), arg);
+
+			CilOpCode cilOpCode = opcode.StoresToLocal ? GetStloc(arg) : GetStarg(arg);
+
+			switch (cilOpCode.Code) {
+				case CilCode.Stloc_0:
+				case CilCode.Stloc_1:
+				case CilCode.Stloc_2:
+				case CilCode.Stloc_3:
+					context.Cursor.Emit(cilOpCode);
+					break;
+				default:
+					context.Cursor.Emit(cilOpCode, arg);
+					break;
+			}
+		}
+
+		private static CilOpCode GetStloc(ushort arg) {
+			return arg switch {
+				0 => CilOpCodes.Stloc_0,
+				1 => CilOpCodes.Stloc_1,
+				2 => CilOpCodes.Stloc_2,
+				3 => CilOpCodes.Stloc_3,
+				_ => arg <= byte.MaxValue ? CilOpCodes.Stloc_S : CilOpCodes.Stloc
+			};
+		}
+
+		private static CilOpCode GetStarg(ushort arg) {
+			return arg <= byte.MaxValue ? CilOpCodes.Starg_S : CilOpCodes.Starg;
+		}
+	}
+
+	public abstract class ArrayElementAccessCompilingOpcode<TOpcode> : CompilingOpcode<TOpcode> where TOpcode : ArrayElementAccessOpcode, new() {
+		public sealed override int ExpectedArgumentCount => 0;
+
+		protected void ValidateArgumentAndEmitInstructions(CompilationContext context) {
 			var opcode = GetDirectRuntimeOpcode();
 
 			if (opcode.IndexWithXRegister)
@@ -262,12 +370,6 @@ namespace Chips.Compiler.Compilation {
 
 			context.EmitRegisterValueRetrieval<IntegerRegister>();
 			context.EmitCastToIntPtr();
-
-			// Instruction will be delayed in order to ensure that the stack is set up properly for later instructions
-			if (opcode.LoadsAddress)
-				context.EmitNopAndDelayedResolver<DelayedArrayLoadAddressResolver>();
-			else
-				context.EmitNopAndDelayedResolver<DelayedArrayLoadResolver>();
 		}
 
 		public sealed override OpcodeArgumentCollection? DeserializeArguments(CompilationContext context, BinaryReader reader) => null;
@@ -287,6 +389,35 @@ namespace Chips.Compiler.Compilation {
 		}
 
 		public sealed override void SerializeArguments(CompilationContext context, BinaryWriter writer, OpcodeArgumentCollection args) { }
+	}
+
+	/// <summary>
+	/// An implementation of <see cref="CompilingOpcode"/> which represents an instruction that loads an element from an array on the stack using the X or Y registers
+	/// </summary>
+	public abstract class LoadElementInArrayCompilingOpcode<TOpcode> : ArrayElementAccessCompilingOpcode<TOpcode> where TOpcode : LoadElementInArrayOpcode, new() {
+		public sealed override void Compile(CompilationContext context, OpcodeArgumentCollection args) {
+			ValidateArgumentAndEmitInstructions(context);
+
+			var opcode = GetDirectRuntimeOpcode();
+
+			// Instruction will be delayed in order to ensure that the stack is set up properly for later instructions
+			if (opcode.LoadsAddress)
+				context.EmitNopAndDelayedResolver<DelayedArrayLoadAddressResolver>();
+			else
+				context.EmitNopAndDelayedResolver<DelayedArrayLoadResolver>();
+		}
+	}
+
+	/// <summary>
+	/// An implementation of <see cref="CompilingOpcode"/> which represents an instruction that pops an array and value from the stack and stores the value to an element in an array using the X or Y registers
+	/// </summary>
+	public abstract class StoreToElementInArrayCompilingOpcode<TOpcode> : ArrayElementAccessCompilingOpcode<TOpcode> where TOpcode : StoreToElementInArrayOpcode, new() {
+		public sealed override void Compile(CompilationContext context, OpcodeArgumentCollection args) {
+			ValidateArgumentAndEmitInstructions(context);
+
+			// Instruction will be delayed in order to ensure that the stack is set up properly for later instructions
+			context.EmitNopAndDelayedResolver<DelayedArrayStoreResolver>();
+		}
 	}
 
 	/// <summary>

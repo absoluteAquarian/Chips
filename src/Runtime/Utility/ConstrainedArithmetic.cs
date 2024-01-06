@@ -15,14 +15,14 @@ namespace Chips.Runtime.Utility {
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static SByte Add(SByte a, SByte b) {
-			if (b < 0 && b != SByte.MinValue)
+			if (b < 0 && b > SByte.MinValue)
 				return Subtract(a, (SByte)(-b));
 
 			SByte sum = AddWithOverflowCheck(a, b, out bool overflow);
 
 			if (overflow) {
 				Registers.F.Overflow = true;
-				return a > 0 ? SByte.MaxValue : SByte.MinValue;
+				return sum;
 			}
 
 			return sum;
@@ -30,17 +30,17 @@ namespace Chips.Runtime.Utility {
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static SByte Subtract(SByte a, SByte b) {
-			if (b < 0)
+			if (b < 0 && b > SByte.MinValue)
 				return Add(a, (SByte)(-b));
 
-			SByte sum = AddWithOverflowCheck(a, (SByte)(-b), out bool overflow);
+			SByte difference = AddWithOverflowCheck(a, (SByte)(-b), out bool overflow);
 
 			if (overflow) {
 				Registers.F.Overflow = true;
-				return a > 0 ? SByte.MaxValue : SByte.MinValue;
+				return difference;
 			}
 
-			return sum;
+			return difference;
 		}
 		
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -55,14 +55,14 @@ namespace Chips.Runtime.Utility {
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static Int16 Add(Int16 a, Int16 b) {
-			if (b < 0 && b != Int16.MinValue)
+			if (b < 0 && b > Int16.MinValue)
 				return Subtract(a, (Int16)(-b));
 
 			Int16 sum = AddWithOverflowCheck(a, b, out bool overflow);
 
 			if (overflow) {
 				Registers.F.Overflow = true;
-				return a > 0 ? Int16.MaxValue : Int16.MinValue;
+				return sum;
 			}
 
 			return sum;
@@ -70,17 +70,17 @@ namespace Chips.Runtime.Utility {
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static Int16 Subtract(Int16 a, Int16 b) {
-			if (b < 0)
+			if (b < 0 && b > Int16.MinValue)
 				return Add(a, (Int16)(-b));
 
-			Int16 sum = AddWithOverflowCheck(a, (Int16)(-b), out bool overflow);
+			Int16 difference = AddWithOverflowCheck(a, (Int16)(-b), out bool overflow);
 
 			if (overflow) {
 				Registers.F.Overflow = true;
-				return a > 0 ? Int16.MaxValue : Int16.MinValue;
+				return difference;
 			}
 
-			return sum;
+			return difference;
 		}
 		
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -95,14 +95,14 @@ namespace Chips.Runtime.Utility {
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static Int32 Add(Int32 a, Int32 b) {
-			if (b < 0 && b != Int32.MinValue)
+			if (b < 0 && b > Int32.MinValue)
 				return Subtract(a, (Int32)(-b));
 
 			Int32 sum = AddWithOverflowCheck(a, b, out bool overflow);
 
 			if (overflow) {
 				Registers.F.Overflow = true;
-				return a > 0 ? Int32.MaxValue : Int32.MinValue;
+				return sum;
 			}
 
 			return sum;
@@ -110,17 +110,17 @@ namespace Chips.Runtime.Utility {
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static Int32 Subtract(Int32 a, Int32 b) {
-			if (b < 0)
+			if (b < 0 && b > Int32.MinValue)
 				return Add(a, (Int32)(-b));
 
-			Int32 sum = AddWithOverflowCheck(a, (Int32)(-b), out bool overflow);
+			Int32 difference = AddWithOverflowCheck(a, (Int32)(-b), out bool overflow);
 
 			if (overflow) {
 				Registers.F.Overflow = true;
-				return a > 0 ? Int32.MaxValue : Int32.MinValue;
+				return difference;
 			}
 
-			return sum;
+			return difference;
 		}
 		
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -135,14 +135,14 @@ namespace Chips.Runtime.Utility {
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static Int64 Add(Int64 a, Int64 b) {
-			if (b < 0 && b != Int64.MinValue)
+			if (b < 0 && b > Int64.MinValue)
 				return Subtract(a, (Int64)(-b));
 
 			Int64 sum = AddWithOverflowCheck(a, b, out bool overflow);
 
 			if (overflow) {
 				Registers.F.Overflow = true;
-				return a > 0 ? Int64.MaxValue : Int64.MinValue;
+				return sum;
 			}
 
 			return sum;
@@ -150,17 +150,17 @@ namespace Chips.Runtime.Utility {
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static Int64 Subtract(Int64 a, Int64 b) {
-			if (b < 0)
+			if (b < 0 && b > Int64.MinValue)
 				return Add(a, (Int64)(-b));
 
-			Int64 sum = AddWithOverflowCheck(a, (Int64)(-b), out bool overflow);
+			Int64 difference = AddWithOverflowCheck(a, (Int64)(-b), out bool overflow);
 
 			if (overflow) {
 				Registers.F.Overflow = true;
-				return a > 0 ? Int64.MaxValue : Int64.MinValue;
+				return difference;
 			}
 
-			return sum;
+			return difference;
 		}
 		
 
@@ -170,7 +170,7 @@ namespace Chips.Runtime.Utility {
 
 			if (sum < a) {
 				Registers.F.Overflow = true;
-				return Byte.MaxValue;
+				return sum;
 			}
 
 			return sum;
@@ -178,14 +178,14 @@ namespace Chips.Runtime.Utility {
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static Byte Subtract(Byte a, Byte b) {
-			Byte sum = (Byte)(a - b);
+			Byte difference = (Byte)(a - b);
 
-			if (sum < a) {
+			if (difference > a) {
 				Registers.F.Overflow = true;
-				return Byte.MaxValue;
+				return difference;
 			}
 
-			return sum;
+			return difference;
 		}
 		
 
@@ -195,7 +195,7 @@ namespace Chips.Runtime.Utility {
 
 			if (sum < a) {
 				Registers.F.Overflow = true;
-				return UInt16.MaxValue;
+				return sum;
 			}
 
 			return sum;
@@ -203,14 +203,14 @@ namespace Chips.Runtime.Utility {
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static UInt16 Subtract(UInt16 a, UInt16 b) {
-			UInt16 sum = (UInt16)(a - b);
+			UInt16 difference = (UInt16)(a - b);
 
-			if (sum < a) {
+			if (difference > a) {
 				Registers.F.Overflow = true;
-				return UInt16.MaxValue;
+				return difference;
 			}
 
-			return sum;
+			return difference;
 		}
 		
 
@@ -220,7 +220,7 @@ namespace Chips.Runtime.Utility {
 
 			if (sum < a) {
 				Registers.F.Overflow = true;
-				return UInt32.MaxValue;
+				return sum;
 			}
 
 			return sum;
@@ -228,14 +228,14 @@ namespace Chips.Runtime.Utility {
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static UInt32 Subtract(UInt32 a, UInt32 b) {
-			UInt32 sum = (UInt32)(a - b);
+			UInt32 difference = (UInt32)(a - b);
 
-			if (sum < a) {
+			if (difference > a) {
 				Registers.F.Overflow = true;
-				return UInt32.MaxValue;
+				return difference;
 			}
 
-			return sum;
+			return difference;
 		}
 		
 
@@ -245,7 +245,7 @@ namespace Chips.Runtime.Utility {
 
 			if (sum < a) {
 				Registers.F.Overflow = true;
-				return UInt64.MaxValue;
+				return sum;
 			}
 
 			return sum;
@@ -253,14 +253,14 @@ namespace Chips.Runtime.Utility {
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static UInt64 Subtract(UInt64 a, UInt64 b) {
-			UInt64 sum = (UInt64)(a - b);
+			UInt64 difference = (UInt64)(a - b);
 
-			if (sum < a) {
+			if (difference > a) {
 				Registers.F.Overflow = true;
-				return UInt64.MaxValue;
+				return difference;
 			}
 
-			return sum;
+			return difference;
 		}
 		
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -275,14 +275,14 @@ namespace Chips.Runtime.Utility {
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static IntPtr Add(IntPtr a, IntPtr b) {
-			if (b < 0 && b != IntPtr.MinValue)
+			if (b < 0 && b > IntPtr.MinValue)
 				return Subtract(a, (IntPtr)(-b));
 
 			IntPtr sum = AddWithOverflowCheck(a, b, out bool overflow);
 
 			if (overflow) {
 				Registers.F.Overflow = true;
-				return a > 0 ? IntPtr.MaxValue : IntPtr.MinValue;
+				return sum;
 			}
 
 			return sum;
@@ -290,17 +290,17 @@ namespace Chips.Runtime.Utility {
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static IntPtr Subtract(IntPtr a, IntPtr b) {
-			if (b < 0)
+			if (b < 0 && b > IntPtr.MinValue)
 				return Add(a, (IntPtr)(-b));
 
-			IntPtr sum = AddWithOverflowCheck(a, (IntPtr)(-b), out bool overflow);
+			IntPtr difference = AddWithOverflowCheck(a, (IntPtr)(-b), out bool overflow);
 
 			if (overflow) {
 				Registers.F.Overflow = true;
-				return a > 0 ? IntPtr.MaxValue : IntPtr.MinValue;
+				return difference;
 			}
 
-			return sum;
+			return difference;
 		}
 		
 
@@ -310,7 +310,7 @@ namespace Chips.Runtime.Utility {
 
 			if (sum < a) {
 				Registers.F.Overflow = true;
-				return UIntPtr.MaxValue;
+				return sum;
 			}
 
 			return sum;
@@ -318,14 +318,14 @@ namespace Chips.Runtime.Utility {
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static UIntPtr Subtract(UIntPtr a, UIntPtr b) {
-			UIntPtr sum = (UIntPtr)(a - b);
+			UIntPtr difference = (UIntPtr)(a - b);
 
-			if (sum < a) {
+			if (difference > a) {
 				Registers.F.Overflow = true;
-				return UIntPtr.MaxValue;
+				return difference;
 			}
 
-			return sum;
+			return difference;
 		}
 		
 
