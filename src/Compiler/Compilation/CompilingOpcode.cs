@@ -4,12 +4,10 @@ using Chips.Compiler.Utility;
 using Chips.Runtime;
 using Chips.Runtime.Specifications;
 using Chips.Runtime.Types;
-using Chips.Runtime.Types.NumberProcessing;
 using Chips.Runtime.Utility;
 using Chips.Utility;
 using System;
 using System.IO;
-using System.Reflection.Emit;
 
 namespace Chips.Compiler.Compilation {
 	public abstract class CompilingOpcode {

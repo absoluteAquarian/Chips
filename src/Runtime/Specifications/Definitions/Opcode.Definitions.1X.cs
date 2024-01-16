@@ -1,5 +1,4 @@
 ﻿using Chips.Runtime.Types;
-using System;
 
 namespace Chips.Runtime.Specifications {
 	public sealed class OpcodePush : Opcode {
