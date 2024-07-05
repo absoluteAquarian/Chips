@@ -7,6 +7,8 @@ using System.IO;
 using System;
 using AsmResolver.DotNet;
 using Chips.Runtime;
+using Chips.Runtime.Types.NumberProcessing;
+using Chips.Runtime.Utility;
 
 namespace Chips.Compiler.Compilation {
 	public sealed class CompilingOpcodeNop : BasicCompilingOpcode<OpcodeNop> {
@@ -21,51 +23,51 @@ namespace Chips.Compiler.Compilation {
 		}
 	}
 
-	public sealed class CompilingOpcodeLdci : LoadConstantCompilingOpcode<OpcodeLdci, int> {
+	public sealed class CompilingOpcodeLdci : LoadConstantCompilingOpcode<OpcodeLdci, Int32_T> {
 		public override void Compile(CompilationContext context, OpcodeArgumentCollection args) {
-			EmitRegisterAccess(context, args, out int value);
+			EmitRegisterAccess(context, args, out Int32_T value);
 			
 			// Push the constant
-			context.Cursor.Emit(CilOpCodes.Ldc_I4, value);
+			context.EmitNumber(value);
 			context.EmitNumberRegisterAssignment<IntegerRegister, int>();
 		}
 
-		protected override int DeserializeArgument(CompilationContext context, BinaryReader reader) {
-			return reader.ReadInt32();
+		public override Int32_T DeserializeArgument(CompilationContext context, BinaryReader reader) {
+			return reader.ReadInt32().CastToInt32_T();
 		}
 
-		protected override int ParseArgument(CompilationContext context, string arg) {
+		public override Int32_T ParseArgument(CompilationContext context, string arg) {
 			return StringSerialization.ParseIntegerArgument(context, arg) is not int i
-				? throw ChipsCompiler.ErrorAndThrow(new ParsingException("Argument was too large for a 32-bit signed constant"))
-				: i;
+				? throw ChipsCompiler.ErrorAndThrow(new ParsingException($"Constant {arg} was not a 32-bit signed constant"))
+				: i.CastToInt32_T();
 		}
 
-		protected override void SerializeArgument(BinaryWriter writer, int arg, CompilationContext context) {
-			writer.Write(arg);
+		public override void SerializeArgument(BinaryWriter writer, Int32_T arg, CompilationContext context) {
+			writer.Write(arg.ActualValue);
 		}
 	}
 
-	public sealed class CompilingOpcodeLdcf : LoadConstantCompilingOpcode<OpcodeLdcf, float> {
+	public sealed class CompilingOpcodeLdcf : LoadConstantCompilingOpcode<OpcodeLdcf, Single_T> {
 		public override void Compile(CompilationContext context, OpcodeArgumentCollection args) {
-			EmitRegisterAccess(context, args, out float value);
+			EmitRegisterAccess(context, args, out Single_T value);
 
 			// Push the constant, then call the appropriate method in FloatRegister
-			context.Cursor.Emit(CilOpCodes.Ldc_R4, value);
+			context.EmitNumber(value);
 			context.EmitNumberRegisterAssignment<FloatRegister, float>();
 		}
 
-		protected override float DeserializeArgument(CompilationContext context, BinaryReader reader) {
-			return reader.ReadSingle();
+		public override Single_T DeserializeArgument(CompilationContext context, BinaryReader reader) {
+			return reader.ReadSingle().CastToSingle_T();
 		}
 
-		protected override float ParseArgument(CompilationContext context, string arg) {
+		public override Single_T ParseArgument(CompilationContext context, string arg) {
 			return StringSerialization.ParseFloatArgument(context, arg) is not float f
-				? throw ChipsCompiler.ErrorAndThrow(new ArgumentException($"Constant {arg} was too large to be a single-precisio floating point number"))
-				: f;
+				? throw ChipsCompiler.ErrorAndThrow(new ArgumentException($"Constant {arg} was not a single-precision floating point number"))
+				: f.CastToSingle_T();
 		}
 
-		protected override void SerializeArgument(BinaryWriter writer, float arg, CompilationContext context) {
-			writer.Write(arg);
+		public override void SerializeArgument(BinaryWriter writer, Single_T arg, CompilationContext context) {
+			writer.Write(arg.ActualValue);
 		}
 	}
 
@@ -77,11 +79,11 @@ namespace Chips.Compiler.Compilation {
 			context.EmitRegisterValueAssignment<StringRegister>();
 		}
 
-		protected override StringMetadata DeserializeArgument(CompilationContext context, BinaryReader reader) {
+		public override StringMetadata DeserializeArgument(CompilationContext context, BinaryReader reader) {
 			return StringMetadata.Deserialize(reader);
 		}
 
-		protected override StringMetadata ParseArgument(CompilationContext context, string arg) {
+		public override StringMetadata ParseArgument(CompilationContext context, string arg) {
 			if (arg is null)
 				throw ChipsCompiler.ErrorAndThrow(new ParsingException("Use \"ldz.s\" to load null into the &S register"));
 
@@ -89,7 +91,7 @@ namespace Chips.Compiler.Compilation {
 			return context.heap.GetOrAdd(arg.SanitizeString());
 		}
 
-		protected override void SerializeArgument(BinaryWriter writer, StringMetadata arg, CompilationContext context) {
+		public override void SerializeArgument(BinaryWriter writer, StringMetadata arg, CompilationContext context) {
 			arg.Serialize(writer);
 		}
 	}
@@ -121,8 +123,8 @@ namespace Chips.Compiler.Compilation {
 		public override void Compile(CompilationContext context, OpcodeArgumentCollection args) {
 			/*    C# code:
 			 *    
-			 *    __compare = (object)value2;
-			 *    Implementation.Compare((object)VALUE, __compare);
+			 *    __compare = (object)VALUE;
+			 *    Implementation.Compare((object)VALUE2, __compare);
 			 */
 
 			int local = context.CreateOrGetLocal<object>("__compare");
@@ -145,9 +147,20 @@ namespace Chips.Compiler.Compilation {
 
 	public sealed class CompilingOpcodeIs : TypeOperandCompilingOpcode<OpcodeIs> {
 		public override void Compile(CompilationContext context, OpcodeArgumentCollection args) {
+			int local = context.CreateOrGetLocal<object>("__is");
+			context.EmitNopAndDelayedResolver<DelayedBoxOrImplicitObjectResolver>();
+			context.Cursor.Emit(CilOpCodes.Stloc, local);
+
 			if (args[0] is null) {
 				// Check against null directly
+				/*    C# code:
+				 *    
+				 *    object __is = (object)VALUE;
+				 *    Registers.F.Conversion = __is is null;
+				 */
+
 				context.EmitRegisterLoad(nameof(Registers.F));
+				context.Cursor.Emit(CilOpCodes.Ldloc, local);
 				context.Cursor.Emit(CilOpCodes.Ldnull);
 				context.Cursor.Emit(CilOpCodes.Ceq);
 				context.EmitFlagAssignment(nameof(FlagsRegister.Conversion));
@@ -158,16 +171,16 @@ namespace Chips.Compiler.Compilation {
 			
 			/*    C# code:
 			 *    
-			 *    Registers.F.Conversion = value is ArgType;
+			 *    object __is = (object)VALUE;
+			 *    Registers.F.Conversion = __is is ArgType;
 			 */
 
 			context.EmitRegisterLoad(nameof(Registers.F));
+			context.Cursor.Emit(CilOpCodes.Ldloc, local);
 			context.EmitNopAndDelayedResolver<DelayedIsinstResolver, ITypeDefOrRef>(resolver);
 			context.EmitFlagAssignment(nameof(FlagsRegister.Conversion));
 		}
 	}
-
-	// conv
 
 	public sealed class CompilingOpcodeConv : TypeOperandCompilingOpcode<OpcodeConv> {
 		public override void Compile(CompilationContext context, OpcodeArgumentCollection args) {
@@ -175,7 +188,7 @@ namespace Chips.Compiler.Compilation {
 
 			if (resolver.metadata == "object") {
 				// Box or castclass
-				context.EmitNopAndDelayedResolver<DelayedBoxOrImplicitObjectResolver>();
+				context.EmitNopAndDelayedResolver<DelayedBoxOrCastclassObjectResolver>();
 			}
 		}
 	}

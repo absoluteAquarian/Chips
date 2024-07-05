@@ -12,11 +12,9 @@ using System;
 using System.Runtime.CompilerServices;
 
 namespace Chips.Runtime.Utility {
-	partial class ConstrainedArithmetic {
-<# foreach (var type in types) {
-#>
-<# if (type.Name.StartsWith("Int") || type.Name == "SByte") {
-#>
+	partial class Arithmetic {
+<# foreach (var type in types) { #>
+<# if (type.Name.StartsWith("Int") || type.Name == "SByte") { #>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		private static <#= type.Name #> AddWithOverflowCheck(<#= type.Name #> a, <#= type.Name #> b, out bool overflowFlag) {
             unchecked {
@@ -26,13 +24,13 @@ namespace Chips.Runtime.Utility {
             }
         }
 
-<#
-} #>
-
+<# } #>
+		/// <summary>
+		/// Adds two numbers, setting the overflow flag if the result wraps around from the maximum value to the minimum value or vice versa.
+		/// </summary>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static <#= type.Name #> Add(<#= type.Name #> a, <#= type.Name #> b) {
-<# if (type.Name.StartsWith("U") || type.Name == "Byte") {
-#>
+<# if (type.Name.StartsWith("U") || type.Name == "Byte") { #>
 			<#= type.Name #> sum = (<#= type.Name #>)(a + b);
 
 			if (sum < a) {
@@ -41,8 +39,7 @@ namespace Chips.Runtime.Utility {
 			}
 
 			return sum;
-<# } else if (type.Name == "Single" || type.Name == "Double") {
-#>
+<# } else if (type.Name == "Single" || type.Name == "Double") { #>
 			if (b < 0)
 				return Subtract(a, -b);
 
@@ -54,8 +51,7 @@ namespace Chips.Runtime.Utility {
 			//   -Infinity + not NaN  = -Infinity
 			//   not NaN   + -Infinity = -Infinity
 			return a + b;
-<# } else if (type.Name == "Decimal") {
-#>
+<# } else if (type.Name == "Decimal") { #>
 			if (b < 0)
 				return Subtract(a, -b);
 
@@ -66,8 +62,7 @@ namespace Chips.Runtime.Utility {
 				Registers.F.Overflow = true;
 				return a > 0 ? decimal.MaxValue : decimal.MinValue;
 			}
-<# } else {
-#>
+<# } else { #>
 			if (b < 0 && b > <#= type.Name #>.MinValue)
 				return Subtract(a, (<#= type.Name #>)(-b));
 
@@ -79,14 +74,15 @@ namespace Chips.Runtime.Utility {
 			}
 
 			return sum;
-<#
-}#>
+<# } #>
 		}
 
+		/// <summary>
+		/// Subtracts two numbers, setting the overflow flag if the result wraps around from the maximum value to the minimum value or vice versa.
+		/// </summary>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static <#= type.Name #> Subtract(<#= type.Name #> a, <#= type.Name #> b) {
-<# if (type.Name.StartsWith("U") || type.Name == "Byte") {
-#>
+<# if (type.Name.StartsWith("U") || type.Name == "Byte") { #>
 			<#= type.Name #> difference = (<#= type.Name #>)(a - b);
 
 			if (difference > a) {
@@ -95,8 +91,7 @@ namespace Chips.Runtime.Utility {
 			}
 
 			return difference;
-<# } else if (type.Name == "Single" || type.Name == "Double") {
-#>
+<# } else if (type.Name == "Single" || type.Name == "Double") { #>
 			if (b < 0)
 				return Add(a, -b);
 
@@ -108,8 +103,7 @@ namespace Chips.Runtime.Utility {
 			//   -Infinity - not NaN  = -Infinity
 			//   not NaN   - -Infinity = -Infinity
 			return a - b;
-<# } else if (type.Name == "Decimal") {
-#>
+<# } else if (type.Name == "Decimal") { #>
 			if (b < 0 && b != <#= type.Name #>.MinValue)
 				return Add(a, -b);
 
@@ -120,8 +114,7 @@ namespace Chips.Runtime.Utility {
 				Registers.F.Overflow = true;
 				return a > 0 ? decimal.MaxValue : decimal.MinValue;
 			}
-<# } else {
-#>
+<# } else { #>
 			if (b < 0 && b > <#= type.Name #>.MinValue)
 				return Add(a, (<#= type.Name #>)(-b));
 
@@ -133,11 +126,25 @@ namespace Chips.Runtime.Utility {
 			}
 
 			return difference;
-<#
-}#>
+<# } #>
 		}
 		
-<#
-} #>
+		/// <summary>
+		/// Performs "repeat" modulus of two numbers.<br/>
+		/// Example: <c>Repeat(-0.5, 2.5)</c> would return <c>2.0</c> instead of <c>-0.5</c>.
+		/// </summary>
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static <#= type.Name #> Repeat(<#= type.Name #> a, <#= type.Name #> b) {
+			<#= type.Name #> remainder = (<#= type.Name #>)(a % b);
+
+<# if (!type.Name.StartsWith("U") && type.Name != "Byte") { #>
+			if (remainder < 0)
+				remainder = b < 0 ? Subtract(remainder, b) : Add(remainder, b);
+<# } #>
+
+			return remainder;
+		}
+
+<# } #>
 	}
 }

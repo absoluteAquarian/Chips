@@ -5,7 +5,7 @@ using System.Linq;
 
 namespace Chips.Utility {
 	partial class Extensions {
-		public static string? GetSimplifiedGenericTypeName(this Type type) {
+		public static string? GetFullGenericTypeName(this Type type) {
 			//Handle all invalid cases here:
 			if (type.FullName is null)
 				return type.Name;
@@ -19,7 +19,7 @@ namespace Chips.Utility {
 			parent = parent[..parent.IndexOf('`')];
 
 			//Construct the child types
-			return $"{parent}<{string.Join(", ", type.GetGenericArguments().Select(GetSimplifiedGenericTypeName))}>";
+			return $"{parent}<{string.Join(", ", type.GetGenericArguments().Select(GetFullGenericTypeName))}>";
 		}
 
 		public static TypeDefinition AdjustTypeBasedOnSuffix(this TypeDefinition type, string suffix) {

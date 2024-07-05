@@ -5,7 +5,7 @@ using System;
 
 namespace Chips.Runtime.Types {
 	public abstract class Register {
-		public int ID { get; init; }
+		public int ID { get; internal init; }
 
 		public abstract bool AcceptsValue(object? value);
 
@@ -33,7 +33,7 @@ namespace Chips.Runtime.Types {
 			if (AcceptsValue(value))
 				Value = (T)value!;
 			else
-				throw new ArgumentException($"Register {Registers.GetRegisterNameFromID(ID)} cannot accept values of type \"{typeof(T).GetSimplifiedGenericTypeName()}\"");
+				throw new ArgumentException($"Register {Registers.GetRegisterNameFromID(ID)} cannot accept values of type \"{typeof(T).GetFullGenericTypeName()}\"");
 		}
 	}
 

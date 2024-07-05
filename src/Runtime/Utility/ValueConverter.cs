@@ -16,7 +16,7 @@ namespace Chips.Runtime.Utility {
 				UInt64_T _ => number,
 				IntPtr_T _ => number,
 				UIntPtr_T _ => number,
-				_ => throw new Exception($"Cannot upcast {number?.Value?.GetType().GetSimplifiedGenericTypeName() ?? "unknown"} to an integer")
+				_ => throw new Exception($"Cannot upcast {number?.Value?.GetType().GetFullGenericTypeName() ?? "unknown"} to an integer")
 			};
 
 		internal static IInteger RetrieveFloatingPointBits(INumber number)
@@ -47,6 +47,6 @@ namespace Chips.Runtime.Utility {
 			};
 
 		public static INumber CheckedBoxToUnderlyingType(object? o)
-			=> BoxToUnderlyingType(o) ?? throw new InvalidCastException($"Cannot cast {o?.GetType().GetSimplifiedGenericTypeName() ?? "null"} to a number");
+			=> BoxToUnderlyingType(o) ?? throw new InvalidCastException($"Cannot cast {o?.GetType().GetFullGenericTypeName() ?? "null"} to a number");
 	}
 }

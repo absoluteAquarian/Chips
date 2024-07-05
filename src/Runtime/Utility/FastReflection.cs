@@ -51,7 +51,7 @@ namespace Chips.Runtime.Utility {
 			} catch (AmbiguousMatchException) {
 				throw;
 			} catch (InvalidCastException) {
-				throw new InvalidCastException($"Could not cast field \"{type.GetSimplifiedGenericTypeName()}.{fieldName}\" to type \"{typeof(T).GetSimplifiedGenericTypeName()}\"");
+				throw new InvalidCastException($"Could not cast field \"{type.GetFullGenericTypeName()}.{fieldName}\" to type \"{typeof(T).GetFullGenericTypeName()}\"");
 			}
 		}
 
@@ -61,7 +61,7 @@ namespace Chips.Runtime.Utility {
 			} catch (AmbiguousMatchException) {
 				throw;
 			} catch (InvalidCastException) {
-				throw new InvalidCastException($"Could not cast field \"{typeof(T).GetSimplifiedGenericTypeName()}.{fieldName}\" to type \"{typeof(F).GetSimplifiedGenericTypeName()}\"");
+				throw new InvalidCastException($"Could not cast field \"{typeof(T).GetFullGenericTypeName()}.{fieldName}\" to type \"{typeof(F).GetFullGenericTypeName()}\"");
 			}
 		}
 
@@ -106,7 +106,7 @@ namespace Chips.Runtime.Utility {
 			fieldInfo = type.GetField(fieldName, AllFlags)!;
 
 			if (fieldInfo is null)
-				throw new ArgumentException($"Could not find field \"{fieldName}\" in type \"{type.GetSimplifiedGenericTypeName()}\"");
+				throw new ArgumentException($"Could not find field \"{fieldName}\" in type \"{type.GetFullGenericTypeName()}\"");
 
 			if (!cachedFieldInfos.TryGetValue(handle, out fieldDict))
 				cachedFieldInfos[handle] = fieldDict = new();
@@ -127,7 +127,7 @@ namespace Chips.Runtime.Utility {
 
 			FieldInfo fieldInfo = GetField(type, fieldName);
 
-			string name = $"{typeof(FastReflection).FullName}.BuildRetrieveFieldDelegate<{type.GetSimplifiedGenericTypeName()}>.get_{fieldName}";
+			string name = $"{typeof(FastReflection).FullName}.BuildRetrieveFieldDelegate<{type.GetFullGenericTypeName()}>.get_{fieldName}";
 			DynamicMethod method = new(name, typeof(object), new[] { typeof(object) }, type, skipVisibility: true);
 
 			ILGenerator il = method.GetILGenerator();
@@ -190,7 +190,7 @@ namespace Chips.Runtime.Utility {
 
 			FieldInfo fieldInfo = GetField(type, fieldName);
 
-			string name = $"{typeof(FastReflection).FullName}.BuildAssignFieldDelegate<{type.GetSimplifiedGenericTypeName()}>.set_{fieldName}";
+			string name = $"{typeof(FastReflection).FullName}.BuildAssignFieldDelegate<{type.GetFullGenericTypeName()}>.set_{fieldName}";
 			DynamicMethod method = new(name, null, new[] { typeof(object), typeof(object) }, type, skipVisibility: true);
 
 			ILGenerator il = method.GetILGenerator();
@@ -263,7 +263,7 @@ namespace Chips.Runtime.Utility {
 
 			FieldInfo fieldInfo = GetField(type, fieldName);
 
-			string name = $"{typeof(FastReflection).FullName}.BuildGenericRetrieveFieldDelegate<{type.GetSimplifiedGenericTypeName()}>.get_{fieldName}";
+			string name = $"{typeof(FastReflection).FullName}.BuildGenericRetrieveFieldDelegate<{type.GetFullGenericTypeName()}>.get_{fieldName}";
 			DynamicMethod method = new(name, typeof(object), new[] { type.MakeByRefType() }, type, skipVisibility: true);
 
 			ILGenerator il = method.GetILGenerator();
@@ -296,7 +296,7 @@ namespace Chips.Runtime.Utility {
 
 			FieldInfo fieldInfo = GetField(type, fieldName);
 
-			string name = $"{typeof(FastReflection).FullName}.BuildGenericRetrieveFieldRefDelegate<{type.GetSimplifiedGenericTypeName()}>.get_{fieldName}";
+			string name = $"{typeof(FastReflection).FullName}.BuildGenericRetrieveFieldRefDelegate<{type.GetFullGenericTypeName()}>.get_{fieldName}";
 			DynamicMethod method = new(name, typeof(nint), new[] { type.MakeByRefType() }, type, skipVisibility: true);
 
 			ILGenerator il = method.GetILGenerator();
@@ -325,7 +325,7 @@ namespace Chips.Runtime.Utility {
 
 			FieldInfo fieldInfo = GetField(type, fieldName);
 
-			string name = $"{typeof(FastReflection).FullName}.BuildGenericAssignFieldDelegate<{type.GetSimplifiedGenericTypeName()}>.set_{fieldName}";
+			string name = $"{typeof(FastReflection).FullName}.BuildGenericAssignFieldDelegate<{type.GetFullGenericTypeName()}>.set_{fieldName}";
 			DynamicMethod method = new(name, null, new[] { type.MakeByRefType(), typeof(object) }, type, skipVisibility: true);
 
 			ILGenerator il = method.GetILGenerator();

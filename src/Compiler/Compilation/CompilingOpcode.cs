@@ -4,7 +4,7 @@ using Chips.Compiler.Utility;
 using Chips.Runtime;
 using Chips.Runtime.Specifications;
 using Chips.Runtime.Types;
-using Chips.Runtime.Utility;
+using Chips.Runtime.Types.NumberProcessing;
 using Chips.Utility;
 using System;
 using System.IO;
@@ -64,6 +64,67 @@ namespace Chips.Compiler.Compilation {
 		public abstract void SerializeArguments(CompilationContext context, BinaryWriter writer, OpcodeArgumentCollection args);
 	}
 
+	public interface IConstantOperandCompilingOpcode<T> {
+		protected static T ValidateArgument(CompilingOpcode opcode, OpcodeArgumentCollection args) {
+			if (args[0] is not T arg)
+				throw ChipsCompiler.ErrorAndThrow(new ArgumentException($"Opcode \"{opcode.GetRuntimeOpcode().Name}\" expects a {typeof(T).GetFullGenericTypeName()} argument, received \"{args[0]?.GetType().GetFullGenericTypeName() ?? "null"}\" instead"));
+
+			return arg;
+		}
+	}
+
+	public interface IConstantOperandHandlingCompilingOpcode<TOpcode, T> : IConstantOperandCompilingOpcode<T> where TOpcode : Opcode, IConstantOperandOpcode<T> {
+		T DeserializeArgument(CompilationContext context, BinaryReader reader);
+
+		T ParseArgument(CompilationContext context, string arg);
+
+		void SerializeArgument(BinaryWriter writer, T arg, CompilationContext context);
+
+		private static TOpcode GetDirectRuntimeOpcode(CompilingOpcode opcode) => (TOpcode)opcode.GetRuntimeOpcode();
+
+		protected static void EmitRegisterAccess(CompilingOpcode opcode, CompilationContext context, OpcodeArgumentCollection args, out T arg) {
+			arg = ValidateArgument(opcode, args);
+
+			context.EmitRegisterLoad(GetDirectRuntimeOpcode(opcode).Register);
+		}
+
+		protected static OpcodeArgumentCollection? DeserializeArguments(IConstantOperandHandlingCompilingOpcode<TOpcode, T> opcode, CompilationContext context, BinaryReader reader) {
+			try {
+				return new OpcodeArgumentCollection()
+					.Add(opcode.DeserializeArgument(context, reader));
+			} catch (Exception ex) {
+				ChipsCompiler.ErrorAndThrow(ex);
+				throw;
+			}
+		}
+
+		protected static OpcodeArgumentCollection? ParseArguments(IConstantOperandHandlingCompilingOpcode<TOpcode, T> opcode, CompilationContext context, string[] args) {
+			try {
+				return new OpcodeArgumentCollection()
+					.Add(opcode.ParseArgument(context, args[0]));
+			} catch (Exception ex) {
+				ChipsCompiler.ErrorAndThrow(ex);
+				throw;
+			}
+		}
+
+		protected static void SerializeArguments(CompilingOpcode opcode, CompilationContext context, BinaryWriter writer, OpcodeArgumentCollection args) {
+			var register = GetDirectRuntimeOpcode(opcode).Register;
+
+			var arg = ValidateArgument(opcode, args);
+			
+			if (!register.AcceptsValue(arg))
+				throw ChipsCompiler.ErrorAndThrow(new ArgumentException($"Register \"{Registers.GetRegisterNameFromID(register.ID)}\" does not accept values of type \"{arg?.GetType().GetFullGenericTypeName() ?? "null"}\""));
+
+			try {
+				((IConstantOperandHandlingCompilingOpcode<TOpcode, T>)opcode).SerializeArgument(writer, arg, context);
+			} catch (Exception ex) {
+				ChipsCompiler.ErrorAndThrow(ex);
+				throw;
+			}
+		}
+	}
+
 	/// <summary>
 	/// The base classs for a compiling Chips instruction
 	/// </summary>
@@ -90,65 +151,22 @@ namespace Chips.Compiler.Compilation {
 	/// <summary>
 	/// An implementation of <see cref="CompilingOpcode"/> which represents an instruction that loads a constant value to a register
 	/// </summary>
-	public abstract class LoadConstantCompilingOpcode<TOpcode, T> : CompilingOpcode<TOpcode> where TOpcode : LoadConstantOpcode<T>, new() {
+	public abstract class LoadConstantCompilingOpcode<TOpcode, T> : CompilingOpcode<TOpcode>, IConstantOperandHandlingCompilingOpcode<TOpcode, T> where TOpcode : LoadConstantOpcode<T>, new() {
 		public sealed override int ExpectedArgumentCount => 1;
 
-		private T ValidateArgument(OpcodeArgumentCollection args) {
-			if (args[0] is not T arg)
-				throw ChipsCompiler.ErrorAndThrow(new ArgumentException($"Opcode \"{GetRuntimeOpcode().Name}\" expects a {typeof(T).GetSimplifiedGenericTypeName()} argument, received \"{args[0]?.GetType().GetSimplifiedGenericTypeName() ?? "null"}\" instead"));
+		protected void EmitRegisterAccess(CompilationContext context, OpcodeArgumentCollection args, out T arg) => IConstantOperandHandlingCompilingOpcode<TOpcode, T>.EmitRegisterAccess(this, context, args, out arg);
 
-			return arg;
-		}
+		public abstract T DeserializeArgument(CompilationContext context, BinaryReader reader);
 
-		protected void EmitRegisterAccess(CompilationContext context, OpcodeArgumentCollection args, out T arg) {
-			arg = ValidateArgument(args);
+		public abstract T ParseArgument(CompilationContext context, string arg);
 
-			context.EmitRegisterLoad(GetDirectRuntimeOpcode().Register);
-		}
+		public abstract void SerializeArgument(BinaryWriter writer, T arg, CompilationContext context);
 
-		public sealed override OpcodeArgumentCollection? DeserializeArguments(CompilationContext context, BinaryReader reader) {
-			try {
-				return new OpcodeArgumentCollection()
-					.Add(DeserializeArgument(context, reader));
-			} catch (Exception ex) {
-				ChipsCompiler.ErrorAndThrow(ex);
-				throw;
-			}
-		}
+		public sealed override OpcodeArgumentCollection? DeserializeArguments(CompilationContext context, BinaryReader reader) => IConstantOperandHandlingCompilingOpcode<TOpcode, T>.DeserializeArguments(this, context, reader);
 
-		protected abstract T DeserializeArgument(CompilationContext context, BinaryReader reader);
+		public sealed override OpcodeArgumentCollection? ParseArguments(CompilationContext context, string[] args) => IConstantOperandHandlingCompilingOpcode<TOpcode, T>.ParseArguments(this, context, args);
 
-		public sealed override OpcodeArgumentCollection? ParseArguments(CompilationContext context, string[] args) {
-			try {
-				return new OpcodeArgumentCollection()
-					.Add(ParseArgument(context, args[0]));
-			} catch (Exception ex) {
-				ChipsCompiler.ErrorAndThrow(ex);
-				throw;
-			}
-		}
-
-		protected abstract T ParseArgument(CompilationContext context, string arg);
-
-		public sealed override void SerializeArguments(CompilationContext context, BinaryWriter writer, OpcodeArgumentCollection args) {
-			var registerName = GetDirectRuntimeOpcode().Register;
-
-			Register register = typeof(Registers).RetrieveStaticField<Register>(registerName)!;
-
-			var arg = ValidateArgument(args);
-			
-			if (!register.AcceptsValue(arg))
-				throw ChipsCompiler.ErrorAndThrow(new ArgumentException($"Register \"{registerName}\" does not accept values of type \"{arg?.GetType().GetSimplifiedGenericTypeName() ?? "null"}\""));
-
-			try {
-				SerializeArgument(writer, arg, context);
-			} catch (Exception ex) {
-				ChipsCompiler.ErrorAndThrow(ex);
-				throw;
-			}
-		}
-
-		protected abstract void SerializeArgument(BinaryWriter writer, T arg, CompilationContext context);
+		public sealed override void SerializeArguments(CompilationContext context, BinaryWriter writer, OpcodeArgumentCollection args) => IConstantOperandHandlingCompilingOpcode<TOpcode, T>.SerializeArguments(this, context, writer, args);
 	}
 
 	/// <summary>
@@ -547,5 +565,105 @@ namespace Chips.Compiler.Compilation {
 
 			writer.Write((ushort)label.Index);
 		}
+	}
+
+	public abstract class ArithmeticCompilingOpcode<TOpcode> : CompilingOpcode<TOpcode> where TOpcode : ArithmeticOpcode, new() {
+		private void EmitOperation(CompilationContext context, ArithmeticOperation operation) {
+			switch (operation) {
+				case ArithmeticOperation.Addition:
+					context.EmitFunctionCall<INumber>(nameof(INumber.Add));
+					break;
+				case ArithmeticOperation.Subtraction:
+					context.EmitFunctionCall<INumber>(nameof(INumber.Subtract));
+					break;
+				case ArithmeticOperation.Multiplication:
+					context.EmitFunctionCall<INumber>(nameof(INumber.Multiply));
+					break;
+				case ArithmeticOperation.Division:
+					context.EmitFunctionCall<INumber>(nameof(INumber.Divide));
+					break;
+				case ArithmeticOperation.Modulo:
+					context.EmitFunctionCall<INumber>(nameof(INumber.Modulus));
+					break;
+				case ArithmeticOperation.Repeat:
+					context.EmitFunctionCall<INumber>(nameof(INumber.Repeat));
+					break;
+				case ArithmeticOperation.Increment:
+					context.EmitFunctionCall<INumber>(nameof(INumber.Increment));
+					break;
+				case ArithmeticOperation.Decrement:
+					context.EmitFunctionCall<INumber>(nameof(INumber.Decrement));
+					break;
+				case ArithmeticOperation.Negation:
+					context.EmitFunctionCall<INumber>(nameof(INumber.Negate));
+					break;
+				default:
+					throw ChipsCompiler.ErrorAndThrow(new ArgumentException($"Unknown arithmetic operation \"{operation}\""));
+			}
+		}
+
+		public sealed override void Compile(CompilationContext context, OpcodeArgumentCollection args) {
+			/*    C# code:
+			 *    
+			 *    object __arithmetic = (object)VALUE;
+			 *    Implementation.AssignArithmeticResult(Register.Value.OPERATION(ValueConverter.CheckedBoxToUnderlyingType(__arithmetic)));
+			 */
+
+			int local = context.CreateOrGetLocal<object>("__arithmetic");
+			EmitOperand(context, args);
+			context.EmitNopAndDelayedResolver<DelayedBoxOrImplicitObjectResolver>();
+			context.Cursor.Emit(CilOpCodes.Stloc, local);
+
+			var opcode = GetDirectRuntimeOpcode();
+			var register = opcode.Register;
+
+			context.EmitRegisterLoad(register);
+			context.EmitRegisterValueRetrieval(register);
+			context.Cursor.Emit(CilOpCodes.Ldloc, local);
+			context.EmitBoxToUnderlyingType();
+			EmitOperation(context, opcode.Operation);
+		}
+
+		protected abstract void EmitOperand(CompilationContext context, OpcodeArgumentCollection args);
+	}
+
+	/// <summary>
+	/// An implementation of <see cref="CompilingOpcode"/> which represents an instruction that performs arithmetic operations
+	/// </summary>
+	public abstract class ArithmeticNoOperandCompilingOpcode<TOpcode> : ArithmeticCompilingOpcode<TOpcode> where TOpcode : ArithmeticOpcode, new() {
+		public sealed override int ExpectedArgumentCount => 0;
+
+		protected sealed override void EmitOperand(CompilationContext context, OpcodeArgumentCollection args) {
+			// Value is already on the stack
+		}
+	}
+
+	/// <summary>
+	/// An implementation of <see cref="CompilingOpcode"/> which represents an instruction that performs arithmetic operations on a constant
+	/// </summary>
+	public abstract class ArithmeticWithOperandCompilingOpcode<TOpcode, T> : ArithmeticCompilingOpcode<TOpcode>, IConstantOperandHandlingCompilingOpcode<TOpcode, T> where TOpcode : ArithmeticWithOperandOpcode<T>, new() {
+		public sealed override int ExpectedArgumentCount => 1;
+
+		protected sealed override void EmitOperand(CompilationContext context, OpcodeArgumentCollection args) {
+			T operand = IConstantOperandCompilingOpcode<T>.ValidateArgument(this, args);
+
+			EmitOperand(context, operand);
+		}
+
+		protected abstract void EmitOperand(CompilationContext context, T operand);
+
+		protected void EmitRegisterAccess(CompilationContext context, OpcodeArgumentCollection args, out T arg) => IConstantOperandHandlingCompilingOpcode<TOpcode, T>.EmitRegisterAccess(this, context, args, out arg);
+
+		public abstract T DeserializeArgument(CompilationContext context, BinaryReader reader);
+
+		public abstract T ParseArgument(CompilationContext context, string arg);
+
+		public abstract void SerializeArgument(BinaryWriter writer, T arg, CompilationContext context);
+
+		public sealed override OpcodeArgumentCollection? DeserializeArguments(CompilationContext context, BinaryReader reader) => IConstantOperandHandlingCompilingOpcode<TOpcode, T>.DeserializeArguments(this, context, reader);
+
+		public sealed override OpcodeArgumentCollection? ParseArguments(CompilationContext context, string[] args) => IConstantOperandHandlingCompilingOpcode<TOpcode, T>.ParseArguments(this, context, args);
+
+		public sealed override void SerializeArguments(CompilationContext context, BinaryWriter writer, OpcodeArgumentCollection args) => IConstantOperandHandlingCompilingOpcode<TOpcode, T>.SerializeArguments(this, context, writer, args);
 	}
 }

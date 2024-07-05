@@ -13,8 +13,7 @@ using System.Runtime.CompilerServices;
 
 namespace Chips.Runtime.Utility {
 	partial class ValueConverter {
-<# foreach (var type in types) {
-#>
+<# foreach (var type in types) { #>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static <#= type.Name #>_T CastTo<#= type.Name #>_T<T>(this T number) where T : INumber => new(number.To<#= type.Name #>());
 
@@ -24,7 +23,6 @@ namespace Chips.Runtime.Utility {
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static <#= type.Name #> CastTo<#= type.Name #>(INumber number) => number.To<#= type.Name #>();
 
-<#
-} #>
+<# } #>
 	}
 }

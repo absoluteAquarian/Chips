@@ -338,6 +338,34 @@ namespace Chips.Compiler.Utility {
 		}
 	}
 
+	public sealed class DelayedBoxOrCastclassObjectResolver : IDelayedInstructionResolver<DelayedBoxOrCastclassObjectResolver> {
+		public CilMethodBody Body { get; }
+
+		public int InstructionIndex { get; set; }
+
+		public DelayedBoxOrCastclassObjectResolver(CilMethodBody body, int instructionIndex) {
+			Body = body;
+			InstructionIndex = instructionIndex;
+		}
+
+		public static IDelayedInstructionResolver Create(CilMethodBody body, int instructionIndex) {
+			return new DelayedBoxOrCastclassObjectResolver(body, instructionIndex);
+		}
+
+		public void Resolve(StrictEvaluationStackSimulator stack) {
+			var instruction = ((IDelayedInstructionResolver)this).Instruction;
+
+			// Expected stack: [ value, ... ]
+
+			var type = stack.Peek();
+
+			if (type?.IsValueType is not true)
+				instruction.ReplaceWith(CilOpCodes.Castclass, ChipsCompiler.ManifestModule.CorLibTypeFactory.Object.Type);
+			else
+				instruction.ReplaceWith(CilOpCodes.Box, type);
+		}
+	}
+
 	public sealed class DelayedUnboxResolver : IDelayedInstructionResolver<DelayedUnboxResolver> {
 		public CilMethodBody Body { get; }
 
@@ -363,6 +391,38 @@ namespace Chips.Compiler.Utility {
 				throw new Exception($"Expected boxed object on stack, got \"{type?.Name ?? "null"}\" instead");
 
 			instruction.ReplaceWith(CilOpCodes.Unbox_Any, boxed.boxedType);
+		}
+	}
+
+	public sealed class DelayedUnboxToExactTypeResolver : IDelayedInstructionResolver<DelayedUnboxToExactTypeResolver, ITypeDefOrRef> {
+		public CilMethodBody Body { get; }
+
+		public int InstructionIndex { get; set; }
+
+		public ITypeDefOrRef Type { get; }
+
+		public DelayedUnboxToExactTypeResolver(CilMethodBody body, int instructionIndex, ITypeDefOrRef type) {
+			Body = body;
+			InstructionIndex = instructionIndex;
+			Type = type;
+		}
+
+		public static IDelayedInstructionResolver Create(CilMethodBody body, int instructionIndex, ITypeDefOrRef type) {
+			return new DelayedUnboxToExactTypeResolver(body, instructionIndex, type);
+		}
+
+		private static SignatureComparer _typeComparer = new SignatureComparer(SignatureComparisonFlags.VersionAgnostic);
+
+		public void Resolve(StrictEvaluationStackSimulator stack) {
+			var instruction = ((IDelayedInstructionResolver)this).Instruction;
+			var type = stack.Peek();
+
+			// Expected stack: [ boxed value, ... ]
+
+			if (type is null || (type is not BoxedTypeDefOrRef && _typeComparer.Equals(type.ToTypeSignature(), ChipsCompiler.ManifestModule.CorLibTypeFactory.Object)))
+				throw new Exception($"Expected object on stack, got \"{type?.Name ?? "null"}\" instead");
+
+			instruction.ReplaceWith(CilOpCodes.Unbox_Any, Type);
 		}
 	}
 

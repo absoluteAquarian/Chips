@@ -16,17 +16,13 @@ using System;
 
 #pragma warning disable CS0162
 namespace Chips.Runtime.Types.NumberProcessing {
-<# foreach (var type in iTypes) {
-#>
+<# foreach (var type in iTypes) { #>
 	[TextTemplateGenerated]
-<# if (!type.Name.EndsWith("IntPtr")) {
-#>
+<# if (!type.Name.EndsWith("IntPtr")) { #>
 	public partial struct <#= type.Name #>_T : I<#= type.Name.StartsWith("U") || type.Name == "Byte" ? "Unsigned" : "" #>Integer<<#= type.Name #>>, INumberConstants<<#= type.Name #>_T> {
-<# } else {
-#>
+<# } else { #>
 	public unsafe partial struct <#= type.Name #>_T : I<#= type.Name.StartsWith("U") ? "Unsigned" : "" #>Integer<<#= type.Name #>>, INumberConstants<<#= type.Name #>_T> {
-<#
-} #>
+<# } #>
 		private <#= type.Name #> value;
 
 		public readonly object Value => value;
@@ -35,14 +31,11 @@ namespace Chips.Runtime.Types.NumberProcessing {
 
 		public readonly bool IsZero => value == 0;
 
-<# if (!type.Name.StartsWith("U") && type.Name != "Byte") {
-#>
+<# if (!type.Name.StartsWith("U") && type.Name != "Byte") { #>
 		public readonly bool IsNegative => value < 0;
-<# } else {
-#>
+<# } else { #>
 		public readonly bool IsNegative => false;
-<#
-} #>
+<# } #>
 
 		public readonly int NumericSize => sizeof(<#= type.Name #>);
 
@@ -54,14 +47,12 @@ namespace Chips.Runtime.Types.NumberProcessing {
 			this.value = value;
 		}
 
-<# if (type.Name != "Int32") {
-#>
+<# if (type.Name != "Int32") { #>
 		public <#= type.Name #>_T(Int32 value) {
 			this.value = (<#= type.Name #>)value;
 		}
 
-<#
-} #>
+<# } #>
 		public readonly INumber Cast(INumber number) {
 			return ValueConverter.CastTo<#= type.Name #>_T(number);
 		}
@@ -70,8 +61,7 @@ namespace Chips.Runtime.Types.NumberProcessing {
 			return TypeTracking.ShouldUpcast(number, this) ? ValueConverter.CastTo<#= type.Name #>_T(number) : number;
 		}
 
-<# if (!type.Name.StartsWith("U") && type.Name != "Byte") {
-#>
+<# if (!type.Name.StartsWith("U") && type.Name != "Byte") { #>
 		public readonly INumber Abs() {
 			if (value == <#= type.Name #>.MinValue) {
 				Registers.F.Overflow = true;
@@ -80,12 +70,10 @@ namespace Chips.Runtime.Types.NumberProcessing {
 
 			return new <#= type.Name #>_T(Math.Abs(value));
 		}
-<# } else {
-#>
+<# } else { #>
 		public readonly INumber Abs()
 			=> new <#= type.Name #>_T(value);
-<#
-} #>
+<# } #>
 
 		public readonly INumber Add(INumber number) {
 			// For sizes larger than int, this block should be removed by the compiler
@@ -97,7 +85,7 @@ namespace Chips.Runtime.Types.NumberProcessing {
 			if (TypeTracking.ShouldUpcast(this, number))
 				return number.Add(this);
 
-			return new <#= type.Name #>_T(ConstrainedArithmetic.Add(value, number.To<#= type.Name #>()));
+			return new <#= type.Name #>_T(Arithmetic.Add(value, number.To<#= type.Name #>()));
 		}
 
 		public readonly IInteger And(IInteger number) {
@@ -246,8 +234,7 @@ namespace Chips.Runtime.Types.NumberProcessing {
 		}
 
 		public readonly INumber Negate() {
-<# if (!type.Name.StartsWith("U") && type.Name != "Byte") {
-#>
+<# if (!type.Name.StartsWith("U") && type.Name != "Byte") { #>
 			// For sizes larger than int, this block should be removed by the compiler
 			if (sizeof(<#= type.Name #>) < sizeof(int)) {
 				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
@@ -255,11 +242,9 @@ namespace Chips.Runtime.Types.NumberProcessing {
 			}
 
 			return new <#= type.Name #>_T(-value);
-<# } else {
-#>
+<# } else { #>
 			throw new InvalidOperationException("Negation cannot be performed on unsigned integers");
-<#
-} #>
+<# } #>
 		}
 
 		public readonly IInteger Not() {
@@ -288,6 +273,19 @@ namespace Chips.Runtime.Types.NumberProcessing {
 			return new <#= type.Name #>_T(value | number.To<#= type.Name #>());
 		}
 
+		public readonly INumber Repeat(INumber number) {
+			// For sizes larger than int, this block should be removed by the compiler
+			if (sizeof(<#= type.Name #>) < sizeof(int)) {
+				INumber upcast = ValueConverter.UpcastToAtLeastInt32(this);
+				return upcast.Repeat(number);
+			}
+
+			if (TypeTracking.ShouldUpcast(this, number))
+				return number.Upcast(this).Repeat(number);
+
+			return new <#= type.Name #>_T(Arithmetic.Repeat(value, number.To<#= type.Name #>()));
+		}
+
 		public readonly INumber Subtract(INumber number) {
 			// For sizes larger than int, this block should be removed by the compiler
 			if (sizeof(<#= type.Name #>) < sizeof(int)) {
@@ -298,21 +296,17 @@ namespace Chips.Runtime.Types.NumberProcessing {
 			if (TypeTracking.ShouldUpcast(this, number))
 				return number.Upcast(this).Subtract(number);
 
-			return new <#= type.Name #>_T(ConstrainedArithmetic.Subtract(value, number.To<#= type.Name #>()));
+			return new <#= type.Name #>_T(Arithmetic.Subtract(value, number.To<#= type.Name #>()));
 		}
 
-<# foreach (var typeTo in iTypes) {
-#>
+<# foreach (var typeTo in iTypes) { #>
 		public readonly <#= typeTo.Name #> To<#= typeTo.Name #>() => (<#= typeTo.Name #>)value;
 
-<#
-} #>
-<# foreach (var typeTo in fTypes) {
-#>
+<# } #>
+<# foreach (var typeTo in fTypes) { #>
 		public readonly <#= typeTo.Name #> To<#= typeTo.Name #>() => (<#= typeTo.Name #>)value;
 
-<#
-} #>
+<# } #>
 		public readonly IInteger Xor(IInteger number) {
 			// For sizes larger than int, this block should be removed by the compiler
 			if (sizeof(<#= type.Name #>) < sizeof(int)) {
@@ -330,10 +324,8 @@ namespace Chips.Runtime.Types.NumberProcessing {
 		}
 	}
 
-<#
-} #>
-<# foreach (var type in fTypes) { 
-#>
+<# } #>
+<# foreach (var type in fTypes) {  #>
 	[TextTemplateGenerated]
 	public struct <#= type.Name #>_T : IFloat<<#= type.Name #>>, IFloatConstants<<#= type.Name #>_T> {
 		private <#= type.Name #> value;
@@ -352,35 +344,30 @@ namespace Chips.Runtime.Types.NumberProcessing {
 
 		public static <#= type.Name #>_T One => new <#= type.Name #>_T((<#= type.Name #>)1);
 
-<# if (type.Name != "Decimal") {
-#>
+<# if (type.Name != "Decimal") { #>
 		public static <#= type.Name #>_T E => new <#= type.Name #>_T(Math<#= type.Name == "Single" ? "F" : "" #>.E);
 
 		public readonly bool IsNaN => <#= type.Name #>.IsNaN(value);
 
 		public readonly bool IsInfinity => <#= type.Name #>.IsInfinity(value);
-<# } else {
-#>
+<# } else { #>
 		public static <#= type.Name #>_T E => new <#= type.Name #>_T(DecimalMath.DecimalEx.E);
 
 		public readonly bool IsNaN => false;
 
 		public readonly bool IsInfinity => false;
-<#
-} #>
+<# } #>
 
 		public <#= type.Name #>_T(<#= type.Name #> value) {
 			this.value = value;
 		}
 
-<# if (type.Name != "Single") {
-#>
+<# if (type.Name != "Single") { #>
 		public <#= type.Name #>_T(Single value) {
 			this.value = (<#= type.Name #>)value;
 		}
 
-<#
-} #>
+<# } #>
 		public readonly INumber Cast(INumber number) {
 			return ValueConverter.CastTo<#= type.Name #>_T(number);
 		}
@@ -393,85 +380,64 @@ namespace Chips.Runtime.Types.NumberProcessing {
 			=> new <#= type.Name #>_T(Math<#= type.Name == "Single" ? "F" : "" #>.Abs(value));
 
 		public readonly IFloat Acos()
-<# if (type.Name != "Decimal") {
-#>
+<# if (type.Name != "Decimal") { #>
 			=> new <#= type.Name #>_T(Math<#= type.Name == "Single" ? "F" : "" #>.Acos(value));
-<# } else {
-#>
+<# } else { #>
 			=> new <#= type.Name #>_T(DecimalMath.DecimalEx.ACos(value));
-<#
-} #>
+<# } #>
 
 		public readonly IFloat Acosh()
-<# if (type.Name != "Decimal") {
-#>
+<# if (type.Name != "Decimal") { #>
 			=> new <#= type.Name #>_T(Math<#= type.Name == "Single" ? "F" : "" #>.Acosh(value));
-<# } else {
-#>
+<# } else { #>
 			=> throw new InvalidOperationException("Performing \"acosh\" on decimal values is not supported");
-<#
-} #>
+<# } #>
 
 		public readonly INumber Add(INumber number) {
 			if (TypeTracking.ShouldUpcast(this, number))
 				return number.Add(this);
 
-			return new <#= type.Name #>_T(ConstrainedArithmetic.Add(value, number.To<#= type.Name #>()));
+			return new <#= type.Name #>_T(Arithmetic.Add(value, number.To<#= type.Name #>()));
 		}
 
 		public readonly IFloat Asin()
-<# if (type.Name != "Decimal") {
-#>
+<# if (type.Name != "Decimal") { #>
 			=> new <#= type.Name #>_T(Math<#= type.Name == "Single" ? "F" : "" #>.Asin(value));
-<# } else {
-#>
+<# } else { #>
 			=> new <#= type.Name #>_T(DecimalMath.DecimalEx.ASin(value));
-<#
-} #>
+<# } #>
 
 		public readonly IFloat Asinh()
-<# if (type.Name != "Decimal") {
-#>
+<# if (type.Name != "Decimal") { #>
 			=> new <#= type.Name #>_T(Math<#= type.Name == "Single" ? "F" : "" #>.Asinh(value));
-<# } else {
-#>
+<# } else { #>
 			=> throw new InvalidOperationException("Performing \"asinh\" on decimal values is not supported");
-<#
-} #>
+<# } #>
 
 		public readonly IFloat Atan()
-<# if (type.Name != "Decimal") {
-#>
+<# if (type.Name != "Decimal") { #>
 			=> new <#= type.Name #>_T(Math<#= type.Name == "Single" ? "F" : "" #>.Atan(value));
-<# } else {
-#>
+<# } else { #>
 			=> new <#= type.Name #>_T(DecimalMath.DecimalEx.ATan(value));
-<#
-} #>
+<# } #>
 
 		public readonly IFloat Atan2(IFloat divisor) {
 			if (TypeTracking.ShouldUpcast(this, divisor))
 				return ((IFloat)divisor.Upcast(this)).Atan2(divisor);
 
-<# if (type.Name != "Decimal") {
-#>
+<# if (type.Name != "Decimal") { #>
 			return new <#= type.Name #>_T(Math<#= type.Name == "Single" ? "F" : " "#>.Atan2(value, divisor.To<#= type.Name #>()));
-<# } else {
-#>
+<# } else { #>
 			return new <#= type.Name #>_T(DecimalMath.DecimalEx.ATan2(value, divisor.To<#= type.Name #>()));
-<#
-} #>
+<# } #>
 		}
 
 		public readonly IFloat Atanh()
-<# if (type.Name != "Decimal") {
-#>
+<# if (type.Name != "Decimal") { #>
 			=> new <#= type.Name #>_T(Math<#= type.Name == "Single" ? "F" : "" #>.Asinh(value));
-<# } else {
-#>
+<# } else { #>
 			=> throw new InvalidOperationException("Performing \"atanh\" on decimal values is not supported");
-<#
-} #>
+<# } #>
 
 		public readonly INumber Ceiling()
 			=> new <#= type.Name #>_T(Math<#= type.Name == "Single" ? "F" : "" #>.Ceiling(value));
@@ -508,24 +474,18 @@ namespace Chips.Runtime.Types.NumberProcessing {
 		}
 
 		public readonly IFloat Cos()
-<# if (type.Name != "Decimal") {
-#>
+<# if (type.Name != "Decimal") { #>
 			=> new <#= type.Name #>_T(Math<#= type.Name == "Single" ? "F" : "" #>.Cos(value));
-<# } else {
-#>
+<# } else { #>
 			=> new <#= type.Name #>_T(DecimalMath.DecimalEx.Cos(value));
-<#
-} #>
+<# } #>
 
 		public readonly IFloat Cosh()
-<# if (type.Name != "Decimal") {
-#>
+<# if (type.Name != "Decimal") { #>
 			=> new <#= type.Name #>_T(Math<#= type.Name == "Single" ? "F" : "" #>.Cosh(value));
-<# } else {
-#>
+<# } else { #>
 			=> throw new InvalidOperationException("Performing \"cosh\" on decimal values is not supported");
-<#
-} #>
+<# } #>
 		
 		public readonly INumber Decrement()
 			=> new <#= type.Name #>_T(value + 1);
@@ -538,27 +498,21 @@ namespace Chips.Runtime.Types.NumberProcessing {
 		}
 
 		public readonly IFloat Exp()
-<# if (type.Name != "Decimal") {
-#>
+<# if (type.Name != "Decimal") { #>
 			=> new <#= type.Name #>_T(Math<#= type.Name == "Single" ? "F" : "" #>.Exp(value));
-<# } else {
-#>
+<# } else { #>
 			=> new <#= type.Name #>_T(DecimalMath.DecimalEx.Exp(value));
-<#
-} #>
+<# } #>
 
 		public readonly INumber Floor()
 			=> new <#= type.Name #>_T(Math<#= type.Name == "Single" ? "F" : "" #>.Floor(value));
 
 		public readonly IInteger GetBits()
-<# if (type.Name == "Decimal") {
-#>
+<# if (type.Name == "Decimal") { #>
 			=> throw new InvalidOperationException("Retrieving the bits on an decimal instance is not supported");
-<# } else {
-#>
+<# } else { #>
 			=> ValueConverter.RetrieveFloatingPointBits(this);
-<#
-} #>
+<# } #>
 
 		public readonly INumber Increment()
 			=> new <#= type.Name #>_T(value + 1);
@@ -567,34 +521,25 @@ namespace Chips.Runtime.Types.NumberProcessing {
 			=> (IFloat)One.Divide(this);
 
 		public readonly IFloat Ln()
-<# if (type.Name != "Decimal") {
-#>
+<# if (type.Name != "Decimal") { #>
 			=> new <#= type.Name #>_T(Math<#= type.Name == "Single" ? "F" : "" #>.Log(value));
-<# } else {
-#>
+<# } else { #>
 			=> new <#= type.Name #>_T(DecimalMath.DecimalEx.Log(value));
-<#
-} #>
+<# } #>
 
 		public readonly IFloat Log10()
-<# if (type.Name != "Decimal") {
-#>
+<# if (type.Name != "Decimal") { #>
 			=> new <#= type.Name #>_T(Math<#= type.Name == "Single" ? "F" : "" #>.Log10(value));
-<# } else {
-#>
+<# } else { #>
 			=> new <#= type.Name #>_T(DecimalMath.DecimalEx.Log10(value));
-<#
-} #>
+<# } #>
 
 		public readonly IFloat Log2()
-<# if (type.Name != "Decimal") {
-#>
+<# if (type.Name != "Decimal") { #>
 			=> new <#= type.Name #>_T(Math<#= type.Name == "Single" ? "F" : "" #>.Log2(value));
-<# } else {
-#>
+<# } else { #>
 			=> new <#= type.Name #>_T(DecimalMath.DecimalEx.Log2(value));
-<#
-} #>
+<# } #>
 
 		public readonly INumber Modulus(INumber number) {
 			if (TypeTracking.ShouldUpcast(this, number))
@@ -617,90 +562,74 @@ namespace Chips.Runtime.Types.NumberProcessing {
 			if (TypeTracking.ShouldUpcast(this, exponent))
 				return ((IFloat)exponent.Upcast(this)).Pow(exponent);
 
-<# if (type.Name != "Decimal") {
-#>
+<# if (type.Name != "Decimal") { #>
 			return new <#= type.Name #>_T(Math<#= type.Name == "Single" ? "F" : "" #>.Pow(value, exponent.To<#= type.Name #>()));
-<# } else {
-#>
+<# } else { #>
 			return new <#= type.Name #>_T(DecimalMath.DecimalEx.Pow(value, exponent.To<#= type.Name #>()));
-<#
-} #>
+<# } #>
+		}
+
+		public readonly INumber Repeat(INumber number) {
+			if (TypeTracking.ShouldUpcast(this, number))
+				return number.Upcast(this).Repeat(number);
+
+			return new <#= type.Name #>_T(Arithmetic.Repeat(value, number.To<#= type.Name #>()));
 		}
 
 		public readonly IFloat Root(IFloat root)
 			=> Pow(root.Inverse());
 
 		public readonly IFloat Sin()
-<# if (type.Name != "Decimal") {
-#>
+<# if (type.Name != "Decimal") { #>
 			=> new <#= type.Name #>_T(Math<#= type.Name == "Single" ? "F" : "" #>.Sin(value));
-<# } else {
-#>
+<# } else { #>
 			=> new <#= type.Name #>_T(DecimalMath.DecimalEx.Sin(value));
-<#
-} #>
+<# } #>
 
 		public readonly IFloat Sinh()
-<# if (type.Name != "Decimal") {
-#>
+<# if (type.Name != "Decimal") { #>
 			=> new <#= type.Name #>_T(Math<#= type.Name == "Single" ? "F" : "" #>.Sinh(value));
-<# } else {
-#>
+<# } else { #>
 			=> throw new InvalidOperationException("Performing \"sinh\" on decimal values is not supported");
-<#
-} #>
+<# } #>
 
 		public readonly IFloat Sqrt()
-<# if (type.Name != "Decimal") {
-#>
+<# if (type.Name != "Decimal") { #>
 			=> new <#= type.Name #>_T(Math<#= type.Name == "Single" ? "F" : "" #>.Sqrt(value));
-<# } else {
-#>
+<# } else { #>
 			=> new <#= type.Name #>_T(DecimalMath.DecimalEx.Sqrt(value));
-<#
-} #>
+<# } #>
 
 		public readonly INumber Subtract(INumber number) {
 			if (TypeTracking.ShouldUpcast(this, number))
 				return number.Upcast(this).Subtract(number);
 
-			return new <#= type.Name #>_T(ConstrainedArithmetic.Subtract(value, number.To<#= type.Name #>()));
+			return new <#= type.Name #>_T(Arithmetic.Subtract(value, number.To<#= type.Name #>()));
 		}
 
 		public readonly IFloat Tan()
-<# if (type.Name != "Decimal") {
-#>
+<# if (type.Name != "Decimal") { #>
 			=> new <#= type.Name #>_T(Math<#= type.Name == "Single" ? "F" : "" #>.Tan(value));
-<# } else {
-#>
+<# } else { #>
 			=> new <#= type.Name #>_T(DecimalMath.DecimalEx.Tan(value));
-<#
-} #>
+<# } #>
 
 		public readonly IFloat Tanh()
-<# if (type.Name != "Decimal") {
-#>
+<# if (type.Name != "Decimal") { #>
 			=> new <#= type.Name #>_T(Math<#= type.Name == "Single" ? "F" : "" #>.Tanh(value));
-<# } else {
-#>
+<# } else { #>
 			=> throw new InvalidOperationException("Performing \"tanh\" on decimal values is not supported");
-<#
-} #>
+<# } #>
 
-<# foreach (var typeTo in iTypes) {
-#>
+<# foreach (var typeTo in iTypes) { #>
 		public readonly <#= typeTo.Name #> To<#= typeTo.Name #>() => (<#= typeTo.Name #>)value;
 
-<#
-} #>
-<# foreach (var typeTo in fTypes) {
-#>
+<# } #>
+<# foreach (var typeTo in fTypes) { #>
 		public readonly <#= typeTo.Name #> To<#= typeTo.Name #>() => (<#= typeTo.Name #>)value;
 
-<#
-} #>
+<# } #>
 	}
 
-<#
-} #>
+<# } #>
 }

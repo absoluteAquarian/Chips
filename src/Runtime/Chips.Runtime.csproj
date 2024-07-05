@@ -39,10 +39,10 @@
       <AutoGen>True</AutoGen>
       <DependentUpon>InternalTypes.tt</DependentUpon>
     </None>
-    <None Include="Utility\ConstrainedArithmetic.cs">
+    <None Include="Utility\Arithmetic.cs">
       <DesignTime>True</DesignTime>
       <AutoGen>True</AutoGen>
-      <DependentUpon>ConstrainedArithmetic.tt</DependentUpon>
+      <DependentUpon>Arithmetic.tt</DependentUpon>
     </None>
     <None Include="Utility\ValueConverter.Casting.cs">
       <DesignTime>True</DesignTime>
@@ -57,10 +57,20 @@
       <AutoGen>True</AutoGen>
       <DependentUpon>InternalTypes.tt</DependentUpon>
     </Compile>
+    <Compile Update="Utility\Arithmetic.cs">
+      <DesignTime>True</DesignTime>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Arithmetic.tt</DependentUpon>
+    </Compile>
     <Compile Update="Utility\ConstrainedArithmetic.cs">
       <DesignTime>True</DesignTime>
       <AutoGen>True</AutoGen>
       <DependentUpon>ConstrainedArithmetic.tt</DependentUpon>
+    </Compile>
+    <Compile Update="Utility\OverflowDetectionArithmetic.cs">
+      <DesignTime>True</DesignTime>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>OverflowDetectionArithmetic.tt</DependentUpon>
     </Compile>
     <Compile Update="Utility\ValueConverter.Casting.cs">
       <DesignTime>True</DesignTime>
@@ -74,9 +84,9 @@
       <Generator>TextTemplatingFileGenerator</Generator>
       <LastGenOutput>InternalTypes.cs</LastGenOutput>
     </None>
-    <None Update="Utility\ConstrainedArithmetic.tt">
+    <None Update="Utility\Arithmetic.tt">
       <Generator>TextTemplatingFileGenerator</Generator>
-      <LastGenOutput>ConstrainedArithmetic.cs</LastGenOutput>
+      <LastGenOutput>Arithmetic.cs</LastGenOutput>
     </None>
     <None Update="Utility\ValueConverter.Casting.tt">
       <Generator>TextTemplatingFileGenerator</Generator>

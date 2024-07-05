@@ -39,6 +39,8 @@
 
 		INumber Negate();
 
+		INumber Repeat(INumber number);
+
 		INumber Subtract(INumber number);
 
 		sbyte ToSByte();

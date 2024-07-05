@@ -1,4 +1,5 @@
 ﻿using AsmResolver.PE.DotNet.Cil;
+using Chips.Runtime.Types;
 using System;
 
 namespace Chips.Runtime.Specifications {
@@ -39,11 +40,15 @@ namespace Chips.Runtime.Specifications {
 		}
 	}
 
+	public interface IConstantOperandOpcode<T> {
+		Register Register { get; }
+	}
+
 	/// <summary>
 	/// An implementation of <see cref="Opcode"/> which represents an instruction that loads a constant value to a register
 	/// </summary>
-	public abstract class LoadConstantOpcode<T> : Opcode {
-		public abstract string Register { get; }
+	public abstract class LoadConstantOpcode<T> : Opcode, IConstantOperandOpcode<T> {
+		public abstract Register Register { get; }
 	}
 
 	/// <summary>
@@ -134,4 +139,12 @@ namespace Chips.Runtime.Specifications {
 	public abstract class TypeOperandOpcode : Opcode {
 		public abstract bool AllowsNull { get; }
 	}
+
+	public abstract class ArithmeticOpcode : Opcode {
+		public abstract ArithmeticOperation Operation { get; }
+
+		public abstract Register Register { get; }
+	}
+
+	public abstract class ArithmeticWithOperandOpcode<T> : ArithmeticOpcode, IConstantOperandOpcode<T> { }
 }

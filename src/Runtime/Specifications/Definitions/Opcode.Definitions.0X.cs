@@ -1,4 +1,5 @@
 ﻿using Chips.Runtime.Types;
+using Chips.Runtime.Types.NumberProcessing;
 using System;
 
 namespace Chips.Runtime.Specifications {
@@ -10,20 +11,20 @@ namespace Chips.Runtime.Specifications {
 		public override OpcodeID Code => OpcodeID.Brk;
 	}
 
-	public sealed class OpcodeLdci : LoadConstantOpcode<int> {
-		public override string Register => nameof(Registers.A);
+	public sealed class OpcodeLdci : LoadConstantOpcode<Int32_T> {
+		public override Register Register => Registers.A;
 
 		public override OpcodeID Code => OpcodeID.Ldci;
 	}
 
-	public sealed class OpcodeLdcf : LoadConstantOpcode<float> {
-		public override string Register => nameof(Registers.I);
+	public sealed class OpcodeLdcf : LoadConstantOpcode<Single_T> {
+		public override Register Register => Registers.I;
 
 		public override OpcodeID Code => OpcodeID.Ldcf;
 	}
 
 	public sealed class OpcodeLdcs : LoadConstantOpcode<StringMetadata> {
-		public override string Register => nameof(Registers.S);
+		public override Register Register => Registers.S;
 
 		public override OpcodeID Code => OpcodeID.Ldcs;
 	}
