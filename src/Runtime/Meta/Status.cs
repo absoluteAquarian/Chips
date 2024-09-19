@@ -8,6 +8,7 @@ namespace Chips.Runtime.Meta {
 		private const int MASK_OVERFLOW = 0x0002;
 		private const int MASK_NEGATIVE = 0x0004;
 		private const int MASK_ZERO = 0x0008;
+		private const int MASK_NAN = 0x0010;
 
 		public bool Carry {
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -35,6 +36,13 @@ namespace Chips.Runtime.Meta {
 			readonly get => (word & MASK_ZERO) != 0;
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
 			set => word = (ushort)((word & ~MASK_ZERO) | (value ? MASK_ZERO : 0));
+		}
+
+		public bool NaN {
+			[MethodImpl(MethodImplOptions.AggressiveInlining)]
+			readonly get => (word & MASK_NAN) != 0;
+			[MethodImpl(MethodImplOptions.AggressiveInlining)]
+			set => word = (ushort)((word & ~MASK_NAN) | (value ? MASK_NAN : 0));
 		}
 	}
 }

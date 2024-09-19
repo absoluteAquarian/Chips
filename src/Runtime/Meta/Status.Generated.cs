@@ -7,6 +7,7 @@ namespace Chips.Runtime.Meta {
 			Overflow = false;	
 			Negative = value < 0;
 			Zero = value == 0;
+			NaN = false;
 		}
 
 		public void Update(Int16 value) {
@@ -14,6 +15,7 @@ namespace Chips.Runtime.Meta {
 			Overflow = false;	
 			Negative = value < 0;
 			Zero = value == 0;
+			NaN = false;
 		}
 
 		public void Update(Int32 value) {
@@ -21,6 +23,7 @@ namespace Chips.Runtime.Meta {
 			Overflow = false;	
 			Negative = value < 0;
 			Zero = value == 0;
+			NaN = false;
 		}
 
 		public void Update(Int64 value) {
@@ -28,6 +31,7 @@ namespace Chips.Runtime.Meta {
 			Overflow = false;	
 			Negative = value < 0;
 			Zero = value == 0;
+			NaN = false;
 		}
 
 		public void Update(Byte value) {
@@ -35,6 +39,7 @@ namespace Chips.Runtime.Meta {
 			Overflow = false;	
 			Negative = false;
 			Zero = value == 0;
+			NaN = false;
 		}
 
 		public void Update(UInt16 value) {
@@ -42,6 +47,7 @@ namespace Chips.Runtime.Meta {
 			Overflow = false;	
 			Negative = false;
 			Zero = value == 0;
+			NaN = false;
 		}
 
 		public void Update(UInt32 value) {
@@ -49,6 +55,7 @@ namespace Chips.Runtime.Meta {
 			Overflow = false;	
 			Negative = false;
 			Zero = value == 0;
+			NaN = false;
 		}
 
 		public void Update(UInt64 value) {
@@ -56,20 +63,23 @@ namespace Chips.Runtime.Meta {
 			Overflow = false;	
 			Negative = false;
 			Zero = value == 0;
+			NaN = false;
 		}
 
 		public void Update(Single value) {
 			Carry = false;
-			Overflow = Single.IsInfinity(value) || Single.IsNaN(value);
+			Overflow = Single.IsInfinity(value);
 			Negative = value < 0;
-			Zero = value == 0 || Single.IsNaN(value);
+			Zero = value == 0;
+			NaN = Single.IsNaN(value);
 		}
 
 		public void Update(Double value) {
 			Carry = false;
-			Overflow = Double.IsInfinity(value) || Double.IsNaN(value);
+			Overflow = Double.IsInfinity(value);
 			Negative = value < 0;
-			Zero = value == 0 || Double.IsNaN(value);
+			Zero = value == 0;
+			NaN = Double.IsNaN(value);
 		}
 
 		public void Update(Decimal value) {
@@ -77,6 +87,7 @@ namespace Chips.Runtime.Meta {
 			Overflow = false;
 			Negative = value < 0;
 			Zero = value == 0;
+			NaN = false;
 		}
 
 	}

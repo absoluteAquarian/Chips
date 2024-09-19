@@ -23,6 +23,7 @@ namespace Chips.Runtime.Meta {
 			Negative = value < 0;
 <# } #>
 			Zero = value == 0;
+			NaN = false;
 		}
 
 <# } #>
@@ -33,10 +34,12 @@ namespace Chips.Runtime.Meta {
 			Overflow = false;
 			Negative = value < 0;
 			Zero = value == 0;
+			NaN = false;
 <# } else { #>
-			Overflow = <#= type.Name #>.IsInfinity(value) || <#= type.Name #>.IsNaN(value);
+			Overflow = <#= type.Name #>.IsInfinity(value);
 			Negative = value < 0;
-			Zero = value == 0 || <#= type.Name #>.IsNaN(value);
+			Zero = value == 0;
+			NaN = <#= type.Name #>.IsNaN(value);
 <# } #>
 		}
 
