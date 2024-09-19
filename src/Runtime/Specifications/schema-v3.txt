@@ -1,0 +1,716 @@
+﻿REGISTERS
+====================
+Up to 256 registers are available with varying types and sizes.
+
+{00..0F}  $A[0-F]     - address registers
+{10..2F}  $Z[00-1F]   - integer registers
+{30..4F}  $F[00-1F]   - floating-point registers
+{50..5F}  $S[0-F]     - string registers
+{60..9F}  $OBJ[00-3F] - object registers
+{A0..AF}  $V[0-F]     - vector registers
+{B0..BF}  $T[0-F]     - metadata token registers
+{FA..FC}  $R[0-2]     - typeless reserved registers for pseudo-instructions
+{FD}      $EX         - exception register, contains Exception object in current exception handler scope, if any
+{FE}      $PS         - processor status register
+{FF}      $ANS        - typeless register, contains the result of the last operation that did not specify a destination register
+
+The processor status register is a 16-bit integer that contains the following flags:
+  
+    ---- ---- ---I ZNVC
+
+$PS.C - carry flag
+$PS.I - NaN flag
+$PS.N - negative flag
+$PS.V - overflow flag
+$PS.Z - zero flag
+
+If an integer arithmetic operation results in an overflow, the overflow flag is set.
+If a floating-point arithmetic operation results in a NaN value, the NaN flag is set.
+If a floating-point arithmetic operation results in infinity, the overflow flag is set.
+  (If the arithmetic instruction is preceded by ".checked", an exception is thrown instead of setting the overflow flag.)
+
+
+KEYWORDS
+====================
+.alias     | type alias (".alias ABC = X.Y.Z;")
+.field     | begins field definition
+.method    | begins method definition, body enclosed by {}
+.type      | begins class/struct definition, body enclosed by {}
+.namespace | begins namespace definition, body enclosed by {}
+.import    | begins assembly import definition (".import Namespace.Name from Assembly")
+public     | "public" type/member access modifier
+assembly   | "internal" type/member access modifier
+derived    | "protected" member access modifier
+abstract   | "abstract" type/member access modifier
+private    | "private" member access modifier
+static     | "static" type/member access modifier
+class      | "class" type definition
+struct     | "struct" type definition
+const      | constant modifier
+
+
+OPCODES
+====================
+
+    B = block operand
+    I = immediate operand
+    L = label operand
+    R = register operand
+    T = metadata token operand
+
+       _________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________
+_______|______x0______|______x1______|______x2______|______x3______|______x4______|______x5______|______x6______|______x7______|______x8______|______x9______|______xA______|______xB______|______xC______|______xD______|______xE______|______xF______|
+|  0x  | -        nop | RR       add | RR     add.c | RR       sub | RR     sub.c | RR       mul | RR       div | RR       mod | RR       rem | R        neg | R       push | RR       mov | RR   add.bcd | I      ldarg | RR      comp |              |
+|  1x  | -      break | RRR      add | RRR    add.c | RRR      sub | RRR    sub.c | RRR      mul | RRR      div | RRR      mod | RRR      rem | RR       neg | I       push | RI       mov | RRR  add.bcd | RI     ldarg | R       test |              |
+|  2x  | -   .checked | RI       add | RI     add.c | RI       sub | RI     sub.c | RI       mul | RI       div | RI       mod | RI       rem | R      recip | -        pop | R       init | RI   add.bcd | I     ldarga | RL   brfalse |              |
+|  3x  | R      clear | RRI      add | RRI    add.c | RRI      sub | RRI    sub.c | RRI      mul | RRI      div | RRI      mod | RRI      rem | RR     recip | R        pop | RR      init | RRI  add.bcd | RI    ldarga | RL    brtrue |              |
+|  4x  | -    .nocast | RR       and | RR        or | IR       sub | IR     sub.c | RR       xor | IR       div | IR       mod | IR       rem | I      recip | -        dup | RR     mkref | RR   sub.bcd | RT   ldtoken | L         br |              |
+|  5x  | B  .startreg | RRR      and | RRR       or | RIR      sub | RIR    sub.c | RRR      xor | RIR      div | RIR      mod | RIR      rem | RI     recip | R       call | RR     mkptr | RRR  sub.bcd | RR     ldfld |              |              |
+|  6x  | -    .endreg | RI       and | RI        or | R        not |              | RI       xor | RR       pow | RR       log | R       blog | R         ln | RR      call | RR     mkarr | RI   sub.bcd | RRR    ldfld | RR     stfld |              |
+|  7x  | RT       def | RRI      and | RRI       or | RR       not |              | RRI      xor | RRR      pow | RRR      log | RR      blog | RR        ln | RR      call | RRR    mkarr | RRI  sub.bcd | R     ldsfld | RRR    stfld |              |
+|  8x  |              | RR       rol | RR       ror | RR       asl | RR       asr | RR    asr.un | RI       pow | RI       log | I       blog | I         ln | RRR     call | RI     mkarr | IR   sub.bcd | RR    ldsfld | R     stsfld |              |
+|  9x  |              | RI       rol | RI       ror | RRR      asl | RRR      asr | RRR   asr.un | RRI      pow | RRI      log | RI      blog | RI        ln | RR  callvirt | RRI    mkarr | RIR  sub.bcd | RR    ldflda | RR    stsfld |              |
+|  Ax  |              | RR    rol.nc | RR    ror.nc | RI       asl | RI       asr | RI    asr.un | IR       pow | IR       log |              |              | RRR callvirt |              |              | RRR   ldflda | RR    stelem |              |
+|  Bx  |              | RI    rol.nc | RI    ror.nc | RRI      asl | RRI      asr | RRI   asr.un | RIR      pow | RIR      log |              |              | R      calli | -        len | RR    ldelem | R    ldsflda | RRR   stelem |              |
+|  Cx  |              |              |              |              |              |              |              |              |              |              | RR     calli | R        len | RRR   ldelem | RR   ldsflda | IR    stelem |              |
+|  Dx  |              |              |              |              |              |              |              |              |              |              | -        ret | R        len | RI    ldelem | RT    ldfcna | RIR   stelem |              |
+|  Ex  |              |              |              |              |              |              |              |              |              |              | R        ret | RR       len | RRI   ldelem |              |              |              |
+|  Fx  | < extended > | < extended > |              |              |              |              |              |              |              |              | I        ret |              |              |              |              |              |
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+EXTENDED MATH INSTRUCTIONS (F0 XX)
+       _________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________
+_______|______x0______|______x1______|______x2______|______x3______|______x4______|______x5______|______x6______|______x7______|______x8______|______x9______|______xA______|______xB______|______xC______|______xD______|______xE______|______xF______|
+|  0x  | RI   vmov.xi | RI   vmov.yi | RI   vmov.zi | RI   vmov.wi | R     vans.x | R    vslc.xy | R    vslc.yz | R   vswap.xy | R      vinit | RR     velem |              |              |              |              |              |              |
+|  1x  | RR   vmov.xr | RR   vmov.yr | RR   vmov.zr | RR   vmov.wr | R     vans.y | RR   vslc.xy | RR   vslc.yz | R   vswap.xz | RR     vinit | RRR    velem |              |              |              |              |              |              |
+|  2x  | RR   vmov.xx | RR   vmov.yx | RR   vmov.zx | RR   vmov.wx | R     vans.z | R    vslc.xz | R    vslc.yw | R   vswap.xw |              | RI     velem |              |              |              |              |              |              |
+|  3x  | RR   vmov.xy | RR   vmov.yy | RR   vmov.zy | RR   vmov.wy | R     vans.w | RR   vslc.xz | RR   vslc.yw |              |              | RRI    velem |              |              |              |              |              |              |
+|  4x  | RR   vmov.xz | RR   vmov.yz | RR   vmov.zz | RR   vmov.wz |              | R    vslc.xw | R   vslc.yzw | R   vswap.yz |              |              |              |              |              |              |              |              |
+|  5x  | RR   vmov.xw | RR   vmov.yw | RR   vmov.zw | RR   vmov.ww |              | RR   vslc.xw | RR  vslc.yzw | R   vswap.yw |              |              |              |              |              |              |              |              |
+|  6x  | RR   vmov.rx | RR   vmov.ry | RR   vmov.rz | RR   vmov.rw |              | R   vslc.xyz |              |              |              |              |              |              |              |              |              |              |
+|  7x  |              |              |              |              |              | RR  vslc.xyz | R    vslc.zw | R   vswap.zw |              |              |              |              |              |              |              |              |
+|  8x  |              |              |              |              |              | R   vslc.xzw | RR   vslc.zw |              |              |              |              |              |              |              |              |              |
+|  9x  |              |              |              |              |              | RR  vslc.xzw |              |              |              |              |              |              |              |              |              |              |
+|  Ax  |              |              |              |              |              |              |              |              |              |              |              |              |              |              |              |              |
+|  Bx  |              |              |              |              |              |              |              |              |              |              |              |              |              |              |              |              |
+|  Cx  |              |              |              |              |              |              |              |              |              |              |              |              |              |              |              |              |
+|  Dx  |              |              |              |              |              |              |              |              |              |              |              |              |              |              |              |              |
+|  Ex  |              |              |              |              |              |              |              |              |              |              |              |              |              |              |              |              |
+|  Fx  |              |              |              |              |              |              |              |              |              |              |              |              |              |              |              |              |
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+STRING INSTRUCTIONS (F1 XX)
+       _________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________
+_______|______x0______|______x1______|______x2______|______x3______|______x4______|______x5______|______x6______|______x7______|______x8______|______x9______|______xA______|______xB______|______xC______|______xD______|______xE______|______xF______|
+|  0x  | RR     sprep | RR     sinit | -     sbinit | -      tostr | RR   sinsert |              |              |              |              |              |              |              |              |              |              |              |
+|  1x  | RRR    sprep | RRR    sinit | R     sbinit | R      tostr | RRR  sinsert |              |              |              |              |              |              |              |              |              |              |              |
+|  2x  | RI     sprep | RI     sinit | R     sbinit | RR     tostr | RI   sinsert |              |              |              |              |              |              |              |              |              |              |              |
+|  3x  | RRI    sprep | RRI    sinit | RR    sbinit | I      tostr | RRI  sinsert |              |              |              |              |              |              |              |              |              |              |              |
+|  4x  |              | IR     sinit | I     sbinit | RI     tostr | IR   sinsert |              |              |              |              |              |              |              |              |              |              |              |
+|  5x  | -    sbaddnl | RIR    sinit | RI    sbinit |              | RIR  sinsert |              |              |              |              |              |              |              |              |              |              |              |
+|  6x  | R    sbaddnl | II     sinit |              |              | II   sinsert |              |              |              |              |              |              |              |              |              |              |              |
+|  7x  | R    sbaddnl | RII    sinit |              |              | RII  sinsert |              |              |              |              |              |              |              |              |              |              |              |
+|  8x  | RR   sbaddnl |              |              |              |              |              |              |              |              |              |              |              |              |              |              |              |
+|  9x  | I    sbaddnl |              |              |              |              |              |              |              |              |              |              |              |              |              |              |              |
+|  Ax  | RI   sbaddnl |              |              |              |              |              |              |              |              |              |              |              |              |              |              |              |
+|  Bx  |              |              |              |              |              |              |              |              |              |              |              |              |              |              |              |              |
+|  Cx  |              |              |              |              |              |              |              |              |              |              |              |              |              |              |              |              |
+|  Dx  |              |              |              |              |              |              |              |              |              |              |              |              |              |              |              |              |
+|  Ex  |              |              |              |              |              |              |              |              |              |              |              |              |              |              |              |              |
+|  Fx  |              |              |              |              |              |              |              |              |              |              |              |              |              |              |              |              |
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+REGISTER USAGE
+========================================
+  $x   - standard operand, register's value is used/modified
+ ($x)  - dereference operand, register is treated as a pointer to the value to be used/modified
+ [$x]  - "source" operand, register is treated as a value to be used by the instruction rather than its destination, only valid for instructions which specify it
+
+[($x)] is never used directly by the instructions in the OPCODES and PSEUDO-OPCODES lists, however it is still a valid operand.
+Using [($x)] indicates that the dereferenced value of the register is a value to be used by the instruction rather than its destination.
+
+OPCODES
+========================================
+INSTRUCTION            |  CODE | DESCRIPTION
+
+-- . --
+.checked               |    20 | Prefix for the following arithmetic instruction, check for overflow and throw an exception if detected (not all arithmetic instructions supported)
+.endreg                |    60 | Denotes the end of the most recently configured region of arithmetic operations
+.nocast                |    40 | Prefix for the following arithmetic instruction, prevents automatic upcasting of the result to a larger type, e.g. Int16 + Int16 = Int32
+.startreg { ... }      |    50 | Denotes the start of a configured region of arithmetic operations, expected block values are: "checked", "nocast"
+
+-- A --
+add $x, $y             |    01 | Add two registers, store result in $ANS
+add $x, $y, $z         |    11 | Add registers $y and $z, store result in $x
+add $x, y              |    21 | Add register and immediate value, store result in $ANS
+add $x, $y, z          |    31 | Add register $y and immediate value, store result in $x
+add.bcd $x, $y         |    0C | Add integer registers encoded with binary-coded decimal, store result in $ANS
+add.bcd $x, $y, $z     |    1C | Add integer registers $y and $z encoded with binary-coded decimal, store result in integer register $x
+add.bcd $x, y          |    2C | Add integer register and immediate integer encoded with binary-coded decimal, store result in $ANS
+add.bcd $x, $y, z      |    3C | Add integer register $y and immediate integer encoded with binary-coded decimal, store result in integer register $x
+add.c $x, $y           |    02 | Add integer registers with carry, store result in $ANS
+add.c $x, $y, $z       |    12 | Add integer registers $y and $z with carry, store result in integer register $x
+add.c $x, y            |    22 | Add integer register and immediate integer with carry, store result in $ANS
+add.c $x, $y, z        |    32 | Add integer register $y and immediate integer with carry, store result in integer register $x
+and $x, $y             |    41 | Bitwise AND two integer registers, store result in $ANS
+and $x, $y, $z         |    51 | Bitwise AND integer registers $y and $z, store result in integer register $x
+and $x, y              |    61 | Bitwise AND integer register and immediate integer, store result in $ANS
+and $x, $y, z          |    71 | Bitwise AND integer register $y and immediate integer, store result in integer register $x
+asl $x, $y             |    83 | Arithmetic shift left integer register $x by integer register $y bits, store result in $ANS
+asl $x, y              |    93 | Arithmetic shift left integer register by immediate integer bits, store result in $ANS
+asl $x, $y, $z         |    A3 | Arithmetic shift left integer register $y by integer register $z bits, store result in integer register $x
+asl $x, $y, z          |    B3 | Arithmetic shift left integer register $y by immediate integer bits, store result in integer register $x
+asr $x, $y             |    84 | Arithmetic shift right integer register $x by integer register $y bits (shift in sign), store result in $ANS
+asr $x, y              |    94 | Arithmetic shift right integer register by integer immediate bits (shift in sign), store result in $ANS
+asr $x, $y, $z         |    A4 | Arithmetic shift right integer register $y by integer register $z bits (shift in sign), store result in integer register $x
+asr $x, $y, z          |    B4 | Arithmetic shift right integer register $y by integer immediate bits (shift in sign), store result in integer register $x
+asr.un $x, $y          |    85 | Logical shift right integer register $x by integer register $y bits (shift in zeroes), store result in $ANS
+asr.un $x, y           |    95 | Logical shift right integer register $x by integer immediate bits (shift in zeroes), store result in $ANS
+asr.un $x, $y, $z      |    A5 | Logical shift right integer register $y by integer register $z bits (shift in zeroes), store result in integer register $x
+asr.un $x, $y, z       |    B5 | Logical shift right integer register $y by integer immediate bits (shift in zeroes), store result in integer register $x
+
+-- B --
+blog $x                |    68 | Logarithm of $x base 2, store result in $ANS
+blog $x, $y            |    78 | Logarithm of $y base 2, store result in $x
+blog x                 |    88 | Logarithm of immediate x base 2, store result in $ANS
+blog $x, y             |    98 | Logarithm of immediate x base 2, store result in $x
+br x                   |    4E | Unconditional branch to label x
+break                  |    10 | Break execution, enter debugger
+brfalse $x, y          |    2E | Branch to label y if $x is falsy (zero, false, null)
+brtrue $x, y           |    3E | Branch to label y if $x is truthy (non-zero, true, non-null)
+
+-- C --
+call $x                |    5A | Call static method at metadata token register, store result in $ANS if method returns a value
+call $x, $y            |    6A | Call static method at metadata token register $y, store result in $x
+                       |       | Referenced method must return a value, and constructors are treated as methods that return the constructed object
+call [$x], $y          |    7A | Call instance method at metadata token register $y using object register $x as the source, store result in $ANS if method returns a value
+call $x, $y, $z        |    8A | Call instance method at metadata token register $z using object register $y as the source, store result in $x
+                       |       | Referenced method must return a value
+calli $x               |    BA | Indirectly call static method at address register, store result in $ANS if method returns a value
+calli $x, $y           |    CA | Indirectly call static method at address register $y, store result in $x
+                       |       | Referenced method must return a value
+callvirt $x, $y        |    9A | Call virtual method at metadata token register $y using object register $x as the source, store result in $ANS if method returns a value
+callvirt $x, $y, $z    |    AA | Call virtual method at metadata token register $z using object register $y as the source, store result in $x
+                       |       | Referenced method must return a value
+clear $x               |    30 | Removes $x from the compiler's memory, allowing its type to be redefined.
+                       |       | $ANS does not have to be redefined, since its type is allowed to change.
+comp $x, $y            |    0E | Compare $x to $y and update processor status register
+                       |       |     $x == $y  =>  $PS.Z = 1, $PS.N = 0
+                       |       |     $x <  $y  =>  $PS.Z = 0, $PS.N = 1
+                       |       |     $x >  $y  =>  $PS.Z = 0, $PS.N = 0
+                       |       |     If either $x or $y is NaN, $PS.I = 1
+
+-- D --
+def $x, y              |    70 | Initializes register $x to the default value of the type referenced by metadata token immediate
+div $x, $y             |    06 | Divide $x by $y, store result in $ANS
+div $x, $y, $z         |    16 | Divide $y by $z, store result in $x
+div $x, y              |    26 | Divide register $y by immediate, store result in $ANS
+div $x, $y, z          |    36 | Divide register $y by immediate, store result in $x
+div x, $y              |    46 | Divide immediate by register, store result in $ANS
+div $x, y, $z          |    56 | Divide immediate by $z, store result in $x
+dup                    |    4A | Duplicate the top value on the stack
+
+-- I --
+init $x                |    2B | Set $ANS to the result of calling the parameterless constructor of the type in metadata token register $x
+                       |       | Type must have a parameterless constructor
+init $x, $y            |    3B | Set register $x to the result of calling the parameterless constructor of the type in metadata token register $y
+                       |       | Type must have a parameterless constructor
+
+-- L --
+ldarg x                |    0D | Set $ANS to the value of the method argument at immediate index
+ldarg $x, y            |    1D | Set register $x to the value of the method argument at immediate index
+ldarga x               |    2D | Set $ANS to a reference of the method argument at immediate index
+ldarga $x, y           |    3D | Set address register $x to a reference of the method argument at immediate index
+ldelem $x, $y          |    BC | Index object register $x with integer register $y, set $ANS to the value at the resulting index
+ldelem $x, $y, $z      |    CC | Index object register $y with integer register $z, set register $x to the value at the resulting index
+ldelem $x, y           |    DC | Index object register with immediate integer, set $ANS to the value at the resulting index
+ldelem $x, $y, z       |    EC | Index object register $y with immediate integer z, set register $x to the value at the resulting index
+ldfld $x, $y           |    5D | Set $ANS to the value of the field referenced by metadata token register $y using object register $x as the source
+ldfld $x, $y, $z       |    6D | Set register $x to the value of the field referenced by metadata token register $z using object register $y as the source
+ldflda $x, $y          |    9D | Set $ANS to a reference of the field referenced by metadata token register $y using object register $x as the source
+ldflda $x, $y, $z      |    AD | Set address register $x to a reference of the field referenced by metadata token register $z using object register $y as the source
+ldfnca $x, y           |    DD | Set address register to the address of the static function referenced by metadata token immediate
+ldsfld $x              |    7D | Set $ANS to the value of the static field referenced by metadata token register
+ldsfld $x, $y          |    8D | Set register $x to the value of the static field referenced by metadata token register $y
+ldsflda $x             |    BD | Set $ANS to a reference of the static field referenced by metadata token register
+ldsflda $x, $y         |    CD | Set address register $x to a reference of the static field referenced by metadata token register $y
+ldtoken $x, y          |    6D | Set metadata token register to immediate metadata token
+len                    |    BB | Set $ANS to the length of the array, string, vector or other collection in $ANS
+len $x                 |    CB | Set integer register to the length of the array, string, vector or other collection in $ANS
+len [$x]               |    DB | Set $ANS to the length of the array, string, vector or other collection in register
+len $x, $y             |    EB | Set integer register $x to the length of the array, string, vector or other collection in register $y
+ln $x                  |    69 | Logarithm of register base e, store result in $ANS
+ln $x, $y              |    79 | Logarithm of register $y base e, store result in $x
+ln x                   |    89 | Logarithm of immediate base e, store result in $ANS
+ln $x, y               |    99 | Logarithm of immediate base e, store result in $x
+log $x, $y             |    67 | Logarithm of register $x base register $y, store result in $ANS
+log $x, $y, $z         |    77 | Logarithm of register $y base register $z, store result in $x
+log $x, y              |    87 | Logarithm of register base immediate, store result in $ANS
+log $x, $y, z          |    97 | Logarithm of register $y base immediate, store result in $x
+log x, $y              |    A7 | Logarithm of immediate base register, store result in $ANS
+log $x, y, $z          |    B7 | Logarithm of immediate base register $z, store result in $x
+
+-- M --
+mkarr $x, $y           |    6B | Set $ANS to a new array of length integer register $y of the type in metadata token register $x
+mkarr $x, y            |    7B | Set $ANS to a new array of length immediate integer y of the type in metadata token register $x
+mkarr $x, $y, $z       |    8B | Set object register $x to a new array of length integer register $z of the type in metadata token register $y
+mkarr $x, $y, z        |    9B | Set object register $x to a new array of length immediate integer z of the type in metadata token register $y
+mkptr $x, $y           |    4B | Set address register $x to a direct pointer to the value in register $y
+mkref $x, $y           |    5B | Set address register $x to a by-reference pointer to the value in register $y
+mod $x, $y             |    07 | Modulo register $x by register $y, store result in $ANS
+mod $x, $y, $z         |    17 | Modulo register $y by register $z, store result in $x
+mod $x, y              |    27 | Modulo register by immediate, store result in $ANS
+mod $x, $y, z          |    37 | Modulo register $y by immediate, store result in $x
+mod x, $y              |    47 | Modulo immediate by register, store result in $ANS
+mod $x, y, $z          |    57 | Modulo immediate by register $z, store result in $x
+mov $x, $y             |    0B | Shallow copy register $y to register $x
+mov $x, y              |    1B | Set register to immediate
+mul $x, $y             |    05 | Multiply two registers, store result in $ANS
+mul $x, $y, $z         |    15 | Multiply two registers, store result in $x
+mul $x, y              |    25 | Multiply register and immediate value, store result in $ANS
+mul $x, $y, z          |    35 | Multiply register $y and immediate value, store result in $x
+
+-- N --
+neg $x                 |    09 | Negate register, store result in $ANS
+neg $x, $y             |    19 | Negate register $y, store result in $x
+nop                    |    00 | No operation
+not $x                 |    63 | Bitwise NOT integer register, store result in $ANS
+not $x, $y             |    73 | Bitwise NOT integer register $y, store result in integer register $x
+
+-- O --
+or $x, $y              |    42 | Bitwise OR two integer registers, store result in $ANS
+or $x, $y, $z          |    52 | Bitwise OR integer registers $y and $z, store result in integer register $x
+or $x, y               |    62 | Bitwise OR integer register and immediate integer, store result in $ANS
+or $x, $y, z           |    72 | Bitwise OR integer register $y and immediate integer, store result in integer register $x
+
+-- P --
+pop                    |    2A | Pop the top value off the stack
+pop $x                 |    3A | Pop the top value off the stack and store in $x
+pow $x, $y             |    66 | Raise register $x to the power of register $y, store result in $ANS
+pow $x, $y, $z         |    76 | Raise register $y to the power of register $z, store result in $x
+pow $x, y              |    86 | Raise register to the power of immediate, store result in $ANS
+pow $x, $y, z          |    96 | Raise register $y to the power of immediate, store result in $zx
+pow x, $y              |    A6 | Raise immediate to the power of register, store result in $ANS
+pow $x, y, $z          |    B6 | Raise immediate to the power of register $z, store result in $x
+push $x                |    0A | Push register onto the stack
+push x                 |    1A | Push immediate onto the stack
+
+-- R --
+recip $x               |    29 | Reciprocal of register, store result in $ANS
+recip $x, $y           |    39 | Reciprocal of register $y, store result in $x
+recip x                |    49 | Reciprocal of immediate, store result in $ANS
+recip $x, y            |    59 | Reciprocal of immediate, store result in $x
+rem $x, $y             |    08 | Remainder of register $x divided by register $y, store result in $ANS
+rem $x, $y, $z         |    18 | Remainder of register $y divided by register $z, store result in $x
+rem $x, y              |    28 | Remainder of register divided by immediate, store result in $ANS
+rem $x, $y, z          |    38 | Remainder of register $y divided by immediate, store result in $x
+rem x, $y              |    48 | Remainder of immediate divided by register $y, store result in $ANS
+rem $x, y, $z          |    58 | Remainder of immediate divided by register $z, store result in $x
+ret                    |    DA | Exit from method, optionally returning the value in $ANS
+ret $x                 |    EA | Exit from method, returning the value in register
+                       |       | Method must have a return type
+ret x                  |    FA | Exit from method, returning immediate value
+                       |       | Method must have a return type
+rol $x, $y             |    81 | Rotate integer register $x left by integer register $y bits, shifting in the carry flag when applicable
+rol $x, y              |    91 | Rotate integer register left by integer immediate bits, shifting in the carry flag when applicable
+rol.nc $x, $y          |    A1 | Rotate integer register $x left by integer register $y bits, do not shift in the carry flag
+rol.nc $x, y           |    B1 | Rotate integer register left by integer immediate bits, do not shift in the carry flag
+ror $x, $y             |    82 | Rotate integer register $x right by integer register $y bits, shifting in the carry flag when applicable
+ror $x, y              |    92 | Rotate integer register right by integer immediate bits, shifting in the carry flag when applicable
+ror.nc $x, $y          |    A2 | Rotate integer register $x right by integer register $y bits, do not shift in the carry flag
+ror.nc $x, y           |    B2 | Rotate integer register right by integer immediate bits, do not shift in the carry flag
+
+-- S --
+sbaddnl                | F1 50 | Append newline to StringBuilder in $ANS
+sbaddnl $x             | F1 70 | Append newline to StringBuilder in string register
+sbaddnl [$x]           | F1 60 | Append string register and newline to StringBuilder in $ANS
+sbaddnl $x, $y         | F1 80 | Append string register $y and newline to StringBuilder in $x
+sbaddnl x              | F1 90 | Append immediate string and newline to StringBuilder in $ANS
+sbaddnl $x, y          | F1 A0 | Append immediate string and newline to StringBuilder in $x
+sbinit                 | F1 02 | Initialize $ANS with an empty StringBuilder
+sbinit $x              | F1 22 | Initialize string register with an empty StringBuilder
+sbinit [$x]            | F1 12 | Initialize $ANS with a StringBuilder initially containing string register
+sbinit $x, $y          | F1 32 | Initialize string register $x with a StringBuilder initially containing string register $y
+sbinit x               | F1 42 | Initialize $ANS with a StringBuilder initially containing immediate string
+sbinit $x, y           | F1 52 | Initialize string register with a StringBuilder initially containing immediate string
+sinit $x, $y           | F1 01 | Initialize $ANS with a string of repeated characters, using integer register $x as the character and integer register $y as the length
+sinit $x, $y, $z       | F1 11 | Initialize string register $x with a string of repeated characters, using integer register $y as the character and integer register $z as the length
+sinit $x, y            | F1 21 | Initialize $ANS with a string of repeated characters, using integer register as the character and immediate integer as the length
+sinit $x, $y, z        | F1 31 | Initialize string register $x with a string of repeated characters, using integer register $y as the character and immediate integer as the length
+sinit x, $y            | F1 41 | Initialize $ANS with a string of repeated characters, using immediate integer as the character and integer register as the length
+sinit $x, y, $z        | F1 51 | Initialize string register $x with a string of repeated characters, using immediate integer as the character and integer register as the length
+sinit x, y             | F1 61 | Initialize $ANS with a string of repeated characters, using immediate integer x as the character and immediate integer y as the length
+sinit $x, y, z         | F1 71 | Initialize string register $x with a string of repeated characters, using immediate integer y as the character and immediate integer z as the length
+sinsert $x, $y         | F1 04 | Insert string register $x into $ANS at index specified by integer register $y
+sinsert $x, $y, $z     | F1 14 | Insert string register $y into string register $x at index specified by integer register $z
+sinsert $x, y          | F1 24 | Insert string register into $ANS at index specified by immediate integer
+sinsert $x, $y, z      | F1 34 | Insert string register $y into string register $x at index specified by immediate integer
+sinsert x, $y          | F1 44 | Insert immediate string into $ANS at index specified by integer register
+sinsert $x, y, $z      | F1 54 | Insert immediate string into string register $x at index specified by integer register $z
+sinsert x, y           | F1 64 | Insert immediate string x into $ANS at index specified by immediate integer y
+sinsert $x, y, z       | F1 74 | Insert immediate string y into string register $x at index specified by immediate integer z
+sprep $x, $y           | F1 00 | Prepend string register $y to string register $x, store result in $ANS
+sprep $x, $y, $z       | F1 10 | Prepend string register $z to string register $y, store result in string register $x
+sprep $x, y            | F1 20 | Prepend string immediate to string register, store result in $ANS
+sprep $x, $y, z        | F1 30 | Prepend string immediate to string register $y, store result in string register $x
+stelem $x, $y          |    AE | Index array in $ANS with integer register $x, set the value at the resulting index to register $y
+stelem $x, $y, $z      |    BE | Index array in object register $x with integer register $y, set the value at the resulting index to register $z
+stelem x, $y           |    CE | Index array in $ANS with immediate integer, set the value at the resulting index to register
+stelem $x, y, $z       |    DE | Index array in object register $x with immediate integer y, set the value at the resulting index to register $z
+stfld $x, $y           |    6E | Set field referenced by metadata token register $y using object register $x as the source to the value in $ANS
+stfld $x, $y, $z       |    7E | Set field referenced by metadata token register $y using object register $x as the source to the value in register $z
+stsfld $x              |    8E | Set static field referenced by metadata token register to the value in $ANS
+stsfld $x, $y          |    9E | Set static field referenced by metadata token register $x to the value in $y
+sub $x, $y             |    03 | Subtract register $y from register $x, store result in $ANS
+sub $x, $y, $z         |    13 | Subtract register $z from register $y, store result in register $x
+sub $x, y              |    23 | Subtract immediate from register, store result in $ANS
+sub $x, $y, z          |    33 | Subtract immediate from register $y, store result in $x
+sub x, $y              |    43 | Subtract register from immediate, store result in $ANS
+sub $x, y, $z          |    53 | Subtract register $z from immediate, store result in $x
+sub.bcd $x, $y         |    4C | Subtract integer register $y from integer register $x encoded with binary-coded decimal, store result in $ANS
+sub.bcd $x, $y, $z     |    5C | Subtract integer register $z from integer register $y encoded with binary-coded decimal, store result in integer register $x
+sub.bcd $x, y          |    6C | Subtract integer immediate from integer register encoded with binary-coded decimal, store result in $ANS
+sub.bcd $x, $y, z      |    7C | Subtract integer immediate from integer register $y encoded with binary-coded decimal, store result in integer register $x
+sub.bcd x, $y          |    8C | Subtract integer register from integer immediate encoded with binary-coded decimal, store result in $ANS
+sub.bcd $x, y, $z      |    9C | Subtract integer register $z from integer immediate encoded with binary-coded decimal, store result in integer register $x
+sub.c $x, $y           |    04 | Subtract integer register $y from integer register $x and borrow from carry if necessary, store result in $ANS
+sub.c $x, $y, $z       |    14 | Subtract integer register $z from integer register $y and borrow from carry if necessary, store result in integer register $x
+sub.c $x, y            |    24 | Subtract integer immediate from integer register and borrow from carry if necessary, store result in $ANS
+sub.c $x, $y, z        |    34 | Subtract integer immediate from integer register $y and borrow from carry if necessary, store result in integer register $x
+sub.c x, $y            |    44 | Subtract integer register from integer immediate and borrow from carry if necessary, store result in $ANS
+sub.c $x, y, $z        |    54 | Subtract integer register $z from integer immediate and borrow from carry if necessary, store result in integer register $x
+
+-- T --
+test $x                |    1E | Update processor status register based on the value of $x
+                       |       |     $x == 0     =>  $PS = ---0 100-
+                       |       |     $x <  0     =>  $PS = ---0 010-
+                       |       |     $x >  0     =>  $PS = ---0 000-
+                       |       |     $x == NaN   =>  $PS = ---1 000-
+                       |       |     $x == +inf  =>  $PS = ---0 001-
+                       |       |     $x == -inf  =>  $PS = ---0 011-
+tostr                  | F1 03 | Convert $ANS to a string
+tostr $x               | F1 13 | Convert register to a string, store result in $ANS
+tostr $x, $y           | F1 23 | Convert register $y to a string, store result in string register $x
+tostr x                | F1 33 | Convert immediate to a string, store result in $ANS
+tostr $x, y            | F1 43 | Convert immediate to a string, store result in string register $x
+
+-- V --
+vans.w $x              | F0 34 | Set $ANS to W-component of vector register
+vans.x $x              | F0 04 | Set $ANS to X-component of vector register
+vans.y $x              | F0 14 | Set $ANS to Y-component of vector register
+vans.z $x              | F0 24 | Set $ANS to Z-component of vector register
+velem $x, $y           | F0 09 | Index generic vector $x with integer register $y, store result in $ANS
+velem $x, $y, $z       | F0 19 | Index generic vector $y with integer register $z, store result in float register $x
+velem $x, y            | F0 29 | Index generic vector with immediate integer, store result in $ANS
+velem $x, $y, z        | F0 39 | Index generic vector $y with immediate integer, store result in float register $x
+vinit $x               | F0 08 | Initialize $ANS with a generic vector, using metadata token register as the generic parameter
+vinit $x, $y           | F0 18 | Initialize vector register $x with a generic vector, using metadata token register $y as the generic parameter
+vmov.rx $x, $y         | F0 60 | Move X-component of vector register $y to float register $x
+vmov.ry $x, $y         | F0 61 | Move Y-component of vector register $y to float register $x
+vmov.rz $x, $y         | F0 62 | Move Z-component of vector register $y to float register $x
+vmov.rw $x, $y         | F0 63 | Move W-component of vector register $y to float register $x
+vmov.wi $x, y          | F0 03 | Move float immediate to W-component of vector register
+vmov.wr $x, $y         | F0 13 | Move float register $y to W-component of vector register $x
+vmov.ww $x, $y         | F0 53 | Move W-component of vector register $y to W-component of vector register $x
+vmov.wx $x, $y         | F0 23 | Move X-component of vector register $y to W-component of vector register $x
+vmov.wy $x, $y         | F0 33 | Move Y-component of vector register $y to W-component of vector register $x
+vmov.wz $x, $y         | F0 43 | Move Z-component of vector register $y to W-component of vector register $x
+vmov.xi $x, y          | F0 00 | Move float immediate to X-component of vector register
+vmov.xr $x, $y         | F0 10 | Move float register $y to X-component of vector register $x
+vmov.xw $x, $y         | F0 50 | Move W-component of vector register $y to X-component of vector register $x
+vmov.xx $x, $y         | F0 20 | Move X-component of vector register $y to X-component of vector register $x
+vmov.xy $x, $y         | F0 30 | Move Y-component of vector register $y to X-component of vector register $x
+vmov.xz $x, $y         | F0 40 | Move Z-component of vector register $y to X-component of vector register $x
+vmov.yi $x, y          | F0 01 | Move float immediate to Y-component of vector register
+vmov.yr $x, $y         | F0 11 | Move float register $y to Y-component of vector register $x
+vmov.yw $x, $y         | F0 51 | Move W-component of vector register $y to Y-component of vector register $x
+vmov.yx $x, $y         | F0 21 | Move X-component of vector register $y to Y-component of vector register $x
+vmov.yy $x, $y         | F0 31 | Move Y-component of vector register $y to Y-component of vector register $x
+vmov.yz $x, $y         | F0 41 | Move Z-component of vector register $y to Y-component of vector register $x
+vmov.zi $x, y          | F0 02 | Move float immediate to Z-component of vector register
+vmov.zr $x, $y         | F0 12 | Move float register $y to Z-component of vector register $x
+vmov.zw $x, $y         | F0 52 | Move W-component of vector register $y to Z-component of vector register $x
+vmov.zx $x, $y         | F0 22 | Move X-component of vector register $y to Z-component of vector register $x
+vmov.zy $x, $y         | F0 32 | Move Y-component of vector register $y to Z-component of vector register $x
+vmov.zz $x, $y         | F0 42 | Move Z-component of vector register $y to Z-component of vector register $x
+vslc.xw $x             | F0 45 | Set $ANS to XW-components of vector register as a vec2
+vslc.xw $x, $y         | F0 55 | Set vector register $x to XW-components of vector register $y as a vec2
+vslc.xy $x             | F0 05 | Set $ANS to XY-components of vector register as a vec2
+vslc.xy $x, $y         | F0 15 | Set vector register $x to XY-components of vector register $y as a vec2
+vslc.xz $x             | F0 25 | Set $ANS to XZ-components of vector register as a vec2
+vslc.xz $x, $y         | F0 35 | Set vector register $x to XZ-components of vector register $y as a vec2
+vslc.xyz $x            | F0 65 | Set $ANS to XYZ-components of vector register as a vec3
+vslc.xyz $x, $y        | F0 75 | Set vector register $x to XYZ-components of vector register $y as a vec3
+vslc.xzw $x            | F0 85 | Set $ANS to XZW-components of vector register as a vec3
+vslc.xzw $x, $y        | F0 95 | Set vector register $x to XZW-components of vector register $y as a vec3
+vslc.yw $x             | F0 26 | Set $ANS to YW-components of vector register as a vec2
+vslc.yw $x, $y         | F0 36 | Set vector register $x to YW-components of vector register $y as a vec2
+vslc.yz $x             | F0 06 | Set $ANS to YZ-components of vector register as a vec2
+vslc.yz $x, $y         | F0 16 | Set vector register $x to YZ-components of vector register $y as a vec2
+vslc.yzw $x            | F0 46 | Set $ANS to YZW-components of vector register as a vec3
+vslc.yzw $x, $y        | F0 56 | Set vector register $x to YZW-components of vector register $y as a vec3
+vslc.zw $x             | F0 76 | Set $ANS to ZW-components of vector register as a vec2
+vslc.zw $x, $y         | F0 86 | Set vector register $x to ZW-components of vector register $y as a vec2
+vswap.xw $x            | F0 27 | Swap X- and W-components of vector register
+vswap.xy $x            | F0 07 | Swap X- and Y-components of vector register
+vswap.xz $x            | F0 17 | Swap X- and Z-components of vector register
+vswap.yw $x            | F0 57 | Swap Y- and W-components of vector register
+vswap.yz $x            | F0 47 | Swap Y- and Z-components of vector register
+vswap.zw $x            | F0 77 | Swap Z- and W-components of vector register
+
+-- X --
+xor $x, $y             |    45 | Bitwise XOR two integer registers, store result in $ANS
+xor $x, $y, $z         |    55 | Bitwise XOR integer registers $y and $z, store result in integer register $x
+xor $x, y              |    65 | Bitwise XOR integer register and immediate integer, store result in $ANS
+xor $x, $y, z          |    75 | Bitwise XOR integer register and immediate integer, store result in integer register $x
+
+PSEUDO-OPCODES
+========================================
+INSTRUCTION            | TYPE | COMPILED
+
+-- B --
+beq $x, y              | RL   | beq $ANS, $x, y
+                       |      |
+beq $x, $y, z          | RRL  | comp $x, $y                ; PS = ---X 1X--  (I=X, Z=1, N=X)
+                       |      | brtrue $PS.Z, z
+                       |      |
+beq x, y               | IL   | mov $R0, x
+                       |      | beq $ANS, $R0, y
+                       |      |
+beq $x, y, z           | RIL  | mov $R0, y
+                       |      | beq $x, $R0, z
+                       |      |
+bge $x, y              | RL   | bge $ANS, $x, y
+                       |      |
+bge $x, $y, z          | RRL  | comp $x, $y                ; PS = ---X 1X--  (I=X, Z=1, N=X) OR
+                       |      | brtrue $PS.Z, z            ;    = ---0 00--  (I=0, Z=0, N=0)
+                       |      | and $R0, $PS, 0b0001_1100
+                       |      | brfalse $R0, z
+                       |      |
+bge x, y               | IL   | mov $R0, x
+                       |      | bge $ANS, $R0, y
+                       |      |
+bge $x, y, z           | RIL  | mov $R0, y
+                       |      | bge $x, $R0, z
+                       |      |
+bgt $x, y              | RR   | bgt $ANS, $x, y
+                       |      |
+bgt $x, $y, z          | RRL  | comp $x, $y                ; PS = ---0 00--  (I=0, Z=0, N=0)
+                       |      | and $R0, $PS, 0b0001_1100
+                       |      | brfalse $R0, z
+                       |      |
+bgt x, y               | IL   | mov $R0, x
+                       |      | bgt $ANS, $R0, y
+                       |      |
+bgt $x, y, z           | RIL  | mov $R0, y
+                       |      | bgt $x, $R0, z
+                       |      |
+ble $x, $y, z          | RRL  | comp $x, $y                ; PS = ---X 1X--  (I=X, Z=1, N=X) OR
+                       |      | brtrue $PS.Z, z            ;    = ---X 01--  (I=X, Z=0, N=1)
+                       |      | and $R0, $PS, 0b0000_1100
+                       |      | xor $R0, $R0, 0b0000_0100
+                       |      | brfalse $R0, z
+                       |      |
+blt $x, y              | RL   | blt $ANS, $x, y
+                       |      |
+blt $x, $y, z          | RRL  | comp $x, $y                ; PS = ---X 01--  (I=X, Z=0, N=1)
+                       |      | and $R0, $PS, 0b0000_1100
+                       |      | xor $R0, $R0, 0b0000_0100
+                       |      | brfalse $R0, z
+                       |      |
+blt x, y               | IL   | mov $R0, x
+                       |      | blt $ANS, $R0, y
+                       |      |
+blt $x, y, z           | RIL  | mov $R0, y
+                       |      | blt $x, $R0, z
+                       |      |
+bne $x, y              | RL   | bne $ANS, $x, y
+                       |      |
+bne $x, $y, z          | RRL  | comp $x, $y                ; PS = ---X 0X--  (I=X, Z=0, N=X)
+                       |      | brfalse $PS.Z, z
+                       |      |
+bne x, y               | IL   | mov $R0, x
+                       |      | bne $ANS, $R0, y
+                       |      |
+bne $x, y, z           | RIL  | mov $R0, y
+                       |      | bne $x, $R0, z
+                       |      |
+brinf $x, y            | RL   | test $x
+                       |      | brtrue $PS.V, y
+                       |      |
+brnan $x, y            | RL   | test $x
+                       |      | brtrue $PS.I, y
+                       |      |
+
+-- C --
+call x                 | T    | ldtoken $R0, x
+                       |      | call $R0
+                       |      |
+call $x, y             | RT   | ldtoken $R0, y
+                       |      | call $x, $R0
+                       |      |
+call [$x], y           | RT   | ldtoken $R0, y
+                       |      | call [$x], $R0
+                       |      |
+call $x, $y, z         | RRT  | ldtoken $R0, z
+                       |      | call $x, [$y], $R0
+                       |      |
+callvirt $x, y         | RT   | ldtoken $R0, y
+                       |      | callvirt $x, $R0
+                       |      |
+callvirt $x, $y, z     | RRT  | ldtoken $R0, z
+                       |      | callvirt $x, $y, $R0
+                       |      |
+ceq $x, $y             | RR   | ceq $ANS, $x, $y
+                       |      |
+ceq $x, y              | RI   | mov $R0, y
+                       |      | ceq $x, $R0
+                       |      |
+ceq $x, $y, $z         | RRR  | comp $y, $z                ; PS = ---X 1X--  (I=X, Z=1, N=X)
+                       |      | mov $x, $PS.Z
+                       |      |
+ceq $x, $y, z          | RRI  | mov $R0, z
+                       |      | ceq $x, $y, $R0
+                       |      |
+cge $x, $y             | RR   | cge $ANS, $x, $y
+                       |      |
+cge $x, y              | RI   | mov $R0, y
+                       |      | cge $x, $R0
+                       |      |
+cge $x, $y, $z         | RRR  | comp $y, $z                ; PS = ---X 1X--  (I=X, Z=1, N=X) OR
+                       |      | mov $R0, $PS.Z             ;    = ---0 00--  (I=0, Z=0, N=0)
+                       |      | and $R1, $PS, 0b0001_1100
+                       |      | or $R0, $R0, $PS.Z
+                       |      | mov $x, $PS.Z
+                       |      |
+cge $x, $y, z          | RRI  | mov $R0, z
+                       |      | cge $x, $y, $R0
+                       |      |
+cgt $x, $y             | RR   | cgt $ANS, $x, $y
+                       |      |
+cgt $x, y              | RI   | mov $R0, y
+                       |      | cgt $x, $R0
+                       |      |
+cgt $x, $y, $z         | RRR  | comp $y, $z                ; PS = ---0 00--  (I=0, Z=0, N=0)
+                       |      | and $R0, $PS, 0b0001_1100
+                       |      | mov $x, $PS.Z
+                       |      |
+cgt $x, $y, z          | RRI  | mov $R0, z
+                       |      | cgt $x, $y, $R0
+                       |      |
+cle $x, $y             | RR   | cle $ANS, $x, $y
+                       |      |
+cle $x, y              | RI   | mov $R0, y
+                       |      | cle $x, $R0
+                       |      |
+cle $x, $y, $z         | RRR  | comp $y, $z                ; PS = ---X 1X--  (I=X, Z=1, N=X) OR
+                       |      | mov $R0, $PS.Z             ;    = ---X 01--  (I=X, Z=0, N=1)
+                       |      | and $R1, $PS, 0b0000_1100
+                       |      | xor $R1, $R1, 0b0000_0100
+                       |      | or $R0, $R0, $PS.Z
+                       |      | mov $x, $PS.Z
+                       |      |
+cle $x, $y, z          | RRI  | mov $R0, z
+                       |      | cle $x, $y, $R0
+                       |      |
+clt $x, $y             | RR   | clt $ANS, $x, $y
+                       |      |
+clt $x, y              | RI   | mov $R0, y
+                       |      | clt $x, $R0
+                       |      |
+clt $x, $y, $z         | RRR  | comp $y, $z                ; PS = ---X 01--  (I=X, Z=0, N=1)
+                       |      | and $R0, $PS, 0b0000_1100
+                       |      | xor $R0, $R0, 0b0000_0100
+                       |      | mov $x, $PS.Z
+                       |      |
+clt $x, $y, z          | RRI  | mov $R0, z
+                       |      | clt $x, $y, $R0
+                       |      |
+cne $x, $y             | RR   | cne $ANS, $x, $y
+                       |      |
+cne $x, y              | RI   | mov $R0, y
+                       |      | cne $x, $R0
+                       |      |
+cne $x, $y, $z         | RRR  | comp $y, $z                ; PS = ---X 0X--  (I=X, Z=0, N=X)
+                       |      | not $x, $PS.Z
+                       |      |
+cne $x, $y, z          | RRI  | mov $R0, z
+                       |      | cne $x, $y, $R0
+                       |      |
+comp $x                | R    | comp $x, $ANS
+                       |      |
+comp x                 | I    | mov $R0, x
+                       |      | comp $ANS, $R0
+                       |      |
+comp $x, y             | RI   | mov $R0, y
+                       |      | comp $x, $R0
+
+-- L --
+ldfld $x, y            | RT   | ldtoken $R0, y
+                       |      | ldfld $x, $R0
+                       |      |
+ldfld $x, $y, z        | RRT  | ldtoken $R0, z
+                       |      | ldfld $x, $y, $R0
+                       |      |
+ldflda $x, y           | RT   | ldtoken $R0, y
+                       |      | ldflda $x, $R0
+                       |      |
+ldflda $x, $y, z       | RRT  | ldtoken $R0, z
+                       |      | ldflda $x, $y, $R0
+                       |      |
+ldsfld x               | T    | ldtoken $R0, x
+                       |      | ldsfld $R0
+                       |      |
+ldsfld $x, y           | RT   | ldtoken $R0, y
+                       |      | ldsfld $x, $R0
+                       |      |
+ldsflda x              | T    | ldtoken $R0, x
+                       |      | ldsflda $R0
+                       |      |
+ldsflda $x, y          | RT   | ldtoken $R0, y
+                       |      | ldsflda $x, $R0
+                       |      |
+ldthis                 | -    | ldarg 0    (for reference types)
+                       |      | ldarga 0   (for value types)
+                       |      |
+ldthis $x              | R    | ldarg $x, 0    (for reference types)
+                       |      | ldarga $x, 0   (for value types)
+
+-- M --
+mkarr x, $y            | TR   | ldtoken $R0, x
+                       |      | mkarr $R0, $y
+                       |      |
+mkarr x, y             | TI   | ldtoken $R0, x
+                       |      | mov $R1, y
+                       |      | mkarr $R0, $R1
+                       |      |
+mkarr $x, y, $z        | RTR  | ldtoken $R0, y
+                       |      | mkarr $x, $R0, $z
+                       |      |
+mkarr $x, y, z         | RTI  | ldtoken $R0, y
+                       |      | mov $R1, z
+                       |      | mkarr $x, $R0, $R1
+
+-- S --
+setans $x              | R    | mov $ANS, $x
+                       |      |
+setans x               | I    | mov $ANS, x
+                       |      |
+stfld $x, y            | RT   | ldtoken $R0, y
+                       |      | stfld $x, $R0
+                       |      |
+stfld $x, y, $z        | RRT  | ldtoken $R0, y
+                       |      | stfld $x, $R0, $z
+                       |      |
+stsfld x               | T    | ldtoken $R0, x
+                       |      | stsfld $R0
+                       |      |
+stsfld x, $y           | RT   | ldtoken $R0, x
+                       |      | stsfld $R0, $y
+
+-- V --
+vinit x                | T    | ldtoken $R0, x
+                       |      | vinit $R0
+                       |      |
+vinit $x, y            | RT   | ldtoken $R0, y
+                       |      | vinit $x, $R0

@@ -1,0 +1,45 @@
+﻿<#@ template debug="false" hostspecific="true" language="C#" #>
+<#@ assembly name="System.Core" #>
+<#@ import namespace="System" #>
+<#@ output extension=".cs" #>
+<# Type[] typesInteger = new[] {
+	typeof(SByte), typeof(Int16), typeof(Int32), typeof(Int64),
+	typeof(Byte), typeof(UInt16), typeof(UInt32), typeof(UInt64)
+}; #>
+<# Type[] typesFloat = new[] {
+	typeof(Single), typeof(Double), typeof(Decimal)
+}; #>
+using System;
+
+namespace Chips.Runtime.Meta {
+	public partial struct Status {
+<# foreach (Type type in typesInteger) { #>
+		public void Update(<#= type.Name #> value) {
+			Carry = false;
+			Overflow = false;	
+<# if (type == typeof(Byte) || type.Name.StartsWith("U")) { #>
+			Negative = false;
+<# } else { #>
+			Negative = value < 0;
+<# } #>
+			Zero = value == 0;
+		}
+
+<# } #>
+<# foreach (Type type in typesFloat) { #>
+		public void Update(<#= type.Name #> value) {
+			Carry = false;
+<# if (type == typeof(Decimal)) { #>
+			Overflow = false;
+			Negative = value < 0;
+			Zero = value == 0;
+<# } else { #>
+			Overflow = <#= type.Name #>.IsInfinity(value) || <#= type.Name #>.IsNaN(value);
+			Negative = value < 0;
+			Zero = value == 0 || <#= type.Name #>.IsNaN(value);
+<# } #>
+		}
+
+<# } #>
+	}
+}

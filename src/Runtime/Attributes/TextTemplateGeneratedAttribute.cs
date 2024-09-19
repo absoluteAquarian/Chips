@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Chips.Runtime.Meta {
+namespace Chips.Runtime.Attributes {
 	[AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct)]
 	internal class TextTemplateGeneratedAttribute : Attribute { }
 }

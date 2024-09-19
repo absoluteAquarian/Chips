@@ -19,10 +19,10 @@
   </PropertyGroup>
   
   <ItemGroup>
-    <PackageReference Include="AsmResolver.DotNet" Version="5.4.0" />
+    <PackageReference Include="AsmResolver.DotNet" Version="5.5.1" />
     <PackageReference Include="Sprache" Version="2.3.1" />
     <PackageReference Include="DecimalMath.DecimalEx" Version="1.0.2" />
-    <PackageReference Include="System.CodeDom" Version="7.0.0" />
+    <PackageReference Include="System.CodeDom" Version="8.0.0" />
   </ItemGroup>
   
   <ItemGroup>

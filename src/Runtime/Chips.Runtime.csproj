@@ -19,10 +19,10 @@
   </PropertyGroup>
   
   <ItemGroup>
-    <PackageReference Include="AsmResolver.DotNet" Version="5.4.0" />
+    <PackageReference Include="AsmResolver.DotNet" Version="5.5.1" />
     <PackageReference Include="Sprache" Version="2.3.1" />
     <PackageReference Include="DecimalMath.DecimalEx" Version="1.0.2" />
-    <PackageReference Include="System.CodeDom" Version="7.0.0" />
+    <PackageReference Include="System.CodeDom" Version="8.0.0" />
   </ItemGroup>
   
   <ItemGroup>
@@ -34,10 +34,15 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Include="Types\NumberProcessing\InternalTypes.cs">
+    <None Include="Meta\Arithmetic.Generated.cs">
       <DesignTime>True</DesignTime>
       <AutoGen>True</AutoGen>
-      <DependentUpon>InternalTypes.tt</DependentUpon>
+      <DependentUpon>Arithmetic.Generated.tt</DependentUpon>
+    </None>
+    <None Include="Meta\Status.Generated.cs">
+      <DesignTime>True</DesignTime>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Status.Generated.tt</DependentUpon>
     </None>
     <None Include="Utility\Arithmetic.cs">
       <DesignTime>True</DesignTime>
@@ -52,10 +57,15 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Update="Types\NumberProcessing\InternalTypes.cs">
+    <Compile Update="Meta\Arithmetic.Generated.cs">
       <DesignTime>True</DesignTime>
       <AutoGen>True</AutoGen>
-      <DependentUpon>InternalTypes.tt</DependentUpon>
+      <DependentUpon>Arithmetic.Generated.tt</DependentUpon>
+    </Compile>
+    <Compile Update="Meta\Status.Generated.cs">
+      <DesignTime>True</DesignTime>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Status.Generated.tt</DependentUpon>
     </Compile>
     <Compile Update="Utility\Arithmetic.cs">
       <DesignTime>True</DesignTime>
@@ -80,9 +90,13 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Update="Types\NumberProcessing\InternalTypes.tt">
+    <None Update="Meta\Arithmetic.Generated.tt">
       <Generator>TextTemplatingFileGenerator</Generator>
-      <LastGenOutput>InternalTypes.cs</LastGenOutput>
+      <LastGenOutput>Arithmetic.Generated.cs</LastGenOutput>
+    </None>
+    <None Update="Meta\Status.Generated.tt">
+      <Generator>TextTemplatingFileGenerator</Generator>
+      <LastGenOutput>Status.Generated.cs</LastGenOutput>
     </None>
     <None Update="Utility\Arithmetic.tt">
       <Generator>TextTemplatingFileGenerator</Generator>

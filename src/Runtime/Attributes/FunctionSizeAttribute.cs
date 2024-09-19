@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Chips.Runtime.Meta {
+namespace Chips.Runtime.Attributes {
 	[AttributeUsage(AttributeTargets.Method)]
 	public class FunctionSizeAttribute : Attribute {
 		public readonly int Size;
