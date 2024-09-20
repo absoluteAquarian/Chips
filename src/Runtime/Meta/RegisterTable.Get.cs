@@ -75,7 +75,7 @@ namespace Chips.Runtime.Meta {
 				_String type = TypeToStringObject<T>();
 
 				if (register >= Register.S_0 && register <= Register.S_F) {
-					ref _StringObject info = ref Get(ref _s, register - Register.S_F);
+					ref _StringObject info = ref Get(ref _s, register - Register.S_0);
 					if (info.type != type)
 						throw new RegisterMismatchException<T>(register);
 
