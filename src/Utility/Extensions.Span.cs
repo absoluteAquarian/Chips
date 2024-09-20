@@ -2,7 +2,7 @@
 using System.Runtime.CompilerServices;
 using System.Text;
 
-namespace Chips.Utility {
+namespace Chips.Common.Utility {
 	partial class Extensions {
 		public static unsafe T* ToPointer<T>(this ref Span<T> span) where T : unmanaged
 			=> (T*)Unsafe.AsPointer(ref span.GetPinnableReference());

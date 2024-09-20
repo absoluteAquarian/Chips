@@ -3,7 +3,7 @@ using AsmResolver.DotNet.Signatures.Types;
 using System;
 using System.Linq;
 
-namespace Chips.Utility {
+namespace Chips.Common.Utility {
 	partial class Extensions {
 		public static string? GetFullGenericTypeName(this Type type) {
 			//Handle all invalid cases here:

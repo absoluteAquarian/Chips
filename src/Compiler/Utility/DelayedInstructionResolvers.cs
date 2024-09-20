@@ -5,7 +5,6 @@ using AsmResolver.DotNet.Signatures.Types;
 using AsmResolver.PE.DotNet.Cil;
 using AsmResolver.PE.DotNet.Metadata.Tables.Rows;
 using Chips.Compiler.Compilation;
-using Chips.Runtime.Types.NumberProcessing;
 using System;
 using System.Linq;
 

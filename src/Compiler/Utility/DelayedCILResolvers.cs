@@ -1,7 +1,6 @@
 ﻿using AsmResolver.DotNet;
 using AsmResolver.DotNet.Code.Cil;
 using AsmResolver.PE.DotNet.Cil;
-using Chips.Runtime;
 
 namespace Chips.Compiler.Utility {
 	public interface IDelayedCILMetadataResolver {

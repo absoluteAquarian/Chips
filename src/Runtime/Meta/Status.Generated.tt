@@ -13,36 +13,55 @@ using System;
 
 namespace Chips.Runtime.Meta {
 	public partial struct Status {
-<# foreach (Type type in typesInteger) { #>
+<#
+foreach (Type type in typesInteger) {
+#>
 		public void Update(<#= type.Name #> value) {
 			Carry = false;
 			Overflow = false;	
-<# if (type == typeof(Byte) || type.Name.StartsWith("U")) { #>
+<#
+	if (type == typeof(Byte) || type.Name.StartsWith("U")) {
+#>
 			Negative = false;
-<# } else { #>
+<#
+	} else {
+#>
 			Negative = value < 0;
-<# } #>
+<#
+	}
+#>
 			Zero = value == 0;
 			NaN = false;
 		}
 
-<# } #>
-<# foreach (Type type in typesFloat) { #>
+<#
+}
+
+foreach (Type type in typesFloat) {
+#>
 		public void Update(<#= type.Name #> value) {
 			Carry = false;
-<# if (type == typeof(Decimal)) { #>
+<#
+	if (type == typeof(Decimal)) {
+#>
 			Overflow = false;
 			Negative = value < 0;
 			Zero = value == 0;
 			NaN = false;
-<# } else { #>
+<#
+	} else {
+#>
 			Overflow = <#= type.Name #>.IsInfinity(value);
 			Negative = value < 0;
 			Zero = value == 0;
 			NaN = <#= type.Name #>.IsNaN(value);
-<# } #>
+<#
+	}
+#>
 		}
 
-<# } #>
+<#
+}
+#>
 	}
 }

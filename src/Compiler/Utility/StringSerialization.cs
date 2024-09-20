@@ -8,8 +8,6 @@ using System;
 using AsmResolver.DotNet;
 using Chips.Utility;
 using System.Linq;
-using Chips.Runtime.Types;
-using Chips.Runtime;
 
 namespace Chips.Compiler.Utility {
 	public static partial class StringSerialization {

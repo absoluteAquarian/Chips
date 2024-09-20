@@ -3,7 +3,7 @@ using System.Linq;
 using System;
 using System.Collections;
 
-namespace Chips.Utility.Iterators {
+namespace Chips.Common.Utility.Iterators {
 	// A copy of System.Enumerable/Iterator<T>
 	/// <summary>
 	/// A base class for enumerables that are loaded on-demand.

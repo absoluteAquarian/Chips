@@ -1,3 +1,3 @@
-﻿namespace Chips.Common.Utility {
+﻿namespace Chips.Runtime.Utility {
 	public static partial class Extensions { }
 }

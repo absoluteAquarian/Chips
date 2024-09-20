@@ -17,10 +17,12 @@ using System;
 
 namespace Chips.Runtime.Meta {
 	public static partial class Arithmetic {
-<# for (int i = 0; i < typesInteger.Length; i++) {
+<#
+for (int i = 0; i < typesInteger.Length; i++) {
 	string type = typesInteger[i].Name;
-	bool unsigned = type.StartsWith("U"), small = sizesInteger[i] < 8;
+	bool unsigned = type.StartsWith("U"), small = sizesInteger[i] < 8, verysmall = sizesInteger[i] < 4;
 	string unit = (unsigned ? "U" : "") + (small ? "Int32" : "Int64");
+	string intermediaryUnit = verysmall ? "UInt16" : unit;
 	string constantSuffix = (unsigned ? "u" : "") + (small ? "" : "L");
 	int size = sizesInteger[i];
 #>
@@ -32,7 +34,7 @@ namespace Chips.Runtime.Meta {
 			for (int i = 0; i < bits; i++) {
 				<#= unit #> shiftIn = carry ? ONE : 0;
 				carry = (value & (ONE << (sizeof(<#= type #>) * 8 - ONE_SMALL))) != 0;
-				value = (<#= type #>)((<#= type #>)(value << ONE_SMALL) | shiftIn);
+				value = (<#= type #>)((<#= intermediaryUnit #>)((<#= intermediaryUnit #>)value << ONE_SMALL) | shiftIn);
 			}
 
 			ps.Update(value);
@@ -46,7 +48,7 @@ namespace Chips.Runtime.Meta {
 
 			for (int i = 0; i < bits; i++) {
 				<#= unit #> shiftIn = (value & (ONE << (sizeof(<#= type #>) * 8 - ONE_SMALL))) != 0 ? ONE : 0; 
-				value = (<#= type #>)((<#= type #>)(value << ONE_SMALL) | shiftIn);
+				value = (<#= type #>)((<#= intermediaryUnit #>)((<#= intermediaryUnit #>)value << ONE_SMALL) | shiftIn);
 			}
 
 			target = value;
@@ -60,7 +62,7 @@ namespace Chips.Runtime.Meta {
 			for (int i = 0; i < bits; i++) {
 				<#= unit #> shiftIn = carry ? (ONE << (sizeof(<#= type #>) * 8 - ONE_SMALL)) : 0;
 				carry = (value & ONE) != 0;
-				value = (<#= type #>)((<#= type #>)(value >> ONE_SMALL) | shiftIn);
+				value = (<#= type #>)((<#= intermediaryUnit #>)((<#= intermediaryUnit #>)value >> ONE_SMALL) | shiftIn);
 			}
 
 			ps.Update(value);
@@ -74,12 +76,14 @@ namespace Chips.Runtime.Meta {
 
 			for (int i = 0; i < bits; i++) {
 				<#= unit #> shiftIn = (value & ONE) != 0 ? (ONE << (sizeof(<#= type #>) * 8 - ONE_SMALL)) : 0;
-				value = (<#= type #>)((<#= type #>)(value >> ONE_SMALL) | shiftIn);
+				value = (<#= type #>)((<#= intermediaryUnit #>)((<#= intermediaryUnit #>)value >> ONE_SMALL) | shiftIn);
 			}
 
 			target = value;
 		}
 
-<# } #>
+<#
+}
+#>
 	}
 }

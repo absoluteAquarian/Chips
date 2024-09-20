@@ -4,7 +4,7 @@ using AsmResolver.PE.DotNet.Cil;
 using System;
 using System.Reflection;
 
-namespace Chips.Utility {
+namespace Chips.Common.Utility {
 	partial class Extensions {
 		private static readonly ConstructorInfo Decimal_ctor_int_int_int_bool_byte = typeof(decimal).GetConstructor(BindingFlags.NonPublic | BindingFlags.Instance, new Type[] { typeof(int), typeof(int), typeof(int), typeof(bool), typeof(byte) })!;
 

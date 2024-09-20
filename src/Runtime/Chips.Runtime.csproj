@@ -44,16 +44,6 @@
       <AutoGen>True</AutoGen>
       <DependentUpon>Status.Generated.tt</DependentUpon>
     </None>
-    <None Include="Utility\Arithmetic.cs">
-      <DesignTime>True</DesignTime>
-      <AutoGen>True</AutoGen>
-      <DependentUpon>Arithmetic.tt</DependentUpon>
-    </None>
-    <None Include="Utility\ValueConverter.Casting.cs">
-      <DesignTime>True</DesignTime>
-      <AutoGen>True</AutoGen>
-      <DependentUpon>ValueConverter.Casting.tt</DependentUpon>
-    </None>
   </ItemGroup>
 
   <ItemGroup>
@@ -62,15 +52,15 @@
       <AutoGen>True</AutoGen>
       <DependentUpon>Arithmetic.Generated.tt</DependentUpon>
     </Compile>
+    <Compile Update="Meta\Register.cs">
+      <DesignTime>True</DesignTime>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Register.tt</DependentUpon>
+    </Compile>
     <Compile Update="Meta\Status.Generated.cs">
       <DesignTime>True</DesignTime>
       <AutoGen>True</AutoGen>
       <DependentUpon>Status.Generated.tt</DependentUpon>
-    </Compile>
-    <Compile Update="Utility\Arithmetic.cs">
-      <DesignTime>True</DesignTime>
-      <AutoGen>True</AutoGen>
-      <DependentUpon>Arithmetic.tt</DependentUpon>
     </Compile>
     <Compile Update="Utility\ConstrainedArithmetic.cs">
       <DesignTime>True</DesignTime>
@@ -82,11 +72,6 @@
       <AutoGen>True</AutoGen>
       <DependentUpon>OverflowDetectionArithmetic.tt</DependentUpon>
     </Compile>
-    <Compile Update="Utility\ValueConverter.Casting.cs">
-      <DesignTime>True</DesignTime>
-      <AutoGen>True</AutoGen>
-      <DependentUpon>ValueConverter.Casting.tt</DependentUpon>
-    </Compile>
   </ItemGroup>
 
   <ItemGroup>
@@ -94,17 +79,13 @@
       <Generator>TextTemplatingFileGenerator</Generator>
       <LastGenOutput>Arithmetic.Generated.cs</LastGenOutput>
     </None>
+    <None Update="Meta\Register.tt">
+      <LastGenOutput>Register.cs</LastGenOutput>
+      <Generator>TextTemplatingFileGenerator</Generator>
+    </None>
     <None Update="Meta\Status.Generated.tt">
       <Generator>TextTemplatingFileGenerator</Generator>
       <LastGenOutput>Status.Generated.cs</LastGenOutput>
-    </None>
-    <None Update="Utility\Arithmetic.tt">
-      <Generator>TextTemplatingFileGenerator</Generator>
-      <LastGenOutput>Arithmetic.cs</LastGenOutput>
-    </None>
-    <None Update="Utility\ValueConverter.Casting.tt">
-      <Generator>TextTemplatingFileGenerator</Generator>
-      <LastGenOutput>ValueConverter.Casting.cs</LastGenOutput>
     </None>
   </ItemGroup>
 

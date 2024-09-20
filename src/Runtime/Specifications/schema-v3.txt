@@ -2,9 +2,9 @@
 ====================
 Up to 256 registers are available with varying types and sizes.
 
-{00..0F}  $A[0-F]     - address registers
+{00..0F}  $PTR[0-F]   - address registers
 {10..2F}  $Z[00-1F]   - integer registers
-{30..4F}  $F[00-1F]   - floating-point registers
+{30..4F}  $FL[00-1F]  - floating-point registers
 {50..5F}  $S[0-F]     - string registers
 {60..9F}  $OBJ[00-3F] - object registers
 {A0..AF}  $V[0-F]     - vector registers
@@ -68,7 +68,7 @@ _______|______x0______|______x1______|______x2______|______x3______|______x4____
 |  5x  | B  .startreg | RRR      and | RRR       or | RIR      sub | RIR    sub.c | RRR      xor | RIR      div | RIR      mod | RIR      rem | RI     recip | R       call | RR     mkptr | RRR  sub.bcd | RR     ldfld |              |              |
 |  6x  | -    .endreg | RI       and | RI        or | R        not |              | RI       xor | RR       pow | RR       log | R       blog | R         ln | RR      call | RR     mkarr | RI   sub.bcd | RRR    ldfld | RR     stfld |              |
 |  7x  | RT       def | RRI      and | RRI       or | RR       not |              | RRI      xor | RRR      pow | RRR      log | RR      blog | RR        ln | RR      call | RRR    mkarr | RRI  sub.bcd | R     ldsfld | RRR    stfld |              |
-|  8x  |              | RR       rol | RR       ror | RR       asl | RR       asr | RR    asr.un | RI       pow | RI       log | I       blog | I         ln | RRR     call | RI     mkarr | IR   sub.bcd | RR    ldsfld | R     stsfld |              |
+|  8x  | I       .mod | RR       rol | RR       ror | RR       asl | RR       asr | RR    asr.un | RI       pow | RI       log | I       blog | I         ln | RRR     call | RI     mkarr | IR   sub.bcd | RR    ldsfld | R     stsfld |              |
 |  9x  |              | RI       rol | RI       ror | RRR      asl | RRR      asr | RRR   asr.un | RRI      pow | RRI      log | RI      blog | RI        ln | RR  callvirt | RRI    mkarr | RIR  sub.bcd | RR    ldflda | RR    stsfld |              |
 |  Ax  |              | RR    rol.nc | RR    ror.nc | RI       asl | RI       asr | RI    asr.un | IR       pow | IR       log |              |              | RRR callvirt |              |              | RRR   ldflda | RR    stelem |              |
 |  Bx  |              | RI    rol.nc | RI    ror.nc | RRI      asl | RRI      asr | RRI   asr.un | RIR      pow | RIR      log |              |              | R      calli | -        len | RR    ldelem | R    ldsflda | RRR   stelem |              |
@@ -136,6 +136,8 @@ INSTRUCTION            |  CODE | DESCRIPTION
 -- . --
 .checked               |    20 | Prefix for the following arithmetic instruction, check for overflow and throw an exception if detected (not all arithmetic instructions supported)
 .endreg                |    60 | Denotes the end of the most recently configured region of arithmetic operations
+.mod x                 |    80 | Prefix for the following instruction, indicates which operands are to be dereferenced first
+                       |       | Reserved for use by the compiler, cannot be used in user code
 .nocast                |    40 | Prefix for the following arithmetic instruction, prevents automatic upcasting of the result to a larger type, e.g. Int16 + Int16 = Int32
 .startreg { ... }      |    50 | Denotes the start of a configured region of arithmetic operations, expected block values are: "checked", "nocast"
 

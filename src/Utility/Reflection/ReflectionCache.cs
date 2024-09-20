@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 
-namespace Chips.Utility.Reflection {
+namespace Chips.Common.Utility.Reflection {
 	public static class ReflectionCache {
 		private enum CacheType {
 			Field,

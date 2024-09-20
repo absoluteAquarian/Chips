@@ -1,5 +1,5 @@
-﻿using AsmResolver.DotNet;
-using AsmResolver.DotNet.Code.Cil;
+﻿using AsmResolver.DotNet.Code.Cil;
+using AsmResolver.DotNet;
 using Chips.Compiler.Compilation;
 using Chips.Compiler.Utility;
 

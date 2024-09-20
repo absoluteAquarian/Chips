@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text;
 
-namespace Chips.Utility {
+namespace Chips.Common.Utility {
 	partial class Extensions {
 		private static readonly Dictionary<char, string> _escapedCharacters = new() {
 			['\\'] = "\\",

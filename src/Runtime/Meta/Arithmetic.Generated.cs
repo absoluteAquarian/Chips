@@ -10,7 +10,7 @@ namespace Chips.Runtime.Meta {
 			for (int i = 0; i < bits; i++) {
 				Int32 shiftIn = carry ? ONE : 0;
 				carry = (value & (ONE << (sizeof(SByte) * 8 - ONE_SMALL))) != 0;
-				value = (SByte)((SByte)(value << ONE_SMALL) | shiftIn);
+				value = (SByte)((UInt16)((UInt16)value << ONE_SMALL) | shiftIn);
 			}
 
 			ps.Update(value);
@@ -24,7 +24,7 @@ namespace Chips.Runtime.Meta {
 
 			for (int i = 0; i < bits; i++) {
 				Int32 shiftIn = (value & (ONE << (sizeof(SByte) * 8 - ONE_SMALL))) != 0 ? ONE : 0; 
-				value = (SByte)((SByte)(value << ONE_SMALL) | shiftIn);
+				value = (SByte)((UInt16)((UInt16)value << ONE_SMALL) | shiftIn);
 			}
 
 			target = value;
@@ -38,7 +38,7 @@ namespace Chips.Runtime.Meta {
 			for (int i = 0; i < bits; i++) {
 				Int32 shiftIn = carry ? (ONE << (sizeof(SByte) * 8 - ONE_SMALL)) : 0;
 				carry = (value & ONE) != 0;
-				value = (SByte)((SByte)(value >> ONE_SMALL) | shiftIn);
+				value = (SByte)((UInt16)((UInt16)value >> ONE_SMALL) | shiftIn);
 			}
 
 			ps.Update(value);
@@ -52,7 +52,7 @@ namespace Chips.Runtime.Meta {
 
 			for (int i = 0; i < bits; i++) {
 				Int32 shiftIn = (value & ONE) != 0 ? (ONE << (sizeof(SByte) * 8 - ONE_SMALL)) : 0;
-				value = (SByte)((SByte)(value >> ONE_SMALL) | shiftIn);
+				value = (SByte)((UInt16)((UInt16)value >> ONE_SMALL) | shiftIn);
 			}
 
 			target = value;
@@ -66,7 +66,7 @@ namespace Chips.Runtime.Meta {
 			for (int i = 0; i < bits; i++) {
 				Int32 shiftIn = carry ? ONE : 0;
 				carry = (value & (ONE << (sizeof(Int16) * 8 - ONE_SMALL))) != 0;
-				value = (Int16)((Int16)(value << ONE_SMALL) | shiftIn);
+				value = (Int16)((UInt16)((UInt16)value << ONE_SMALL) | shiftIn);
 			}
 
 			ps.Update(value);
@@ -80,7 +80,7 @@ namespace Chips.Runtime.Meta {
 
 			for (int i = 0; i < bits; i++) {
 				Int32 shiftIn = (value & (ONE << (sizeof(Int16) * 8 - ONE_SMALL))) != 0 ? ONE : 0; 
-				value = (Int16)((Int16)(value << ONE_SMALL) | shiftIn);
+				value = (Int16)((UInt16)((UInt16)value << ONE_SMALL) | shiftIn);
 			}
 
 			target = value;
@@ -94,7 +94,7 @@ namespace Chips.Runtime.Meta {
 			for (int i = 0; i < bits; i++) {
 				Int32 shiftIn = carry ? (ONE << (sizeof(Int16) * 8 - ONE_SMALL)) : 0;
 				carry = (value & ONE) != 0;
-				value = (Int16)((Int16)(value >> ONE_SMALL) | shiftIn);
+				value = (Int16)((UInt16)((UInt16)value >> ONE_SMALL) | shiftIn);
 			}
 
 			ps.Update(value);
@@ -108,7 +108,7 @@ namespace Chips.Runtime.Meta {
 
 			for (int i = 0; i < bits; i++) {
 				Int32 shiftIn = (value & ONE) != 0 ? (ONE << (sizeof(Int16) * 8 - ONE_SMALL)) : 0;
-				value = (Int16)((Int16)(value >> ONE_SMALL) | shiftIn);
+				value = (Int16)((UInt16)((UInt16)value >> ONE_SMALL) | shiftIn);
 			}
 
 			target = value;
@@ -122,7 +122,7 @@ namespace Chips.Runtime.Meta {
 			for (int i = 0; i < bits; i++) {
 				Int32 shiftIn = carry ? ONE : 0;
 				carry = (value & (ONE << (sizeof(Int32) * 8 - ONE_SMALL))) != 0;
-				value = (Int32)((Int32)(value << ONE_SMALL) | shiftIn);
+				value = (Int32)((Int32)((Int32)value << ONE_SMALL) | shiftIn);
 			}
 
 			ps.Update(value);
@@ -136,7 +136,7 @@ namespace Chips.Runtime.Meta {
 
 			for (int i = 0; i < bits; i++) {
 				Int32 shiftIn = (value & (ONE << (sizeof(Int32) * 8 - ONE_SMALL))) != 0 ? ONE : 0; 
-				value = (Int32)((Int32)(value << ONE_SMALL) | shiftIn);
+				value = (Int32)((Int32)((Int32)value << ONE_SMALL) | shiftIn);
 			}
 
 			target = value;
@@ -150,7 +150,7 @@ namespace Chips.Runtime.Meta {
 			for (int i = 0; i < bits; i++) {
 				Int32 shiftIn = carry ? (ONE << (sizeof(Int32) * 8 - ONE_SMALL)) : 0;
 				carry = (value & ONE) != 0;
-				value = (Int32)((Int32)(value >> ONE_SMALL) | shiftIn);
+				value = (Int32)((Int32)((Int32)value >> ONE_SMALL) | shiftIn);
 			}
 
 			ps.Update(value);
@@ -164,7 +164,7 @@ namespace Chips.Runtime.Meta {
 
 			for (int i = 0; i < bits; i++) {
 				Int32 shiftIn = (value & ONE) != 0 ? (ONE << (sizeof(Int32) * 8 - ONE_SMALL)) : 0;
-				value = (Int32)((Int32)(value >> ONE_SMALL) | shiftIn);
+				value = (Int32)((Int32)((Int32)value >> ONE_SMALL) | shiftIn);
 			}
 
 			target = value;
@@ -178,7 +178,7 @@ namespace Chips.Runtime.Meta {
 			for (int i = 0; i < bits; i++) {
 				Int64 shiftIn = carry ? ONE : 0;
 				carry = (value & (ONE << (sizeof(Int64) * 8 - ONE_SMALL))) != 0;
-				value = (Int64)((Int64)(value << ONE_SMALL) | shiftIn);
+				value = (Int64)((Int64)((Int64)value << ONE_SMALL) | shiftIn);
 			}
 
 			ps.Update(value);
@@ -192,7 +192,7 @@ namespace Chips.Runtime.Meta {
 
 			for (int i = 0; i < bits; i++) {
 				Int64 shiftIn = (value & (ONE << (sizeof(Int64) * 8 - ONE_SMALL))) != 0 ? ONE : 0; 
-				value = (Int64)((Int64)(value << ONE_SMALL) | shiftIn);
+				value = (Int64)((Int64)((Int64)value << ONE_SMALL) | shiftIn);
 			}
 
 			target = value;
@@ -206,7 +206,7 @@ namespace Chips.Runtime.Meta {
 			for (int i = 0; i < bits; i++) {
 				Int64 shiftIn = carry ? (ONE << (sizeof(Int64) * 8 - ONE_SMALL)) : 0;
 				carry = (value & ONE) != 0;
-				value = (Int64)((Int64)(value >> ONE_SMALL) | shiftIn);
+				value = (Int64)((Int64)((Int64)value >> ONE_SMALL) | shiftIn);
 			}
 
 			ps.Update(value);
@@ -220,7 +220,7 @@ namespace Chips.Runtime.Meta {
 
 			for (int i = 0; i < bits; i++) {
 				Int64 shiftIn = (value & ONE) != 0 ? (ONE << (sizeof(Int64) * 8 - ONE_SMALL)) : 0;
-				value = (Int64)((Int64)(value >> ONE_SMALL) | shiftIn);
+				value = (Int64)((Int64)((Int64)value >> ONE_SMALL) | shiftIn);
 			}
 
 			target = value;
@@ -234,7 +234,7 @@ namespace Chips.Runtime.Meta {
 			for (int i = 0; i < bits; i++) {
 				Int32 shiftIn = carry ? ONE : 0;
 				carry = (value & (ONE << (sizeof(Byte) * 8 - ONE_SMALL))) != 0;
-				value = (Byte)((Byte)(value << ONE_SMALL) | shiftIn);
+				value = (Byte)((UInt16)((UInt16)value << ONE_SMALL) | shiftIn);
 			}
 
 			ps.Update(value);
@@ -248,7 +248,7 @@ namespace Chips.Runtime.Meta {
 
 			for (int i = 0; i < bits; i++) {
 				Int32 shiftIn = (value & (ONE << (sizeof(Byte) * 8 - ONE_SMALL))) != 0 ? ONE : 0; 
-				value = (Byte)((Byte)(value << ONE_SMALL) | shiftIn);
+				value = (Byte)((UInt16)((UInt16)value << ONE_SMALL) | shiftIn);
 			}
 
 			target = value;
@@ -262,7 +262,7 @@ namespace Chips.Runtime.Meta {
 			for (int i = 0; i < bits; i++) {
 				Int32 shiftIn = carry ? (ONE << (sizeof(Byte) * 8 - ONE_SMALL)) : 0;
 				carry = (value & ONE) != 0;
-				value = (Byte)((Byte)(value >> ONE_SMALL) | shiftIn);
+				value = (Byte)((UInt16)((UInt16)value >> ONE_SMALL) | shiftIn);
 			}
 
 			ps.Update(value);
@@ -276,7 +276,7 @@ namespace Chips.Runtime.Meta {
 
 			for (int i = 0; i < bits; i++) {
 				Int32 shiftIn = (value & ONE) != 0 ? (ONE << (sizeof(Byte) * 8 - ONE_SMALL)) : 0;
-				value = (Byte)((Byte)(value >> ONE_SMALL) | shiftIn);
+				value = (Byte)((UInt16)((UInt16)value >> ONE_SMALL) | shiftIn);
 			}
 
 			target = value;
@@ -290,7 +290,7 @@ namespace Chips.Runtime.Meta {
 			for (int i = 0; i < bits; i++) {
 				UInt32 shiftIn = carry ? ONE : 0;
 				carry = (value & (ONE << (sizeof(UInt16) * 8 - ONE_SMALL))) != 0;
-				value = (UInt16)((UInt16)(value << ONE_SMALL) | shiftIn);
+				value = (UInt16)((UInt16)((UInt16)value << ONE_SMALL) | shiftIn);
 			}
 
 			ps.Update(value);
@@ -304,7 +304,7 @@ namespace Chips.Runtime.Meta {
 
 			for (int i = 0; i < bits; i++) {
 				UInt32 shiftIn = (value & (ONE << (sizeof(UInt16) * 8 - ONE_SMALL))) != 0 ? ONE : 0; 
-				value = (UInt16)((UInt16)(value << ONE_SMALL) | shiftIn);
+				value = (UInt16)((UInt16)((UInt16)value << ONE_SMALL) | shiftIn);
 			}
 
 			target = value;
@@ -318,7 +318,7 @@ namespace Chips.Runtime.Meta {
 			for (int i = 0; i < bits; i++) {
 				UInt32 shiftIn = carry ? (ONE << (sizeof(UInt16) * 8 - ONE_SMALL)) : 0;
 				carry = (value & ONE) != 0;
-				value = (UInt16)((UInt16)(value >> ONE_SMALL) | shiftIn);
+				value = (UInt16)((UInt16)((UInt16)value >> ONE_SMALL) | shiftIn);
 			}
 
 			ps.Update(value);
@@ -332,7 +332,7 @@ namespace Chips.Runtime.Meta {
 
 			for (int i = 0; i < bits; i++) {
 				UInt32 shiftIn = (value & ONE) != 0 ? (ONE << (sizeof(UInt16) * 8 - ONE_SMALL)) : 0;
-				value = (UInt16)((UInt16)(value >> ONE_SMALL) | shiftIn);
+				value = (UInt16)((UInt16)((UInt16)value >> ONE_SMALL) | shiftIn);
 			}
 
 			target = value;
@@ -346,7 +346,7 @@ namespace Chips.Runtime.Meta {
 			for (int i = 0; i < bits; i++) {
 				UInt32 shiftIn = carry ? ONE : 0;
 				carry = (value & (ONE << (sizeof(UInt32) * 8 - ONE_SMALL))) != 0;
-				value = (UInt32)((UInt32)(value << ONE_SMALL) | shiftIn);
+				value = (UInt32)((UInt32)((UInt32)value << ONE_SMALL) | shiftIn);
 			}
 
 			ps.Update(value);
@@ -360,7 +360,7 @@ namespace Chips.Runtime.Meta {
 
 			for (int i = 0; i < bits; i++) {
 				UInt32 shiftIn = (value & (ONE << (sizeof(UInt32) * 8 - ONE_SMALL))) != 0 ? ONE : 0; 
-				value = (UInt32)((UInt32)(value << ONE_SMALL) | shiftIn);
+				value = (UInt32)((UInt32)((UInt32)value << ONE_SMALL) | shiftIn);
 			}
 
 			target = value;
@@ -374,7 +374,7 @@ namespace Chips.Runtime.Meta {
 			for (int i = 0; i < bits; i++) {
 				UInt32 shiftIn = carry ? (ONE << (sizeof(UInt32) * 8 - ONE_SMALL)) : 0;
 				carry = (value & ONE) != 0;
-				value = (UInt32)((UInt32)(value >> ONE_SMALL) | shiftIn);
+				value = (UInt32)((UInt32)((UInt32)value >> ONE_SMALL) | shiftIn);
 			}
 
 			ps.Update(value);
@@ -388,7 +388,7 @@ namespace Chips.Runtime.Meta {
 
 			for (int i = 0; i < bits; i++) {
 				UInt32 shiftIn = (value & ONE) != 0 ? (ONE << (sizeof(UInt32) * 8 - ONE_SMALL)) : 0;
-				value = (UInt32)((UInt32)(value >> ONE_SMALL) | shiftIn);
+				value = (UInt32)((UInt32)((UInt32)value >> ONE_SMALL) | shiftIn);
 			}
 
 			target = value;
@@ -402,7 +402,7 @@ namespace Chips.Runtime.Meta {
 			for (int i = 0; i < bits; i++) {
 				UInt64 shiftIn = carry ? ONE : 0;
 				carry = (value & (ONE << (sizeof(UInt64) * 8 - ONE_SMALL))) != 0;
-				value = (UInt64)((UInt64)(value << ONE_SMALL) | shiftIn);
+				value = (UInt64)((UInt64)((UInt64)value << ONE_SMALL) | shiftIn);
 			}
 
 			ps.Update(value);
@@ -416,7 +416,7 @@ namespace Chips.Runtime.Meta {
 
 			for (int i = 0; i < bits; i++) {
 				UInt64 shiftIn = (value & (ONE << (sizeof(UInt64) * 8 - ONE_SMALL))) != 0 ? ONE : 0; 
-				value = (UInt64)((UInt64)(value << ONE_SMALL) | shiftIn);
+				value = (UInt64)((UInt64)((UInt64)value << ONE_SMALL) | shiftIn);
 			}
 
 			target = value;
@@ -430,7 +430,7 @@ namespace Chips.Runtime.Meta {
 			for (int i = 0; i < bits; i++) {
 				UInt64 shiftIn = carry ? (ONE << (sizeof(UInt64) * 8 - ONE_SMALL)) : 0;
 				carry = (value & ONE) != 0;
-				value = (UInt64)((UInt64)(value >> ONE_SMALL) | shiftIn);
+				value = (UInt64)((UInt64)((UInt64)value >> ONE_SMALL) | shiftIn);
 			}
 
 			ps.Update(value);
@@ -444,7 +444,7 @@ namespace Chips.Runtime.Meta {
 
 			for (int i = 0; i < bits; i++) {
 				UInt64 shiftIn = (value & ONE) != 0 ? (ONE << (sizeof(UInt64) * 8 - ONE_SMALL)) : 0;
-				value = (UInt64)((UInt64)(value >> ONE_SMALL) | shiftIn);
+				value = (UInt64)((UInt64)((UInt64)value >> ONE_SMALL) | shiftIn);
 			}
 
 			target = value;
