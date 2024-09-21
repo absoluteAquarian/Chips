@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Numerics;
+using System.Runtime.CompilerServices;
 using System.Text;
 
 namespace Chips.Runtime.Meta {
@@ -9,55 +10,55 @@ namespace Chips.Runtime.Meta {
 		public void SetAns(byte value) {
 			_ans.type = _Variant.Integer;
 			_ans.subtype = (int)_Integer.Byte;
-			_ans.data.Integer.Byte = value;
+			Unsafe.As<_VariantObject, byte>(ref _ans) = value;
 		}
 
 		public void SetAns(sbyte value) {
 			_ans.type = _Variant.Integer;
 			_ans.subtype = (int)_Integer.SByte;
-			_ans.data.Integer.SByte = value;
+			Unsafe.As<_VariantObject, sbyte>(ref _ans) = value;
 		}
 
 		public void SetAns(short value) {
 			_ans.type = _Variant.Integer;
 			_ans.subtype = (int)_Integer.Int16;
-			_ans.data.Integer.Int16 = value;
+			Unsafe.As<_VariantObject, short>(ref _ans) = value;
 		}
 
 		public void SetAns(ushort value) {
 			_ans.type = _Variant.Integer;
 			_ans.subtype = (int)_Integer.UInt16;
-			_ans.data.Integer.UInt16 = value;
+			Unsafe.As<_VariantObject, ushort>(ref _ans) = value;
 		}
 
 		public void SetAns(int value) {
 			_ans.type = _Variant.Integer;
 			_ans.subtype = (int)_Integer.Int32;
-			_ans.data.Integer.Int32 = value;
+			Unsafe.As<_VariantObject, int>(ref _ans) = value;
 		}
 
 		public void SetAns(uint value) {
 			_ans.type = _Variant.Integer;
 			_ans.subtype = (int)_Integer.UInt32;
-			_ans.data.Integer.UInt32 = value;
+			Unsafe.As<_VariantObject, uint>(ref _ans) = value;
 		}
 
 		public void SetAns(long value) {
 			_ans.type = _Variant.Integer;
 			_ans.subtype = (int)_Integer.Int64;
-			_ans.data.Integer.Int64 = value;
+			Unsafe.As<_VariantObject, long>(ref _ans) = value;
 		}
 
 		public void SetAns(ulong value) {
 			_ans.type = _Variant.Integer;
 			_ans.subtype = (int)_Integer.UInt64;
-			_ans.data.Integer.UInt64 = value;
+			Unsafe.As<_VariantObject, ulong>(ref _ans) = value;
 		}
 
 		public void SetAns(char value) {
 			_ans.type = _Variant.Integer;
 			_ans.subtype = (int)_Integer.Char;
-			_ans.data.Integer.Char = value;
+			Unsafe.As<_VariantObject, char>(ref _ans) = value;
 		}
 
 		// ===== ADDRESS VALUES =====
@@ -65,13 +66,13 @@ namespace Chips.Runtime.Meta {
 		public void SetAns(nint value) {
 			_ans.type = _Variant.Address;
 			_ans.subtype = (int)_NativeInt.NInt;
-			_ans.data.Address.IntPtr = value;
+			Unsafe.As<_VariantObject, nint>(ref _ans) = value;
 		}
 
 		public void SetAns(nuint value) {
 			_ans.type = _Variant.Address;
 			_ans.subtype = (int)_NativeInt.NUInt;
-			_ans.data.Address.UIntPtr = value;
+			Unsafe.As<_VariantObject, nuint>(ref _ans) = value;
 		}
 
 		// ===== FLOATING-POINT VALUES =====
@@ -79,19 +80,19 @@ namespace Chips.Runtime.Meta {
 		public void SetAns(float value) {
 			_ans.type = _Variant.Float;
 			_ans.subtype = (int)_Float.Single;
-			_ans.data.Float.Single = value;
+			Unsafe.As<_VariantObject, float>(ref _ans) = value;
 		}
 
 		public void SetAns(double value) {
 			_ans.type = _Variant.Float;
 			_ans.subtype = (int)_Float.Double;
-			_ans.data.Float.Double = value;
+			Unsafe.As<_VariantObject, double>(ref _ans) = value;
 		}
 
 		public void SetAns(decimal value) {
 			_ans.type = _Variant.Float;
 			_ans.subtype = (int)_Float.Decimal;
-			_ans.data.Float.Decimal = value;
+			Unsafe.As<_VariantObject, decimal>(ref _ans) = value;
 		}
 
 		// ===== STRING VALUES =====
@@ -99,21 +100,27 @@ namespace Chips.Runtime.Meta {
 		public void SetAns(string value) {
 			_ans.type = _Variant.String;
 			_ans.subtype = (int)_String.String;
-			_ans.data.String = value;
+			_VariantObject.GetObject<string>(ref _ans) = value;
 		}
 
 		public void SetAns(StringBuilder value) {
 			_ans.type = _Variant.String;
 			_ans.subtype = (int)_String.StringBuilder;
-			_ans.data.String = value;
+			_VariantObject.GetObject<StringBuilder>(ref _ans) = value;
 		}
 
 		// ===== OBJECT VALUES =====
 
-		public void SetAns(object value) {
+		public void SetAns(object? value) {
 			_ans.type = _Variant.Object;
-			_ans.subtype = 0;
-			_ans.data.Object = value;
+			_ans.subtype = (int)_VariantObjectSubtype.Reference;
+			_VariantObject.GetObject<object>(ref _ans) = value;
+		}
+
+		public void SetAns<T>(in T value) where T : struct {
+			_ans.type = _Variant.Object;
+			_ans.subtype = (int)_VariantObjectSubtype.Valuetype;
+			_VariantObject.SetStruct(ref _ans, value);
 		}
 
 		// ===== VECTOR VALUES =====
@@ -121,25 +128,25 @@ namespace Chips.Runtime.Meta {
 		public void SetAns(Vector2 value) {
 			_ans.type = _Variant.Vector;
 			_ans.subtype = (int)_Vector.Vector2;
-			_ans.data.Vector.Vector2 = value;
+			Unsafe.As<_VariantObject, Vector2>(ref _ans) = value;
 		}
 
 		public void SetAns(Vector3 value) {
 			_ans.type = _Variant.Vector;
 			_ans.subtype = (int)_Vector.Vector3;
-			_ans.data.Vector.Vector3 = value;
+			Unsafe.As<_VariantObject, Vector3>(ref _ans) = value;
 		}
 
 		public void SetAns(Vector4 value) {
 			_ans.type = _Variant.Vector;
 			_ans.subtype = (int)_Vector.Vector4;
-			_ans.data.Vector.Vector4 = value;
+			Unsafe.As<_VariantObject, Vector4>(ref _ans) = value;
 		}
 
-		public void SetAns<T>(Vector<T> value) where T : struct {
+		public void SetAns<T>(in Vector<T> value) where T : struct {
 			_ans.type = _Variant.Vector;
 			_ans.subtype = (int)_Vector.VectorX;
-			_VectorData.GetVector<T>(ref _ans.data.Vector) = value;
+			Unsafe.As<_VariantObject, Vector<T>>(ref _ans) = value;
 		}
 
 		// ===== METADATA TOKEN VALUES =====
@@ -147,19 +154,19 @@ namespace Chips.Runtime.Meta {
 		public void SetAns(RuntimeTypeHandle value) {
 			_ans.type = _Variant.Token;
 			_ans.subtype = (int)_MetadataToken.Type;
-			_ans.data.Token.TypeHandle = value;
+			Unsafe.As<_VariantObject, RuntimeTypeHandle>(ref _ans) = value;
 		}
 
 		public void SetAns(RuntimeMethodHandle value) {
 			_ans.type = _Variant.Token;
 			_ans.subtype = (int)_MetadataToken.Method;
-			_ans.data.Token.MethodHandle = value;
+			Unsafe.As<_VariantObject, RuntimeMethodHandle>(ref _ans) = value;
 		}
 
 		public void SetAns(RuntimeFieldHandle value) {
 			_ans.type = _Variant.Token;
 			_ans.subtype = (int)_MetadataToken.Field;
-			_ans.data.Token.FieldHandle = value;
+			Unsafe.As<_VariantObject, RuntimeFieldHandle>(ref _ans) = value;
 		}
 	}
 }

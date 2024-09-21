@@ -134,7 +134,7 @@ namespace Chips.Runtime.Meta {
 				throw new InvalidRegisterException<T>(register);
 			} else if (typeof(T).IsGenericType && typeof(T).GetGenericTypeDefinition() == typeof(Vector<>)) {
 				// A different method should be used instead
-				throw new ArgumentException("Vector<T> is not a valid type for this method, use ReadVector<T>() instead");
+				throw new ArgumentException("Vector<T> is not a valid type for this method, use GetVector<T>() instead");
 			} else if (typeof(Exception).IsAssignableFrom(typeof(T))) {
 				if (register == Register.EX)
 					return ref Unsafe.As<Exception, T>(ref _ex);
@@ -143,7 +143,7 @@ namespace Chips.Runtime.Meta {
 			} else {
 				// Register must be a direct object register ($OBJxx), or a variant register
 				if ((register >= Register.OBJ_0 && register <= Register.OBJ_3F) || (register >= Register.R_0 && register <= Register.R_2) || register == Register.ANS)
-					throw new InvalidRegisterMethodException(register, alternative: typeof(T).IsClass ? "ReadObject<T>" : "ReadStruct<T>");
+					throw new InvalidRegisterMethodException(register, alternative: typeof(T).IsValueType ? "GetStruct<T>" : "GetObject<T>");
 				else
 					throw new InvalidRegisterException<T>(register);
 			}
@@ -160,13 +160,13 @@ namespace Chips.Runtime.Meta {
 					if (info.type != _Vector.VectorX)
 						throw new RegisterMismatchException<T>(register);
 
-					return ref _VectorData.GetVector<T>(ref info.data);
+					return ref Unsafe.As<_VectorObject, Vector<T>>(ref info);
 				} else if ((register >= Register.R_0 && register <= Register.R_2) || register == Register.ANS) {
 					ref _VariantObject info = ref (register == Register.ANS ? ref _ans : ref Get(ref _r, register - Register.R_0));
 					if (info.type != _Variant.Vector)
 						throw new RegisterMismatchException<T>(register);
 
-					return ref _VectorData.GetVector<T>(ref info.data.Vector);
+					return ref Unsafe.As<_VariantObject, Vector<T>>(ref info);
 				}
 					
 				throw new InvalidRegisterException<T>(register);
@@ -182,10 +182,14 @@ namespace Chips.Runtime.Meta {
 			if ((register >= Register.OBJ_0 && register <= Register.OBJ_3F) || (register >= Register.R_0 && register <= Register.R_2) || register == Register.ANS) {
 				ref _VariantObject info = ref (register == Register.ANS ? ref _ans : ref register >= Register.R_0 ? ref Get(ref _r, register - Register.R_0) : ref Get(ref _obj, register - Register.OBJ_0));
 
-				if (info.type != _Variant.Object || _VariantObjectData.GetObject<object>(ref info.data) is not (T or null))
+				if (info.type != _Variant.Object || (_VariantObjectSubtype)info.subtype != _VariantObjectSubtype.Reference)
 					throw new RegisterMismatchException<T>(register);
 
-				return ref _VariantObjectData.GetObject<T>(ref info.data);
+				ref object? obj = ref _VariantObject.GetObject<object>(ref info);
+				if (obj is not (null or T))
+					throw new RegisterMismatchException<T>(register);
+
+				return ref obj is null ? ref Unsafe.NullRef<T>() : ref Unsafe.As<object, T>(ref obj);
 			} else
 				throw new InvalidRegisterException<T>(register);
 		}
@@ -198,8 +202,7 @@ namespace Chips.Runtime.Meta {
 			if ((register >= Register.OBJ_0 && register <= Register.OBJ_3F) || (register >= Register.R_0 && register <= Register.R_2) || register == Register.ANS) {
 				ref _VariantObject info = ref (register == Register.ANS ? ref _ans : ref register >= Register.R_0 ? ref Get(ref _r, register - Register.R_0) : ref Get(ref _obj, register - Register.OBJ_0));
 
-				// Redirection to Ref<T> is necessary to ensure that the struct fits within the VariantObjectData union
-				if (info.type != _Variant.Object || _VariantObjectData.GetStruct<T>(ref info.data) is not Ref<T> objRef)
+				if (info.type != _Variant.Object || (_VariantObjectSubtype)info.subtype != _VariantObjectSubtype.Valuetype || _VariantObject.GetObject<object>(ref info) is not Ref<T> objRef)
 					throw new RegisterMismatchException<T>(register);
 
 				return ref objRef.value;

@@ -1,5 +1,8 @@
-﻿using System;
+﻿using Chips.Common.Utility;
+using System;
 using System.Numerics;
+using System.Runtime.CompilerServices;
+using System.Text;
 
 namespace Chips.Runtime.Meta {
 	partial class RegisterTable {
@@ -15,25 +18,17 @@ namespace Chips.Runtime.Meta {
 			Char
 		}
 
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		private static _Integer TypeToInteger<T>() {
-			if (typeof(T) == typeof(byte))
-				return _Integer.Byte;
-			if (typeof(T) == typeof(sbyte))
-				return _Integer.SByte;
-			if (typeof(T) == typeof(short))
-				return _Integer.Int16;
-			if (typeof(T) == typeof(ushort))
-				return _Integer.UInt16;
-			if (typeof(T) == typeof(int))
-				return _Integer.Int32;
-			if (typeof(T) == typeof(uint))
-				return _Integer.UInt32;
-			if (typeof(T) == typeof(long))
-				return _Integer.Int64;
-			if (typeof(T) == typeof(ulong))
-				return _Integer.UInt64;
-			if (typeof(T) == typeof(char))
-				return _Integer.Char;
+			if (typeof(T) == typeof(byte)) return _Integer.Byte;
+			if (typeof(T) == typeof(sbyte)) return _Integer.SByte;
+			if (typeof(T) == typeof(short)) return _Integer.Int16;
+			if (typeof(T) == typeof(ushort)) return _Integer.UInt16;
+			if (typeof(T) == typeof(int)) return _Integer.Int32;
+			if (typeof(T) == typeof(uint)) return _Integer.UInt32;
+			if (typeof(T) == typeof(long)) return _Integer.Int64;
+			if (typeof(T) == typeof(ulong)) return _Integer.UInt64;
+			if (typeof(T) == typeof(char)) return _Integer.Char;
 
 			throw new InvalidTypeToRegisterEnumException<_Integer, T>();
 		}
@@ -43,11 +38,10 @@ namespace Chips.Runtime.Meta {
 			NUInt
 		}
 
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		private static _NativeInt TypeToNativeInt<T>() {
-			if (typeof(T) == typeof(nint))
-				return _NativeInt.NInt;
-			if (typeof(T) == typeof(nuint))
-				return _NativeInt.NUInt;
+			if (typeof(T) == typeof(nint)) return _NativeInt.NInt;
+			if (typeof(T) == typeof(nuint)) return _NativeInt.NUInt;
 
 			throw new InvalidTypeToRegisterEnumException<_NativeInt, T>();
 		}
@@ -58,13 +52,11 @@ namespace Chips.Runtime.Meta {
 			Decimal
 		}
 
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		private static _Float TypeToFloat<T>() {
-			if (typeof(T) == typeof(float))
-				return _Float.Single;
-			if (typeof(T) == typeof(double))
-				return _Float.Double;
-			if (typeof(T) == typeof(decimal))
-				return _Float.Decimal;
+			if (typeof(T) == typeof(float)) return _Float.Single;
+			if (typeof(T) == typeof(double)) return _Float.Double;
+			if (typeof(T) == typeof(decimal)) return _Float.Decimal;
 
 			throw new InvalidTypeToRegisterEnumException<_Float, T>();
 		}
@@ -74,11 +66,10 @@ namespace Chips.Runtime.Meta {
 			StringBuilder
 		}
 
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		private static _String TypeToStringObject<T>() {
-			if (typeof(T) == typeof(string))
-				return _String.String;
-			if (typeof(T) == typeof(System.Text.StringBuilder))
-				return _String.StringBuilder;
+			if (typeof(T) == typeof(string)) return _String.String;
+			if (typeof(T) == typeof(StringBuilder)) return _String.StringBuilder;
 
 			throw new InvalidTypeToRegisterEnumException<_String, T>();
 		}
@@ -93,6 +84,11 @@ namespace Chips.Runtime.Meta {
 			Token
 		}
 
+		private enum _VariantObjectSubtype {
+			Reference,
+			Valuetype
+		}
+
 		private enum _Vector {
 			Vector2,
 			Vector3,
@@ -100,13 +96,12 @@ namespace Chips.Runtime.Meta {
 			VectorX
 		}
 
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		private static _Vector TypeToVector<T>() {
-			if (typeof(T) == typeof(Vector2))
-				return _Vector.Vector2;
-			if (typeof(T) == typeof(Vector3))
-				return _Vector.Vector3;
-			if (typeof(T) == typeof(Vector4))
-				return _Vector.Vector4;
+			if (typeof(T) == typeof(Vector2)) return _Vector.Vector2;
+			if (typeof(T) == typeof(Vector3)) return _Vector.Vector3;
+			if (typeof(T) == typeof(Vector4)) return _Vector.Vector4;
+
 			if (typeof(T).IsGenericType && typeof(T).GetGenericTypeDefinition() == typeof(Vector<>))
 				return _Vector.VectorX;
 
@@ -119,13 +114,11 @@ namespace Chips.Runtime.Meta {
 			Field
 		}
 
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		private static _MetadataToken TypeToMetadataToken<T>() {
-			if (typeof(T) == typeof(RuntimeTypeHandle))
-				return _MetadataToken.Type;
-			if (typeof(T) == typeof(RuntimeMethodHandle))
-				return _MetadataToken.Method;
-			if (typeof(T) == typeof(RuntimeFieldHandle))
-				return _MetadataToken.Field;
+			if (typeof(T) == typeof(RuntimeTypeHandle)) return _MetadataToken.Type;
+			if (typeof(T) == typeof(RuntimeMethodHandle)) return _MetadataToken.Method;
+			if (typeof(T) == typeof(RuntimeFieldHandle)) return _MetadataToken.Field;
 
 			throw new InvalidTypeToRegisterEnumException<_MetadataToken, T>();
 		}
