@@ -47,7 +47,11 @@ namespace Chips.Runtime.Meta {
 		// "object" cannot be at the same FieldOffset as non-reference types, hence the redirection
 		[MethodImpl(MethodImplOptions.AggressiveInlining)] public static ref T? AsObject<T>(ref _ObjectData data) where T : class => ref Unsafe.As<_Intrinsic, T?>(ref data.Object);
 
-		[MethodImpl(MethodImplOptions.AggressiveInlining)] public static ref T AsStruct<T>(ref _ObjectData data) where T : struct => ref Unsafe.As<_Intrinsic, Ref<T>>(ref data.Object)!.value;
+		[MethodImpl(MethodImplOptions.AggressiveInlining)] public static ref T AsStruct<T>(ref _ObjectData data) where T : struct {
+			ref Ref<T> objRef = ref Unsafe.As<_Intrinsic, Ref<T>>(ref data.Object);
+			objRef ??= new Ref<T>(default);
+			return ref objRef.value;
+		}
 	}
 
 	internal enum _ObjectType {

@@ -59,7 +59,7 @@ namespace Chips.Runtime.Meta {
 			if (typeof(T) == typeof(nint) || typeof(T) == typeof(nuint))
 				return Wrap<T, _Address>(value);
 			else if (typeof(T) == typeof(_VariantObject))
-				return Unsafe.As<T, _VariantObject>(ref Unsafe.AsRef(in value)).UnwrapAddress();
+				return Unsafe.As<T, _VariantObject>(ref value).UnwrapAddress();
 
 			throw new InvalidConversionException<T>("Address");
 		}
@@ -71,7 +71,7 @@ namespace Chips.Runtime.Meta {
 			|| typeof(T) == typeof(char))
 				return Wrap<T, _NumberInteger>(value);
 			else if (typeof(T) == typeof(_VariantObject))
-				return Unsafe.As<T, _VariantObject>(ref Unsafe.AsRef(in value)).UnwrapInteger();
+				return Unsafe.As<T, _VariantObject>(ref value).UnwrapInteger();
 
 			throw new InvalidConversionException<T>("Integer");
 		}
@@ -81,7 +81,7 @@ namespace Chips.Runtime.Meta {
 			if (typeof(T) == typeof(float) || typeof(T) == typeof(double) || typeof(T) == typeof(decimal) || typeof(T) == typeof(Half))
 				return Wrap<T, _NumberFloat>(value);
 			else if (typeof(T) == typeof(_VariantObject))
-				return Unsafe.As<T, _VariantObject>(ref Unsafe.AsRef(in value)).UnwrapFloat();
+				return Unsafe.As<T, _VariantObject>(ref value).UnwrapFloat();
 
 			throw new InvalidConversionException<T>("Float");
 		}
@@ -89,7 +89,7 @@ namespace Chips.Runtime.Meta {
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static _StringObject AsString<T>(this ref T value) where T : struct {
 			if (typeof(T) == typeof(_VariantObject))
-				return Unsafe.As<T, _VariantObject>(ref Unsafe.AsRef(in value)).UnwrapString();
+				return Unsafe.As<T, _VariantObject>(ref value).UnwrapString();
 
 			throw new InvalidConversionException<T>("StringObject");
 		}
@@ -117,7 +117,7 @@ namespace Chips.Runtime.Meta {
 			|| typeof(T) == typeof(Vector<ushort>) || typeof(T) == typeof(Vector<uint>) || typeof(T) == typeof(Vector<ulong>))
 				return Wrap<T, _VectorObject>(value);
 			else if (typeof(T) == typeof(_VariantObject))
-				return Unsafe.As<T, _VariantObject>(ref Unsafe.AsRef(in value)).UnwrapVector();
+				return Unsafe.As<T, _VariantObject>(ref value).UnwrapVector();
 
 			throw new InvalidConversionException<T>("VectorObject");
 		}
@@ -127,7 +127,7 @@ namespace Chips.Runtime.Meta {
 			if (typeof(T) == typeof(RuntimeTypeHandle) || typeof(T) == typeof(RuntimeMethodHandle) || typeof(T) == typeof(RuntimeFieldHandle))
 				return Wrap<T, _TokenHandle>(value);
 			else if (typeof(T) == typeof(_VariantObject))
-				return Unsafe.As<T, _VariantObject>(ref Unsafe.AsRef(in value)).UnwrapToken();
+				return Unsafe.As<T, _VariantObject>(ref value).UnwrapToken();
 
 			throw new InvalidConversionException<T>("MetadataTokenHandle");
 		}
@@ -138,7 +138,7 @@ namespace Chips.Runtime.Meta {
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static _ExceptionObject AsException<T>(this ref T value) where T : struct {
 			if (typeof(T) == typeof(_VariantObject))
-				return Unsafe.As<T, _VariantObject>(ref Unsafe.AsRef(in value)).UnwrapException();
+				return Unsafe.As<T, _VariantObject>(ref value).UnwrapException();
 
 			throw new InvalidConversionException<T>("ExceptionObject");
 		}
@@ -156,7 +156,7 @@ namespace Chips.Runtime.Meta {
 			if (typeof(T) == typeof(Status))
 				return Wrap<T, _StatusObject>(value);
 			else if (typeof(T) == typeof(_VariantObject))
-				return Unsafe.As<T, _VariantObject>(ref Unsafe.AsRef(in value)).UnwrapStatus();
+				return Unsafe.As<T, _VariantObject>(ref value).UnwrapStatus();
 
 			throw new InvalidConversionException<T>("StatusObject");
 		}
