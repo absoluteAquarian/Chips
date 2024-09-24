@@ -4,7 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 
-namespace Chips.Compiler.IO.Project {
+namespace Chips.Compiler.IO {
 	internal class ChipsProject {
 		private readonly SourceResolver sources;
 		private readonly List<string> assemblies = new();

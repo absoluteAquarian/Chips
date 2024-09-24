@@ -4,7 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 
-namespace Chips.Compiler.IO.Project {
+namespace Chips.Compiler.IO {
 	internal class SourceResolver {
 		private class DirectoryNode {
 			public readonly string name;

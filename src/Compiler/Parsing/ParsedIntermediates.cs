@@ -1,4 +1,5 @@
 ﻿using AsmResolver.PE.DotNet.Metadata.Tables.Rows;
+using System;
 
 namespace Chips.Compiler.Parsing {
 	public readonly struct ParsedType {
@@ -23,7 +24,7 @@ namespace Chips.Compiler.Parsing {
 		public ParsedMethodVariable(string parsedString) {
 			int index = parsedString.IndexOf(':');
 			if (index < 1)
-				throw new ParsingException("Invalid method argument");
+				throw new ArgumentException("Invalid method argument");
 			name = parsedString[..index];
 			type = parsedString[(index + 1)..];
 		}

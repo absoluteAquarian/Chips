@@ -4,43 +4,13 @@ using AsmResolver.DotNet.Signatures.Types;
 using AsmResolver.PE.DotNet.Cil;
 using Chips.Common.Utility;
 using Chips.Common.Utility.Reflection;
-using Chips.Compiler;
-using Chips.Compiler.Utility;
 using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 
-namespace Chips.Runtime.Specifications {
+namespace Chips.Compiler {
 	internal static partial class InstructionHelper {
 		private static readonly ConditionalWeakTable<CilMethodBody, Dictionary<string, int>> _namedBodyLocals = new();
-
-		public static void EmitNopAndDelayedResolver(this CompilationContext context, Func<CilMethodBody, int, IDelayedInstructionResolver> getResolver) {
-			var body = context.Cursor.Body;
-			var index = context.Cursor.Index;
-			context.Cursor.Emit(CilOpCodes.Nop);
-			ChipsCompiler.AddDelayedResolver(getResolver(body, index));
-		}
-
-		public static void EmitNopAndDelayedResolver<T>(this CompilationContext context) where T : IDelayedInstructionResolver<T> {
-			var body = context.Cursor.Body;
-			var index = context.Cursor.Index;
-			context.Cursor.Emit(CilOpCodes.Nop);
-			ChipsCompiler.AddDelayedResolver(T.Create(body, index));
-		}
-
-		public static void EmitNopAndDelayedResolver<T, TArg>(this CompilationContext context, TArg arg) where T : IDelayedInstructionResolver<T, TArg> {
-			var body = context.Cursor.Body;
-			var index = context.Cursor.Index;
-			context.Cursor.Emit(CilOpCodes.Nop);
-			ChipsCompiler.AddDelayedResolver(T.Create(body, index, arg));
-		}
-
-		public static void EmitNopAndDelayedResolver<T, TArg1, TArg2>(this CompilationContext context, TArg1 arg1, TArg2 arg2) where T : IDelayedInstructionResolver<T, TArg1, TArg2> {
-			var body = context.Cursor.Body;
-			var index = context.Cursor.Index;
-			context.Cursor.Emit(CilOpCodes.Nop);
-			ChipsCompiler.AddDelayedResolver(T.Create(body, index, arg1, arg2));
-		}
 
 		public static void EmitNumber(this CompilationContext context, sbyte value) => EmitSmallInteger(context, value);
 
@@ -165,8 +135,10 @@ namespace Chips.Runtime.Specifications {
 
 		private static readonly SignatureComparer _signatureComparer = new(SignatureComparisonFlags.AcceptNewerVersions);
 
-		public static int CreateOrGetLocal<T>(this CompilationContext context, string name) {
-			var signature = context.importer.ImportTypeSignature(typeof(T));
+		public static int CreateOrGetLocal<T>(this CompilationContext context, string name) => CreateOrGetLocal(context, name, typeof(T));
+
+		public static int CreateOrGetLocal(this CompilationContext context, string name, Type type) {
+			var signature = context.importer.ImportTypeSignature(type);
 			int index = FindLocalIndex(context, name, signature, out string usedName, out var locals, out var localDict);
 			if (index > -1)
 				return index;
@@ -175,23 +147,6 @@ namespace Chips.Runtime.Specifications {
 			locals.Add(local);
 			index = local.Index;
 			localDict.Add(usedName, index);
-			return index;
-		}
-
-		public static int CreateOrGetLocal(this CompilationContext context, string name, DelayedTypeResolver type) {
-			ArgumentNullException.ThrowIfNull(type);
-			int index = FindLocalIndex(context, name, null, out string usedName, out var locals, out var localDict);
-			if (index > -1)
-				return index;
-
-			var local = new CilLocalVariable(null!);
-			locals.Add(local);
-			index = local.Index;
-			localDict.Add(usedName, index);
-
-			var resolver = new DelayedLocalTypeResolver(context.Cursor.Body, index, type);
-			ChipsCompiler.AddDelayedResolver(resolver);
-
 			return index;
 		}
 
