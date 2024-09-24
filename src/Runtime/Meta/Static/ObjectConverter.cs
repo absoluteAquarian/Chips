@@ -36,129 +36,81 @@ namespace Chips.Runtime.Meta {
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static TypedRegister<_TokenHandle> AsToken<T>(this in TypedRegister<T> register, Span<_TokenHandle> stackAlloc1) where T : struct, IConvertToToken<T> => new TypedRegister<_TokenHandle>(register.register, ref T.AsToken(register.value, stackAlloc1));
 
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static TypedRegister<_ExceptionObject> AsException<T>(this in TypedRegister<T> register, Span<_ExceptionObject> stackAlloc1) where T : struct, IConvertToException<T> => new TypedRegister<_ExceptionObject>(register.register, ref T.AsException(register.value, stackAlloc1));
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static TypedRegister<_StatusObject> AsStatus<T>(this in TypedRegister<T> register, Span<_StatusObject> stackAlloc1) where T : struct, IConvertToStatus<T> => new TypedRegister<_StatusObject>(register.register, ref T.AsStatus(register.value, stackAlloc1));
+
 		[MethodImpl(MethodImplOptions.AggressiveInlining)] public static _Address UnwrapAddress<T>(this T value) where T : struct, IChipsObject, IConvertToAddress<T> => T.AsAddress(in value, stackalloc _Address[1]);
-
 		[MethodImpl(MethodImplOptions.AggressiveInlining)] public static _NumberInteger UnwrapInteger<T>(this T value) where T : struct, IChipsObject, IConvertToInteger<T> => T.AsInteger(in value, stackalloc _NumberInteger[1]);
-
 		[MethodImpl(MethodImplOptions.AggressiveInlining)] public static _NumberFloat UnwrapFloat<T>(this T value) where T : struct, IChipsObject, IConvertToFloat<T> => T.AsFloat(in value, stackalloc _NumberFloat[1]);
-
 		[MethodImpl(MethodImplOptions.AggressiveInlining)] public static _StringObject UnwrapString<T>(this T value) where T : struct, IChipsObject, IConvertToString<T> => T.AsString(in value, stackalloc _StringObject[1]);
-
 		[MethodImpl(MethodImplOptions.AggressiveInlining)] public static _Object UnwrapObject<T>(this T value) where T : struct, IChipsObject, IConvertToObject<T> => T.AsObject(in value, stackalloc _Object[1]);
-
 		[MethodImpl(MethodImplOptions.AggressiveInlining)] public static _VectorObject UnwrapVector<T>(this T value) where T : struct, IChipsObject, IConvertToVector<T> => T.AsVector(in value, stackalloc _VectorObject[1]);
-
 		[MethodImpl(MethodImplOptions.AggressiveInlining)] public static _TokenHandle UnwrapToken<T>(this T value) where T : struct, IChipsObject, IConvertToToken<T> => T.AsToken(in value, stackalloc _TokenHandle[1]);
-
 		[MethodImpl(MethodImplOptions.AggressiveInlining)] public static _ExceptionObject UnwrapException<T>(this T value) where T : struct, IChipsObject, IConvertToException<T> => T.AsException(in value, stackalloc _ExceptionObject[1]);
-
 		[MethodImpl(MethodImplOptions.AggressiveInlining)] public static _StatusObject UnwrapStatus<T>(this T value) where T : struct, IChipsObject, IConvertToStatus<T> => T.AsStatus(in value, stackalloc _StatusObject[1]);
 
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public static _Address AsAddress<T>(this ref T value) where T : struct {
-			if (typeof(T) == typeof(nint) || typeof(T) == typeof(nuint))
-				return Wrap<T, _Address>(value);
-			else if (typeof(T) == typeof(_VariantObject))
-				return Unsafe.As<T, _VariantObject>(ref value).UnwrapAddress();
+		[MethodImpl(MethodImplOptions.AggressiveInlining)] public static _Address AsAddress(this in nint value) => Wrap<nint, _Address>(value);
+		[MethodImpl(MethodImplOptions.AggressiveInlining)] public static _Address AsAddress(this in nuint value) => Wrap<nuint, _Address>(value);
 
-			throw new InvalidConversionException<T>("Address");
-		}
+		[MethodImpl(MethodImplOptions.AggressiveInlining)] public static _NumberInteger AsInteger(this in int value) => Wrap<int, _NumberInteger>(value);
+		[MethodImpl(MethodImplOptions.AggressiveInlining)] public static _NumberInteger AsInteger(this in byte value) => Wrap<byte, _NumberInteger>(value);
+		[MethodImpl(MethodImplOptions.AggressiveInlining)] public static _NumberInteger AsInteger(this in sbyte value) => Wrap<sbyte, _NumberInteger>(value);
+		[MethodImpl(MethodImplOptions.AggressiveInlining)] public static _NumberInteger AsInteger(this in short value) => Wrap<short, _NumberInteger>(value);
+		[MethodImpl(MethodImplOptions.AggressiveInlining)] public static _NumberInteger AsInteger(this in ushort value) => Wrap<ushort, _NumberInteger>(value);
+		[MethodImpl(MethodImplOptions.AggressiveInlining)] public static _NumberInteger AsInteger(this in uint value) => Wrap<uint, _NumberInteger>(value);
+		[MethodImpl(MethodImplOptions.AggressiveInlining)] public static _NumberInteger AsInteger(this in long value) => Wrap<long, _NumberInteger>(value);
+		[MethodImpl(MethodImplOptions.AggressiveInlining)] public static _NumberInteger AsInteger(this in ulong value) => Wrap<ulong, _NumberInteger>(value);
+		[MethodImpl(MethodImplOptions.AggressiveInlining)] public static _NumberInteger AsInteger(this in char value) => Wrap<char, _NumberInteger>(value);
 
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public static _NumberInteger AsInteger<T>(this ref T value) where T : struct {
-			if (typeof(T) == typeof(sbyte) || typeof(T) == typeof(byte) || typeof(T) == typeof(short) || typeof(T) == typeof(ushort)
-			|| typeof(T) == typeof(int) || typeof(T) == typeof(uint) || typeof(T) == typeof(long) || typeof(T) == typeof(ulong)
-			|| typeof(T) == typeof(char))
-				return Wrap<T, _NumberInteger>(value);
-			else if (typeof(T) == typeof(_VariantObject))
-				return Unsafe.As<T, _VariantObject>(ref value).UnwrapInteger();
+		[MethodImpl(MethodImplOptions.AggressiveInlining)] public static _NumberFloat AsFloat(this in float value) => Wrap<float, _NumberFloat>(value);
+		[MethodImpl(MethodImplOptions.AggressiveInlining)] public static _NumberFloat AsFloat(this in double value) => Wrap<double, _NumberFloat>(value);
+		[MethodImpl(MethodImplOptions.AggressiveInlining)] public static _NumberFloat AsFloat(this in decimal value) => Wrap<decimal, _NumberFloat>(value);
+		[MethodImpl(MethodImplOptions.AggressiveInlining)] public static _NumberFloat AsFloat(this in Half value) => Wrap<Half, _NumberFloat>(value);
 
-			throw new InvalidConversionException<T>("Integer");
-		}
+		[MethodImpl(MethodImplOptions.AggressiveInlining)] public static _StringObject AsString(this string? value) => Wrap<string, _StringObject>(value);
+		[MethodImpl(MethodImplOptions.AggressiveInlining)] public static _StringObject AsString(this StringBuilder? value) => Wrap<StringBuilder, _StringObject>(value);
+		
+		[MethodImpl(MethodImplOptions.AggressiveInlining)] public static _Object AsObjectFromObject<T>(this T? value) where T : class => Wrap<T, _Object>(value);
+		[MethodImpl(MethodImplOptions.AggressiveInlining)] public static _Object AsObjectFromStruct<T>(this T value) where T : struct => Wrap<T, _Object>(value);  // JIT doesn't allow "this in" for generic struct arguments
 
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public static _NumberFloat AsFloat<T>(this ref T value) where T : struct {
-			if (typeof(T) == typeof(float) || typeof(T) == typeof(double) || typeof(T) == typeof(decimal) || typeof(T) == typeof(Half))
-				return Wrap<T, _NumberFloat>(value);
-			else if (typeof(T) == typeof(_VariantObject))
-				return Unsafe.As<T, _VariantObject>(ref value).UnwrapFloat();
+		[MethodImpl(MethodImplOptions.AggressiveInlining)] public static _VectorObject AsVector(this in Vector2 value) => Wrap<Vector2, _VectorObject>(value);
+		[MethodImpl(MethodImplOptions.AggressiveInlining)] public static _VectorObject AsVector(this in Vector3 value) => Wrap<Vector3, _VectorObject>(value);
+		[MethodImpl(MethodImplOptions.AggressiveInlining)] public static _VectorObject AsVector(this in Vector4 value) => Wrap<Vector4, _VectorObject>(value);
+		[MethodImpl(MethodImplOptions.AggressiveInlining)] public static _VectorObject AsVector(this in Vector<byte> value) => Wrap<Vector<byte>, _VectorObject>(value);
+		[MethodImpl(MethodImplOptions.AggressiveInlining)] public static _VectorObject AsVector(this in Vector<double> value) => Wrap<Vector<double>, _VectorObject>(value);
+		[MethodImpl(MethodImplOptions.AggressiveInlining)] public static _VectorObject AsVector(this in Vector<short> value) => Wrap<Vector<short>, _VectorObject>(value);
+		[MethodImpl(MethodImplOptions.AggressiveInlining)] public static _VectorObject AsVector(this in Vector<int> value) => Wrap<Vector<int>, _VectorObject>(value);
+		[MethodImpl(MethodImplOptions.AggressiveInlining)] public static _VectorObject AsVector(this in Vector<long> value) => Wrap<Vector<long>, _VectorObject>(value);
+		[MethodImpl(MethodImplOptions.AggressiveInlining)] public static _VectorObject AsVector(this in Vector<nint> value) => Wrap<Vector<nint>, _VectorObject>(value);
+		[MethodImpl(MethodImplOptions.AggressiveInlining)] public static _VectorObject AsVector(this in Vector<nuint> value) => Wrap<Vector<nuint>, _VectorObject>(value);
+		[MethodImpl(MethodImplOptions.AggressiveInlining)] public static _VectorObject AsVector(this in Vector<sbyte> value) => Wrap<Vector<sbyte>, _VectorObject>(value);
+		[MethodImpl(MethodImplOptions.AggressiveInlining)] public static _VectorObject AsVector(this in Vector<float> value) => Wrap<Vector<float>, _VectorObject>(value);
+		[MethodImpl(MethodImplOptions.AggressiveInlining)] public static _VectorObject AsVector(this in Vector<ushort> value) => Wrap<Vector<ushort>, _VectorObject>(value);
+		[MethodImpl(MethodImplOptions.AggressiveInlining)] public static _VectorObject AsVector(this in Vector<uint> value) => Wrap<Vector<uint>, _VectorObject>(value);
+		[MethodImpl(MethodImplOptions.AggressiveInlining)] public static _VectorObject AsVector(this in Vector<ulong> value) => Wrap<Vector<ulong>, _VectorObject>(value);
 
-			throw new InvalidConversionException<T>("Float");
-		}
+		[MethodImpl(MethodImplOptions.AggressiveInlining)] public static _TokenHandle AsToken(this in RuntimeTypeHandle value) => Wrap<RuntimeTypeHandle, _TokenHandle>(value);
+		[MethodImpl(MethodImplOptions.AggressiveInlining)] public static _TokenHandle AsToken(this in RuntimeMethodHandle value) => Wrap<RuntimeMethodHandle, _TokenHandle>(value);
+		[MethodImpl(MethodImplOptions.AggressiveInlining)] public static _TokenHandle AsToken(this in RuntimeFieldHandle value) => Wrap<RuntimeFieldHandle, _TokenHandle>(value);
 
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public static _StringObject AsString<T>(this ref T value) where T : struct {
-			if (typeof(T) == typeof(_VariantObject))
-				return Unsafe.As<T, _VariantObject>(ref value).UnwrapString();
+		// VariantObject has no restrictions, and any special cases are handled by separate code paths
+		[MethodImpl(MethodImplOptions.AggressiveInlining)] public static _VariantObject AsVariantFromObject<T>(this T? value) where T : class => Wrap<T, _VariantObject>(value);
+		[MethodImpl(MethodImplOptions.AggressiveInlining)] public static _VariantObject AsVariantFromStruct<T>(this T value) where T : struct => Wrap<T, _VariantObject>(value);  // JIT doesn't allow "this in" for generic struct arguments
+		[MethodImpl(MethodImplOptions.AggressiveInlining)] public static _VariantObject AsVariant(this in _Address value) => Wrap<_Address, _VariantObject>(value);
+		[MethodImpl(MethodImplOptions.AggressiveInlining)] public static _VariantObject AsVariant(this in _NumberInteger value) => Wrap<_NumberInteger, _VariantObject>(value);
+		[MethodImpl(MethodImplOptions.AggressiveInlining)] public static _VariantObject AsVariant(this in _NumberFloat value) => Wrap<_NumberFloat, _VariantObject>(value);
+		[MethodImpl(MethodImplOptions.AggressiveInlining)] public static _VariantObject AsVariant(this in _StringObject value) => Wrap<_StringObject, _VariantObject>(value);
+		[MethodImpl(MethodImplOptions.AggressiveInlining)] public static _VariantObject AsVariant(this in _Object value) => Wrap<_Object, _VariantObject>(value);
+		[MethodImpl(MethodImplOptions.AggressiveInlining)] public static _VariantObject AsVariant(this in _VectorObject value) => Wrap<_VectorObject, _VariantObject>(value);
+		[MethodImpl(MethodImplOptions.AggressiveInlining)] public static _VariantObject AsVariant(this in _TokenHandle value) => Wrap<_TokenHandle, _VariantObject>(value);
+		[MethodImpl(MethodImplOptions.AggressiveInlining)] public static _VariantObject AsVariant(this in _ExceptionObject value) => Wrap<_ExceptionObject, _VariantObject>(value);
+		[MethodImpl(MethodImplOptions.AggressiveInlining)] public static _VariantObject AsVariant(this in _StatusObject value) => Wrap<_StatusObject, _VariantObject>(value);
 
-			throw new InvalidConversionException<T>("StringObject");
-		}
+		[MethodImpl(MethodImplOptions.AggressiveInlining)] public static _ExceptionObject AsException<T>(this Exception value) => Wrap<Exception, _ExceptionObject>(value);
 
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public static _StringObject AsString<T>(this T? value) where T : class {
-			if (typeof(T) == typeof(string) || typeof(T) == typeof(StringBuilder))
-				return Wrap<T, _StringObject>(value);
-
-			throw new InvalidConversionException<T>("StringObject");
-		}
-
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public static _Object AsObject<T>(this ref T value) where T : struct => Wrap<T, _Object>(value);
-
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public static _Object AsObject<T>(this T? value) where T : class => Wrap<T, _Object>(value);
-
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public static _VectorObject AsVector<T>(this ref T value) where T : struct {
-			if (typeof(T) == typeof(Vector2) || typeof(T) == typeof(Vector3) || typeof(T) == typeof(Vector4)
-			|| typeof(T) == typeof(Vector<byte>) || typeof(T) == typeof(Vector<double>) || typeof(T) == typeof(Vector<short>)
-			|| typeof(T) == typeof(Vector<int>) || typeof(T) == typeof(Vector<long>) || typeof(T) == typeof(Vector<nint>)
-			|| typeof(T) == typeof(Vector<nuint>) || typeof(T) == typeof(Vector<sbyte>) || typeof(T) == typeof(Vector<float>)
-			|| typeof(T) == typeof(Vector<ushort>) || typeof(T) == typeof(Vector<uint>) || typeof(T) == typeof(Vector<ulong>))
-				return Wrap<T, _VectorObject>(value);
-			else if (typeof(T) == typeof(_VariantObject))
-				return Unsafe.As<T, _VariantObject>(ref value).UnwrapVector();
-
-			throw new InvalidConversionException<T>("VectorObject");
-		}
-
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public static _TokenHandle AsToken<T>(this ref T value) where T : struct {
-			if (typeof(T) == typeof(RuntimeTypeHandle) || typeof(T) == typeof(RuntimeMethodHandle) || typeof(T) == typeof(RuntimeFieldHandle))
-				return Wrap<T, _TokenHandle>(value);
-			else if (typeof(T) == typeof(_VariantObject))
-				return Unsafe.As<T, _VariantObject>(ref value).UnwrapToken();
-
-			throw new InvalidConversionException<T>("MetadataTokenHandle");
-		}
-
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public static _VariantObject AsVariant<T>(this T value) => Wrap<T, _VariantObject>(value);  // VariantObject has no restrictions, and any special cases are handled by separate code paths
-
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public static _ExceptionObject AsException<T>(this ref T value) where T : struct {
-			if (typeof(T) == typeof(_VariantObject))
-				return Unsafe.As<T, _VariantObject>(ref value).UnwrapException();
-
-			throw new InvalidConversionException<T>("ExceptionObject");
-		}
-
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public static _ExceptionObject AsException<T>(this T? value) where T : class {
-			if (typeof(Exception).IsAssignableFrom(typeof(T)))
-				return Wrap<T, _ExceptionObject>(value);
-
-			throw new InvalidConversionException<T>("ExceptionObject");
-		}
-
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public static _StatusObject AsStatus<T>(this ref T value) where T : struct {
-			if (typeof(T) == typeof(Status))
-				return Wrap<T, _StatusObject>(value);
-			else if (typeof(T) == typeof(_VariantObject))
-				return Unsafe.As<T, _VariantObject>(ref value).UnwrapStatus();
-
-			throw new InvalidConversionException<T>("StatusObject");
-		}
+		[MethodImpl(MethodImplOptions.AggressiveInlining)] public static _StatusObject AsStatus(this in Status value) => Wrap<Status, _StatusObject>(value);
 	}
 }

@@ -26,7 +26,7 @@ namespace Chips.Runtime.Meta {
 foreach (var (fieldPostfix, typeName) in types) {
 #>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		private static _VectorObject Add_Vector<#= fieldPostfix #>(in _VectorObject source, in _VectorObject operand) {
+		private static _VectorObject xAdd_Vector<#= fieldPostfix #>(in _VectorObject source, in _VectorObject operand) {
 			<#= typeName #> result = source.data.Vector<#= fieldPostfix #> + operand.data.Vector<#= fieldPostfix #>;
 			return result.AsVector();
 		}

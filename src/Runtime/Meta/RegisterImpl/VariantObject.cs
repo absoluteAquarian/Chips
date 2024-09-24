@@ -138,7 +138,7 @@ namespace Chips.Runtime.Meta {
 
 		public static _VariantObject Add_VariantObj_VectorObj<TVector>(this in TypedRegister<_VariantObject> source, in TypedRegister<TVector> operand) where TVector : struct, IConvertToVector<TVector> {
 			return source.value.type switch {
-				_Variant.String => source.ToString_VariantObj().Add_StringVal_StringVal(operand.ToString_VectorObj()).AsVariant(),
+				_Variant.String => source.ToString_VariantObj().Add_StringVal_StringVal(operand.ToString_VectorObj()).AsVariantFromObject(),
 				_Variant.Vector => source.Add_VectorObj_VectorObj(operand).AsVariant(),
 				_ => throw source.InvalidType()
 			};

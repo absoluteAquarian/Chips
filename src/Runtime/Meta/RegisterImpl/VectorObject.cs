@@ -37,21 +37,21 @@ namespace Chips.Runtime.Meta {
 				throw new InvalidVectorTypeException<TExpected>();
 
 			return operand.value.type switch {
-				_Vector.Vector2 => Add_Vector2(source, operand.value),
-				_Vector.Vector3 => Add_Vector3(source, operand.value),
-				_Vector.Vector4 => Add_Vector4(source, operand.value),
-				_Vector.VectorT_Byte => Add_VectorByte(source, operand.value),
-				_Vector.VectorT_Double => Add_VectorDouble(source, operand.value),
-				_Vector.VectorT_Int16 => Add_VectorInt16(source, operand.value),
-				_Vector.VectorT_Int32 => Add_VectorInt32(source, operand.value),
-				_Vector.VectorT_Int64 => Add_VectorDouble(source, operand.value),
-				_Vector.VectorT_IntPtr => Add_VectorDouble(source, operand.value),
-				_Vector.VectorT_UIntPtr => Add_VectorDouble(source, operand.value),
-				_Vector.VectorT_SByte => Add_VectorDouble(source, operand.value),
-				_Vector.VectorT_Single => Add_VectorDouble(source, operand.value),
-				_Vector.VectorT_UInt16 => Add_VectorDouble(source, operand.value),
-				_Vector.VectorT_UInt32 => Add_VectorDouble(source, operand.value),
-				_Vector.VectorT_UInt64 => Add_VectorDouble(source, operand.value),
+				_Vector.Vector2 => Vector2.Add(source.data.Vector2, operand.value.data.Vector2).AsVector(),
+				_Vector.Vector3 => Vector3.Add(source.data.Vector3, operand.value.data.Vector3).AsVector(),
+				_Vector.Vector4 => Vector4.Add(source.data.Vector4, operand.value.data.Vector4).AsVector(),
+				_Vector.VectorT_Byte => Vector.Add(source.data.VectorByte, operand.value.data.VectorByte).AsVector(),
+				_Vector.VectorT_Double => Vector.Add(source.data.VectorDouble, operand.value.data.VectorDouble).AsVector(),
+				_Vector.VectorT_Int16 => Vector.Add(source.data.VectorInt16, operand.value.data.VectorInt16).AsVector(),
+				_Vector.VectorT_Int32 => Vector.Add(source.data.VectorInt32, operand.value.data.VectorInt32).AsVector(),
+				_Vector.VectorT_Int64 => Vector.Add(source.data.VectorInt64, operand.value.data.VectorInt64).AsVector(),
+				_Vector.VectorT_IntPtr => Vector.Add(source.data.VectorIntPtr, operand.value.data.VectorIntPtr).AsVector(),
+				_Vector.VectorT_UIntPtr => Vector.Add(source.data.VectorUIntPtr, operand.value.data.VectorUIntPtr).AsVector(),
+				_Vector.VectorT_SByte => Vector.Add(source.data.VectorSByte, operand.value.data.VectorSByte).AsVector(),
+				_Vector.VectorT_Single => Vector.Add(source.data.VectorSingle, operand.value.data.VectorSingle).AsVector(),
+				_Vector.VectorT_UInt16 => Vector.Add(source.data.VectorUInt16, operand.value.data.VectorUInt16).AsVector(),
+				_Vector.VectorT_UInt32 => Vector.Add(source.data.VectorUInt32, operand.value.data.VectorUInt32).AsVector(),
+				_Vector.VectorT_UInt64 => Vector.Add(source.data.VectorUInt64, operand.value.data.VectorUInt64).AsVector(),
 				_ => throw operand.MalformedArgument()
 			};
 		}
