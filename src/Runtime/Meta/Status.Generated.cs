@@ -1,4 +1,5 @@
-﻿using System;
+﻿	
+using System;
 
 namespace Chips.Runtime.Meta {
 	public partial struct Status {

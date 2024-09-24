@@ -26,12 +26,12 @@ namespace Chips.Runtime.Meta {
 		private _Page32<_NumberInteger> _z;
 		private _Page32<_NumberFloat> _fl;
 		private _Page16<_StringObject> _s;
-		private _Page64<_VariantObject> _obj;
+		private _Page64<_Object> _obj;
 		private _Page16<_VectorObject> _v;
-		private _Page16<_MetadataTokenHandle> _t;
+		private _Page16<_TokenHandle> _t;
 		private _Page3<_VariantObject> _r;
-		private Exception _ex;
-		private Status _ps;
+		private _ExceptionObject _ex;
+		private _StatusObject _ps;
 		private _VariantObject _ans;
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -90,5 +90,107 @@ namespace Chips.Runtime.Meta {
 			
 			throw new IndexOutOfRangeException();
 		}
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static bool IsAddressRegister(Register register) => register >= Register.PTR_0 && register <= Register.PTR_F;
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		private TypedRegister<_Address> GetAddress(Register register) {
+			if (!IsAddressRegister(register))
+				throw new NotAnAddressRegisterException(register);
+
+			return new TypedRegister<_Address>(register, ref Get(ref _ptr, register - Register.PTR_0));
+		}
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static bool IsIntegerRegister(Register register) => register >= Register.Z_0 && register <= Register.Z_1F;
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		private TypedRegister<_NumberInteger> GetInteger(Register register) {
+			if (!IsIntegerRegister(register))
+				throw new NotAnIntegerRegisterException(register);
+
+			return new TypedRegister<_NumberInteger>(register, ref Get(ref _z, register - Register.Z_0));
+		}
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static bool IsFloatRegister(Register register) => register >= Register.FL_0 && register <= Register.FL_1F;
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		private TypedRegister<_NumberFloat> GetFloat(Register register) {
+			if (!IsFloatRegister(register))
+				throw new NotAFloatRegisterException(register);
+
+			return new TypedRegister<_NumberFloat>(register, ref Get(ref _fl, register - Register.FL_0));
+		}
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static bool IsStringRegister(Register register) => register >= Register.S_0 && register <= Register.S_F;
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		private TypedRegister<_StringObject> GetStringObject(Register register) {
+			if (!IsStringRegister(register))
+				throw new NotAStringRegisterException(register);
+
+			return new TypedRegister<_StringObject>(register, ref Get(ref _s, register - Register.S_0));
+		}
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static bool IsObjectRegister(Register register) => register >= Register.OBJ_0 && register <= Register.OBJ_3F;
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		private TypedRegister<_Object> GetObject(Register register) {
+			if (!IsObjectRegister(register))
+				throw new NotAnObjectRegisterException(register);
+
+			return new TypedRegister<_Object>(register, ref Get(ref _obj, register - Register.OBJ_0));
+		}
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static bool IsVectorRegister(Register register) => register >= Register.V_0 && register <= Register.V_F;
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		private TypedRegister<_VectorObject> GetVectorObject(Register register) {
+			if (!IsVectorRegister(register))
+				throw new NotAVectorRegisterException(register);
+
+			return new TypedRegister<_VectorObject>(register, ref Get(ref _v, register - Register.V_0));
+		}
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static bool IsMetadataTokenRegister(Register register) => register >= Register.T_0 && register <= Register.T_F;
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		private TypedRegister<_TokenHandle> GetToken(Register register) {
+			if (!IsMetadataTokenRegister(register))
+				throw new NotATokenRegisterException(register);
+
+			return new TypedRegister<_TokenHandle>(register, ref Get(ref _t, register - Register.T_0));
+		}
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static bool IsVariantObjectRegister(Register register) => (register >= Register.R_0 && register <= Register.R_2) || register == Register.ANS;
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		private TypedRegister<_VariantObject> GetVariantObject(Register register) {
+			if (!IsVariantObjectRegister(register))
+				throw new NotAVariantRegisterException(register);
+
+			return new TypedRegister<_VariantObject>(register, ref Get(ref _r, register - Register.R_0));
+		}
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static bool IsExceptionRegister(Register register) => register == Register.EX;
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		private TypedRegister<_ExceptionObject> GetException(Register register) {
+			if (!IsExceptionRegister(register))
+				throw new NotAnExceptionRegisterException(register);
+
+			return new TypedRegister<_ExceptionObject>(register, ref _ex);
+		}
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		private TypedRegister<_StatusObject> GetStatus() => new TypedRegister<_StatusObject>(Register.PS, ref _ps);
 	}
 }

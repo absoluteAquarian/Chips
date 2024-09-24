@@ -4,7 +4,6 @@ using AsmResolver.DotNet.Signatures;
 using AsmResolver.DotNet.Signatures.Types;
 using AsmResolver.PE.DotNet.Metadata.Tables;
 using Chips.Compiler.Parsing;
-using Chips.Utility;
 using Sprache;
 using System;
 using System.Collections.Generic;

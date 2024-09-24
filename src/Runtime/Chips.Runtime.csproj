@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <OutputType>Library</OutputType>
-    <TargetFramework>net7.0</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>disable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <LangVersion>preview</LangVersion>
@@ -57,6 +57,11 @@
       <AutoGen>True</AutoGen>
       <DependentUpon>Register.tt</DependentUpon>
     </Compile>
+    <Compile Update="Meta\RegisterImpl\VectorObject.Generated.cs">
+      <DesignTime>True</DesignTime>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>VectorObject.Generated.tt</DependentUpon>
+    </Compile>
     <Compile Update="Meta\Status.Generated.cs">
       <DesignTime>True</DesignTime>
       <AutoGen>True</AutoGen>
@@ -82,6 +87,10 @@
     <None Update="Meta\Register.tt">
       <LastGenOutput>Register.cs</LastGenOutput>
       <Generator>TextTemplatingFileGenerator</Generator>
+    </None>
+    <None Update="Meta\RegisterImpl\VectorObject.Generated.tt">
+      <Generator>TextTemplatingFileGenerator</Generator>
+      <LastGenOutput>VectorObject.Generated.cs</LastGenOutput>
     </None>
     <None Update="Meta\Status.Generated.tt">
       <Generator>TextTemplatingFileGenerator</Generator>

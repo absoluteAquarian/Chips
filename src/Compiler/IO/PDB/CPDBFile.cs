@@ -1,5 +1,4 @@
 ﻿using Chips.Compiler.Utility;
-using Chips.Utility;
 using System;
 using System.IO;
 using System.Text;

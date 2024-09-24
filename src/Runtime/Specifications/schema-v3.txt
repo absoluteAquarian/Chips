@@ -102,8 +102,8 @@ _______|______x0______|______x1______|______x2______|______x3______|______x4____
 STRING INSTRUCTIONS (F1 XX)
        _________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________
 _______|______x0______|______x1______|______x2______|______x3______|______x4______|______x5______|______x6______|______x7______|______x8______|______x9______|______xA______|______xB______|______xC______|______xD______|______xE______|______xF______|
-|  0x  | RR     sprep | RR     sinit | -     sbinit | -      tostr | RR   sinsert |              |              |              |              |              |              |              |              |              |              |              |
-|  1x  | RRR    sprep | RRR    sinit | R     sbinit | R      tostr | RRR  sinsert |              |              |              |              |              |              |              |              |              |              |              |
+|  0x  |              | RR     sinit | -     sbinit | -      tostr | RR   sinsert |              |              |              |              |              |              |              |              |              |              |              |
+|  1x  |              | RRR    sinit | R     sbinit | R      tostr | RRR  sinsert |              |              |              |              |              |              |              |              |              |              |              |
 |  2x  | RI     sprep | RI     sinit | R     sbinit | RR     tostr | RI   sinsert |              |              |              |              |              |              |              |              |              |              |              |
 |  3x  | RRI    sprep | RRI    sinit | RR    sbinit | I      tostr | RRI  sinsert |              |              |              |              |              |              |              |              |              |              |              |
 |  4x  |              | IR     sinit | I     sbinit | RI     tostr | IR   sinsert |              |              |              |              |              |              |              |              |              |              |              |
@@ -351,8 +351,6 @@ sinsert x, $y          | F1 44 | Insert immediate string into $ANS at index spec
 sinsert $x, y, $z      | F1 54 | Insert immediate string into string register $x at index specified by integer register $z
 sinsert x, y           | F1 64 | Insert immediate string x into $ANS at index specified by immediate integer y
 sinsert $x, y, z       | F1 74 | Insert immediate string y into string register $x at index specified by immediate integer z
-sprep $x, $y           | F1 00 | Prepend string register $y to string register $x, store result in $ANS
-sprep $x, $y, $z       | F1 10 | Prepend string register $z to string register $y, store result in string register $x
 sprep $x, y            | F1 20 | Prepend string immediate to string register, store result in $ANS
 sprep $x, $y, z        | F1 30 | Prepend string immediate to string register $y, store result in string register $x
 stelem $x, $y          |    AE | Index array in $ANS with integer register $x, set the value at the resulting index to register $y

@@ -1,5 +1,4 @@
 ﻿using AsmResolver.PE.DotNet.Metadata.Tables.Rows;
-using Chips.Utility;
 
 namespace Chips.Compiler.Parsing {
 	public readonly struct ParsedType {

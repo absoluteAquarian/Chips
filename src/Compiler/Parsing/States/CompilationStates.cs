@@ -4,7 +4,6 @@ using Chips.Compiler.Compilation;
 using Chips.Compiler.IO;
 using Chips.Compiler.IO.PDB;
 using Chips.Compiler.Utility;
-using Chips.Utility;
 using Sprache;
 using System;
 using System.Collections.Generic;

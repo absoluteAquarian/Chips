@@ -6,7 +6,6 @@ using System.IO;
 using System.Text.RegularExpressions;
 using System;
 using AsmResolver.DotNet;
-using Chips.Utility;
 using System.Linq;
 
 namespace Chips.Compiler.Utility {
