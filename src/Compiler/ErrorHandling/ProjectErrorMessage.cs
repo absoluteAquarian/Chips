@@ -15,11 +15,11 @@ namespace Chips.Compiler.ErrorHandling {
 
 			_ = id switch {
 				ProjectErrorID.NewlineInStringLiteral => message.AddLine("Newline in string literal"),
-				ProjectErrorID.UnknownDirective => message.AddLine("Unknown directive \"{0}\""),
-				ProjectErrorID.ExcessCharactersAfterDirective => message.AddLine("Excess characters after \"{0}\" directive"),
+				ProjectErrorID.UnknownDirective => message.AddLine("Unknown directive \"{0}\"", Arguments),
+				ProjectErrorID.ExcessCharactersAfterDirective => message.AddLine("Excess characters after \"{0}\" directive", Arguments),
 				ProjectErrorID.NoSourceFilesFromProjectFile => message.AddLine("No source files were specified in the project file."),
 				ProjectErrorID.NoSourceFilesFromCommandLine => message.AddLine("No source files were found."),
-				ProjectErrorID.UnknownSourceScope => message.AddLine("Unknown source scope \"{0}\", expected \"include\" or \"exclude\""),
+				ProjectErrorID.UnknownSourceScope => message.AddLine("Unknown source scope \"{0}\", expected \"include\" or \"exclude\"", Arguments),
 				_ => throw new ArgumentOutOfRangeException(nameof(id), id, "Invalid ID"),
 			};
 		}

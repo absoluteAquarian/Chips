@@ -14,11 +14,11 @@ namespace Chips.Common.Utility.Reflection {
 		}
 
 		private static readonly Dictionary<CacheType, Dictionary<string, object?>> cache = new() {
-			[CacheType.Field] = new Dictionary<string, object?>(),
-			[CacheType.Method] = new Dictionary<string, object?>(),
-			[CacheType.Property] = new Dictionary<string, object?>(),
-			[CacheType.Constructor] = new Dictionary<string, object?>(),
-			[CacheType.Type] = new Dictionary<string, object?>()
+			[CacheType.Field] = [],
+			[CacheType.Method] = [],
+			[CacheType.Property] = [],
+			[CacheType.Constructor] = [],
+			[CacheType.Type] = []
 		};
 
 		public const BindingFlags UniversalFlags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static;

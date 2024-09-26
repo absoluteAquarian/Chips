@@ -102,10 +102,10 @@ _______|______x0______|______x1______|______x2______|______x3______|______x4____
 STRING INSTRUCTIONS (F1 XX)
        _________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________
 _______|______x0______|______x1______|______x2______|______x3______|______x4______|______x5______|______x6______|______x7______|______x8______|______x9______|______xA______|______xB______|______xC______|______xD______|______xE______|______xF______|
-|  0x  |              | RR     sinit | -     sbinit | -      tostr | RR   sinsert |              |              |              |              |              |              |              |              |              |              |              |
-|  1x  |              | RRR    sinit | R     sbinit | R      tostr | RRR  sinsert |              |              |              |              |              |              |              |              |              |              |              |
-|  2x  | RI     sprep | RI     sinit | R     sbinit | RR     tostr | RI   sinsert |              |              |              |              |              |              |              |              |              |              |              |
-|  3x  | RRI    sprep | RRI    sinit | RR    sbinit | I      tostr | RRI  sinsert |              |              |              |              |              |              |              |              |              |              |              |
+|  0x  |              | RR     sinit | -     sbinit | -      tostr | RR   sinsert | RR      sfmt |              |              |              |              |              |              |              |              |              |              |
+|  1x  |              | RRR    sinit | R     sbinit | R      tostr | RRR  sinsert | RI      sfmt |              |              |              |              |              |              |              |              |              |              |
+|  2x  | RI     sprep | RI     sinit | R     sbinit | RR     tostr | RI   sinsert | RRR     sfmt |              |              |              |              |              |              |              |              |              |              |
+|  3x  | RRI    sprep | RRI    sinit | RR    sbinit | I      tostr | RRI  sinsert | RRI     sfmt |              |              |              |              |              |              |              |              |              |              |
 |  4x  |              | IR     sinit | I     sbinit | RI     tostr | IR   sinsert |              |              |              |              |              |              |              |              |              |              |              |
 |  5x  | -    sbaddnl | RIR    sinit | RI    sbinit |              | RIR  sinsert |              |              |              |              |              |              |              |              |              |              |              |
 |  6x  | R    sbaddnl | II     sinit |              |              | II   sinsert |              |              |              |              |              |              |              |              |              |              |              |
@@ -335,6 +335,10 @@ sbinit [$x]            | F1 12 | Initialize $ANS with a StringBuilder initially 
 sbinit $x, $y          | F1 32 | Initialize string register $x with a StringBuilder initially containing string register $y
 sbinit x               | F1 42 | Initialize $ANS with a StringBuilder initially containing immediate string
 sbinit $x, y           | F1 52 | Initialize string register with a StringBuilder initially containing immediate string
+sfmt $x, $y            | F1 05 | Format value in register $x using format in string register $y, store result in $ANS
+sfmt $x, $y, $z        | F1 15 | Format value in register $y using format in string register $z, store result in string register $x
+sfmt $x, y             | F1 25 | Format value in register using format in immediate string, store result in $ANS
+sfmt $x, $y, z         | F1 35 | Format value in register $y using format in immediate string, store result in string register $x
 sinit $x, $y           | F1 01 | Initialize $ANS with a string of repeated characters, using integer register $x as the character and integer register $y as the length
 sinit $x, $y, $z       | F1 11 | Initialize string register $x with a string of repeated characters, using integer register $y as the character and integer register $z as the length
 sinit $x, y            | F1 21 | Initialize $ANS with a string of repeated characters, using integer register as the character and immediate integer as the length

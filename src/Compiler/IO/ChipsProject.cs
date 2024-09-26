@@ -8,9 +8,9 @@ using System.IO;
 namespace Chips.Compiler.IO {
 	internal class ChipsProject {
 		private readonly SourceResolver sources;
-		private readonly List<string> assemblies = new();
+		private readonly List<string> assemblies = [];
 
-		private readonly List<string> bytecodeFiles = new();
+		private readonly List<string> bytecodeFiles = [];
 
 		public readonly string? file;
 

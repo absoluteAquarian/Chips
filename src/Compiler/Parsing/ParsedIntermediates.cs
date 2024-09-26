@@ -1,15 +1,11 @@
 ﻿using AsmResolver.PE.DotNet.Metadata.Tables.Rows;
+using Chips.Common.Utility;
 using System;
 
 namespace Chips.Compiler.Parsing {
-	public readonly struct ParsedType {
-		public readonly bool isClass;
-		public readonly TypeAttributes attributes;
-
-		public ParsedType(bool isClass, TypeAttributes attributes) {
-			this.isClass = isClass;
-			this.attributes = attributes;
-		}
+	public readonly struct ParsedType(bool isClass, TypeAttributes attributes) {
+		public readonly bool isClass = isClass;
+		public readonly TypeAttributes attributes = attributes;
 	}
 
 	public readonly struct ParsedMethodVariable {
@@ -30,36 +26,20 @@ namespace Chips.Compiler.Parsing {
 		}
 	}
 
-	public readonly struct ParsedPossibleQuotedString {
-		public readonly string text;
-		public readonly bool wasQuoted;
-
-		public ParsedPossibleQuotedString(string text, bool wasQuoted) {
-			this.text = text;
-			this.wasQuoted = wasQuoted;
-		}
+	public readonly struct ParsedPossibleQuotedString(string text, bool wasQuoted) {
+		public readonly string text = text;
+		public readonly bool wasQuoted = wasQuoted;
 	}
 
-	public readonly struct ParsedMethodReference {
-		public readonly string type;
-		public readonly string name;
-		public readonly string[] parameterTypes;
-
-		public ParsedMethodReference(string type, string name, string[] parameterTypes) {
-			this.type = type;
-			this.name = name;
-			this.parameterTypes = parameterTypes;
-		}
+	public readonly struct ParsedMethodReference(string type, string name, string[] parameterTypes) {
+		public readonly string type = type;
+		public readonly string name = name;
+		public readonly string[] parameterTypes = parameterTypes;
 	}
 
-	public readonly struct ParsedTypeAndModifiers {
-		public readonly string type;
-		public readonly string modifiers;
-
-		public ParsedTypeAndModifiers(string type, string modifiers) {
-			this.type = type;
-			this.modifiers = modifiers;
-		}
+	public readonly struct ParsedTypeAndModifiers(string type, string modifiers) {
+		public readonly string type = type;
+		public readonly string modifiers = modifiers;
 
 		public string AttemptCoreTypeAlias() => type.AttemptCoreTypeAlias() + modifiers;
 	}

@@ -6,7 +6,7 @@ namespace Chips.Compiler.ErrorHandling {
 		public readonly string? sourceFile = sourceFile;
 		public readonly int lineNumber = lineNumber;
 		private readonly object[] arguments = arguments;
-		public Span<object> Arguments => (arguments ?? []).AsSpan();
+		public Span<object> Arguments => arguments is not null ? arguments.AsSpan() : [];
 
 		protected abstract void Resolve(ConsoleMessage message);
 

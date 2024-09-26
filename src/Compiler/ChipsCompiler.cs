@@ -14,7 +14,7 @@ namespace Chips {
 	public static partial class ChipsCompiler {
 		public static readonly Version ChipsVersion = new Version(1, 0);
 
-		internal static Dictionary<string, string> buildOptions = new();
+		internal static Dictionary<string, string> buildOptions = [];
 		internal static AssemblyDefinition buildingAssembly;
 
 		internal static ModuleDefinition ManifestModule => buildingAssembly?.ManifestModule ?? throw new NullReferenceException("Assembly or manifest module was not created");
@@ -127,7 +127,7 @@ namespace Chips {
 			string? key = null;
 			StringBuilder sb = new();
 
-			Dictionary<string, string> dictionary = new();
+			Dictionary<string, string> dictionary = [];
 			for (int i = 0; i < args.Length; i++) {
 				string arg = args[i];
 

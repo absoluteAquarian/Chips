@@ -27,6 +27,10 @@ namespace Chips.Compiler.Utility {
 			return this;
 		}
 
+		public ConsoleMessage Add(string format, object[] arguments, ConsoleColorState? colors = null) => Add(string.Format(format, arguments), colors);
+
+		public ConsoleMessage Add(string format, Span<object> arguments, ConsoleColorState? colors = null) => Add(string.Format(format, arguments.ToArray()), colors);
+
 		public ConsoleMessage Add(object? obj, ConsoleColorState? colors = null) => Add(obj?.ToString(), colors);
 
 		public ConsoleMessage AddLine() {
@@ -34,11 +38,15 @@ namespace Chips.Compiler.Utility {
 			return this;
 		}
 
-		public ConsoleMessage AddLine(string text, ConsoleColorState? colors = null) {
+		public ConsoleMessage AddLine(string? text, ConsoleColorState? colors = null) {
 			Add(text, colors);
 			UpdateMessageList(default(ConsoleTextLineBreak));
 			return this;
 		}
+
+		public ConsoleMessage AddLine(string format, object[] arguments, ConsoleColorState? colors = null) => AddLine(string.Format(format, arguments), colors);
+
+		public ConsoleMessage AddLine(string format, Span<object> arguments, ConsoleColorState? colors = null) => AddLine(string.Format(format, arguments.ToArray()), colors);
 
 		public ConsoleMessage Offset(int offset, ConsoleColorState? colors = null) {
 			if (offset < 0)

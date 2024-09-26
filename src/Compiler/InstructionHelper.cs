@@ -10,7 +10,7 @@ using System.Runtime.CompilerServices;
 
 namespace Chips.Compiler {
 	internal static partial class InstructionHelper {
-		private static readonly ConditionalWeakTable<CilMethodBody, Dictionary<string, int>> _namedBodyLocals = new();
+		private static readonly ConditionalWeakTable<CilMethodBody, Dictionary<string, int>> _namedBodyLocals = [];
 
 		public static void EmitNumber(this CompilationContext context, sbyte value) => EmitSmallInteger(context, value);
 

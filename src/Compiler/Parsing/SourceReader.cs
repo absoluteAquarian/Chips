@@ -1,4 +1,5 @@
 ﻿using Chips.Compiler.ErrorHandling;
+using Chips.Compiler.Utility;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -10,7 +11,7 @@ namespace Chips.Compiler.Parsing {
 	/// <summary>
 	/// A wrapper class over <see cref="StreamReader"/> that provides additional functionality for compiler errors
 	/// </summary>
-	internal class SourceReader(string file) : IDisposable {
+	internal class SourceReader(string file) : IDisposable, ISourceFileInfoProvider {
 		private class FakeStreamReader {
 			// Field order matches the order in StreamReader.  This may have to be updated if StreamReader changes.
 			public readonly Stream _stream;
@@ -208,6 +209,14 @@ namespace Chips.Compiler.Parsing {
 			return sb.ToString();
 		}
 
+		public bool TryReadExcept(char except, out char read, bool alwaysConsume = false) => FilteredRead(except, alwaysConsume, out read, static (except, peek) => peek != except);
+
+		public bool TryReadExceptMany(char[] except, out char read, bool alwaysConsume = false) => FilteredRead(except, alwaysConsume, out read, static (except, peek) => Array.IndexOf(except, peek) == -1);
+
+		public bool TryReadWhitespace(out char read, bool alwaysConsume = false) => FilteredRead(alwaysConsume, out read, char.IsWhiteSpace);
+
+		public bool TryReadExceptWhitespace(out char read, bool alwaysConsume = false) => FilteredRead(alwaysConsume, out read, static peek => !char.IsWhiteSpace(peek));
+
 		private bool FilteredRead<T>(T value, bool alwaysConsume, out char read, Func<T, char, bool> checkPeekFunc) {
 			int peek = _reader.Peek();
 			if (peek >= 0) {
@@ -229,14 +238,6 @@ namespace Chips.Compiler.Parsing {
 			read = default;
 			return false;
 		}
-
-		public bool TryReadExcept(char except, out char read, bool alwaysConsume = false) => FilteredRead(except, alwaysConsume, out read, static (except, peek) => peek != except);
-
-		public bool TryReadExceptMany(char[] except, out char read, bool alwaysConsume = false) => FilteredRead(except, alwaysConsume, out read, static (except, peek) => Array.IndexOf(except, peek) == -1);
-
-		public bool TryReadWhitespace(out char read, bool alwaysConsume = false) => FilteredRead(alwaysConsume, out read, char.IsWhiteSpace);
-
-		public bool TryReadExceptWhitespace(out char read, bool alwaysConsume = false) => FilteredRead(alwaysConsume, out read, static peek => !char.IsWhiteSpace(peek));
 
 		#region Implement IDisposable
 		private bool disposed;
