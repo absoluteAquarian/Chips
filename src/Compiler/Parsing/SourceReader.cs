@@ -1,27 +1,69 @@
-﻿using Chips.Runtime.Utility;
+﻿using Chips.Compiler.ErrorHandling;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Runtime.CompilerServices;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace Chips.Compiler.Parsing {
 	/// <summary>
 	/// A wrapper class over <see cref="StreamReader"/> that provides additional functionality for compiler errors
 	/// </summary>
-	internal class SourceReader : IDisposable {
-		private StreamReader _reader;
-
-		public StreamReader BaseReader => _reader;
-
-		public bool NotConnectedToCompiler { get; init; }
-
-		public SourceReader(StreamReader reader) {
-			_reader = reader;
+	internal class SourceReader(string file) : IDisposable {
+		private class FakeStreamReader {
+			// Field order matches the order in StreamReader.  This may have to be updated if StreamReader changes.
+			public readonly Stream _stream;
+			public readonly Encoding _encoding;
+			public readonly Decoder _decoder;
+			public readonly byte[] _byteBuffer;
+			public readonly char[] _charBuffer;
+			public int _charPos;  // This is the only field that matters
+			public readonly int _charLen;
+			public readonly int _byteLen;
+			public readonly int _bytePos;
+			public readonly int _maxCharsPerBuffer;
+			public readonly bool _disposed;
+			public readonly bool _detectEncoding;
+			public readonly bool _checkPreamble;
+			public readonly bool _isBlocked;
+			public readonly bool _closable;
+			public readonly Task _asyncReadTask;
 		}
 
-		public int GetActualPosition() => typeof(StreamReader).RetrieveField<int>("_charPos", _reader);
+		private readonly ref struct ReaderState(SourceReader self) {
+			public readonly int position = self.GetActualPosition();
+			public readonly int line = self.LineNumber;
+			public readonly SourceReader self = self;
 
-		public void SetActualPosition(int position) => typeof(StreamReader).AssignField("_charPos", _reader, position);
+			public void Dispose() {
+				self.SetActualPosition(position);
+				self.LineNumber = line;
+			}
+		}
+
+		public const char COMMENT_INDICATOR = ';';
+
+		private StreamReader _reader = new StreamReader(File.OpenRead(file));
+		private string _file = file;
+
+		public StreamReader BaseReader => _reader;
+		public string SourceFile => _file;
+
+		public int LineNumber { get; private set; } = 1;
+
+		public int GetActualPosition() => Unsafe.As<FakeStreamReader>(_reader)._charPos;
+
+		public void SetActualPosition(int position) => Unsafe.As<FakeStreamReader>(_reader)._charPos = position;
+
+		private int ReadAndAdvanceLines() {
+			int read = _reader.Read();
+
+			if (read == '\n')
+				LineNumber++;
+
+			return read;
+		}
 
 		public string ReadWord(bool terminateOnComment = false) {
 			// Read until we find a non-whitespace character
@@ -30,31 +72,25 @@ namespace Chips.Compiler.Parsing {
 			// Read until the next whitespace character
 			StringBuilder word = new();
 
-			while (TryReadExceptWhitespace(out char read) && (!terminateOnComment || read != ';'))
+			while (TryReadExceptWhitespace(out char read) && (!terminateOnComment || read != COMMENT_INDICATOR))
 				word.Append(read);
 
 			return word.ToString();
 		}
 
 		public string PeekWord(bool terminateOnComment = false) {
-			int pos = GetActualPosition();
-			string word = ReadWord(terminateOnComment);
-
-			SetActualPosition(pos);
-			return word;
+			using ReaderState state = new(this);
+			return ReadWord(terminateOnComment);
 		}
 
 		public char ReadFirstNonWhitespaceChar() {
 			ReadUntilNonWhitespace();
-			return (char)_reader.Read();
+			return (char)ReadAndAdvanceLines();
 		}
 
 		public char PeekFirstNonWhitespaceChar() {
-			int pos = GetActualPosition();
-			char read = ReadFirstNonWhitespaceChar();
-
-			SetActualPosition(pos);
-			return read;
+			using ReaderState state = new(this);
+			return ReadFirstNonWhitespaceChar();
 		}
 
 		public string ReadWordOrQuotedString(out bool wasQuoted, bool preprocessEscapedQuotes = false, bool terminateOnComment = false) {
@@ -69,11 +105,8 @@ namespace Chips.Compiler.Parsing {
 				StringBuilder quotedWord = new();
 				bool escaped = false;
 				while (TryReadExcept('"', out read, alwaysConsume: true)) {
-					if (read == '\n' && !NotConnectedToCompiler) {
-						ChipsCompiler.CompilingSourceLine--;
-						ChipsCompiler.Error("Unexpected newline in quoted string");
-						ChipsCompiler.CompilingSourceLine++;
-					}
+					if (read == '\n')
+						ChipsCompiler.Results.Error(_file, LineNumber, ErrorID.NewlineInStringLiteral);
 
 					if (preprocessEscapedQuotes && escaped && read == '"') {
 						quotedWord.Append("\\\"");
@@ -98,7 +131,7 @@ namespace Chips.Compiler.Parsing {
 			StringBuilder word = new();
 
 			while (TryReadExceptWhitespace(out read)) {
-				if (terminateOnComment && read == ';')
+				if (terminateOnComment && read == COMMENT_INDICATOR)
 					break;
 
 				word.Append(read);
@@ -110,14 +143,14 @@ namespace Chips.Compiler.Parsing {
 		}
 
 		public IEnumerable<ParsedPossibleQuotedString> ReadManyWordsOrQuotedStrings(bool preprocessEscapedQuotes = false, bool terminateOnComment = false) {
-			List<ParsedPossibleQuotedString> words = new();
+			List<ParsedPossibleQuotedString> words = [];
 
 			string afterArg;
 			do {
 				string word = ReadWordOrQuotedString(out bool wasQuoted, preprocessEscapedQuotes, terminateOnComment);
 				words.Add(new(word, wasQuoted));
 
-				afterArg = PeekUntilMany(new char[] { ',', '\n' }, alwaysConsume: true);
+				afterArg = PeekUntilMany([ ',', '\n' ], alwaysConsume: true);
 			} while (afterArg.Length > 0 && !afterArg.EndsWith('\r'));
 
 			return words;
@@ -138,18 +171,12 @@ namespace Chips.Compiler.Parsing {
 		}
 
 		public string PeekUntilMany(char[] except, bool alwaysConsume = false) {
-			int pos = GetActualPosition();
-			string read = ReadUntilMany(except, alwaysConsume);
-
-			SetActualPosition(pos);
-			return read;
+			using ReaderState state = new(this);
+			return ReadUntilMany(except, alwaysConsume);
 		}
 
-		public string ReadUntilNonWhitespace(bool alwaysConsume = false) {
-			StringBuilder sb = new();
-			while (TryReadWhitespace(out char read, alwaysConsume))
-				sb.Append(read);
-			return sb.ToString();
+		public void ReadUntilNonWhitespace() {
+			while (TryReadWhitespace(out _, false));
 		}
 
 		public string ReadUntilNewline() {
@@ -160,11 +187,8 @@ namespace Chips.Compiler.Parsing {
 		}
 
 		public string PeekUntilNewline() {
-			int pos = GetActualPosition();
-			string read = ReadUntilNewline();
-
-			SetActualPosition(pos);
-			return read;
+			using ReaderState state = new(this);
+			return ReadUntilNewline();
 		}
 
 		public string ReadWordsUntil(int maxWords, bool terminateOnComment, params string[] except) {
@@ -184,86 +208,35 @@ namespace Chips.Compiler.Parsing {
 			return sb.ToString();
 		}
 
-		public bool TryReadExcept(char except, out char read, bool alwaysConsume = false) {
+		private bool FilteredRead<T>(T value, bool alwaysConsume, out char read, Func<T, char, bool> checkPeekFunc) {
 			int peek = _reader.Peek();
-			if (peek >= 0 && peek != except) {
-				read = (char)_reader.Read();
-
-				if (read == '\n' && !NotConnectedToCompiler)
-					ChipsCompiler.CompilingSourceLine++;
-
+			if (peek >= 0) {
+				read = alwaysConsume || checkPeekFunc(value, (char)peek) ? (char)ReadAndAdvanceLines() : default;
 				return true;
 			}
 
-			if (alwaysConsume && peek >= 0) {
-				read = (char)_reader.Read();
-
-				if (read == '\n' && !NotConnectedToCompiler)
-					ChipsCompiler.CompilingSourceLine++;
-			} else
-				read = default;
-
+			read = default;
 			return false;
 		}
 
-		public bool TryReadExceptMany(char[] except, out char read, bool alwaysConsume = false) {
+		private bool FilteredRead(bool alwaysConsume, out char read, Func<char, bool> checkPeekFunc) {
 			int peek = _reader.Peek();
-			if (peek >= 0 && Array.IndexOf(except, (char)peek) == -1) {
-				read = (char)_reader.Read();
-
-				if (read == '\n' && !NotConnectedToCompiler)
-					ChipsCompiler.CompilingSourceLine++;
-
+			if (peek >= 0) {
+				read = alwaysConsume || checkPeekFunc((char)peek) ? (char)ReadAndAdvanceLines() : default;
 				return true;
 			}
 
-			if (alwaysConsume && peek >= 0) {
-				read = (char)_reader.Read();
-
-				if (read == '\n' && !NotConnectedToCompiler)
-					ChipsCompiler.CompilingSourceLine++;
-			} else
-				read = default;
-
+			read = default;
 			return false;
 		}
 
-		public bool TryReadWhitespace(out char read, bool alwaysConsume = false) {
-			int peek = _reader.Peek();
-			if (peek >= 0 && char.IsWhiteSpace((char)peek)) {
-				read = (char)_reader.Read();
+		public bool TryReadExcept(char except, out char read, bool alwaysConsume = false) => FilteredRead(except, alwaysConsume, out read, static (except, peek) => peek != except);
 
-				if (read == '\n' && !NotConnectedToCompiler)
-					ChipsCompiler.CompilingSourceLine++;
+		public bool TryReadExceptMany(char[] except, out char read, bool alwaysConsume = false) => FilteredRead(except, alwaysConsume, out read, static (except, peek) => Array.IndexOf(except, peek) == -1);
 
-				return true;
-			}
+		public bool TryReadWhitespace(out char read, bool alwaysConsume = false) => FilteredRead(alwaysConsume, out read, char.IsWhiteSpace);
 
-			if (alwaysConsume && peek >= 0)
-				read = (char)_reader.Read();
-			else 
-				read = default;
-
-			return false;
-		}
-
-		public bool TryReadExceptWhitespace(out char read, bool alwaysConsume = false) {
-			int peek = _reader.Peek();
-			if (peek >= 0 && !char.IsWhiteSpace((char)peek)) {
-				read = (char)_reader.Read();
-				return true;
-			}
-
-			if (alwaysConsume && peek >= 0) {
-				read = (char)_reader.Read();
-
-				if (read == '\n' && !NotConnectedToCompiler)
-					ChipsCompiler.CompilingSourceLine++;
-			} else
-				read = default;
-
-			return false;
-		}
+		public bool TryReadExceptWhitespace(out char read, bool alwaysConsume = false) => FilteredRead(alwaysConsume, out read, static peek => !char.IsWhiteSpace(peek));
 
 		#region Implement IDisposable
 		private bool disposed;
@@ -274,6 +247,8 @@ namespace Chips.Compiler.Parsing {
 					_reader.Dispose();
 
 				_reader = null!;
+				_file = null!;
+				LineNumber = -1;
 				disposed = true;
 			}
 		}

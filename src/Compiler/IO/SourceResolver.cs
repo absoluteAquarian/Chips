@@ -6,11 +6,11 @@ using System.Text;
 
 namespace Chips.Compiler.IO {
 	internal class SourceResolver {
-		private class DirectoryNode {
-			public readonly string name;
-			public DirectoryNode? parent;
-			public readonly List<DirectoryNode> children = new();
-			public readonly List<FileNode> files = new();
+		private class DirectoryNode(string name, DirectoryNode? parent) {
+			public readonly string name = name;
+			public DirectoryNode? parent = parent;
+			public readonly List<DirectoryNode> children = [];
+			public readonly List<FileNode> files = [];
 
 			public DirectoryInfo info;
 
@@ -18,11 +18,6 @@ namespace Chips.Compiler.IO {
 
 			// Nesting level relative to the resolver's root directory
 			private int absoluteNestingLevel;
-
-			public DirectoryNode(string name, DirectoryNode? parent) {
-				this.name = name;
-				this.parent = parent;
-			}
 
 			public DirectoryNode? GetChild(string name) {
 				foreach (DirectoryNode child in children) {
@@ -48,8 +43,10 @@ namespace Chips.Compiler.IO {
 					DirectoryInfo parentInfo = info.Parent
 						?? throw new DirectoryNotFoundException($"Could not find parent directory of \"{info.FullName}\"");
 
-					parent = new(parentInfo.Name, null) { info = parentInfo };
-					parent.absoluteNestingLevel = absoluteNestingLevel + 1;
+					parent = new(parentInfo.Name, null) {
+						info = parentInfo,
+						absoluteNestingLevel = absoluteNestingLevel + 1
+					};
 
 					return parent;
 				}
@@ -156,18 +153,13 @@ namespace Chips.Compiler.IO {
 			}
 		}
 
-		private class FileNode {
-			public readonly string name;
-			public readonly DirectoryNode parent;
+		private class FileNode(string name, SourceResolver.DirectoryNode parent) {
+			public readonly string name = name;
+			public readonly DirectoryNode parent = parent;
 
 			public FileInfo info;
 
 			public bool included = true;
-
-			public FileNode(string name, DirectoryNode parent) {
-				this.name = name;
-				this.parent = parent;
-			}
 
 			public string GetPath() {
 				return Path.Combine(parent.GetPath(), name);
@@ -204,7 +196,7 @@ namespace Chips.Compiler.IO {
 			}
 		}
 
-		private void StepDirectory(ReadOnlySpan<char> searchPattern, bool include, DirectoryNode current) {
+		private static void StepDirectory(ReadOnlySpan<char> searchPattern, bool include, DirectoryNode current) {
 			int separatorIndex = searchPattern.IndexOf(Path.DirectorySeparatorChar);
 			if (separatorIndex < 0) {
 				// The directory path is now a file specifier.  Add the files in the directory
@@ -234,15 +226,9 @@ namespace Chips.Compiler.IO {
 		public IEnumerable<ProjectSource> EnumerateFiles() => root.EnumerateIncludedFiles();
 	}
 
-	public readonly struct ProjectSource {
-		public readonly string file;
-		public readonly string directory;
-		public readonly FileInfo fileInfo;
-
-		public ProjectSource(string file, string directory, FileInfo fileInfo) {
-			this.file = file;
-			this.directory = directory;
-			this.fileInfo = fileInfo;
-		}
+	public readonly struct ProjectSource(string file, string directory, FileInfo fileInfo) {
+		public readonly string file = file;
+		public readonly string directory = directory;
+		public readonly FileInfo fileInfo = fileInfo;
 	}
 }

@@ -1,5 +1,7 @@
 ﻿using AsmResolver.DotNet;
 using AsmResolver.DotNet.Signatures;
+using Chips.Compiler;
+using Chips.Compiler.ErrorHandling;
 using Chips.Compiler.IO;
 using Chips.Compiler.Utility;
 using System;
@@ -27,7 +29,10 @@ namespace Chips {
 		private static bool? _noEntryPoint;
 		public static bool NoEntryPoint => _noEntryPoint ??= buildOptions.TryGetValue("no-entry", out string? value) && bool.TryParse(value, out bool result) && result;
 
-		public static void Main(string[] args) {
+		private static CompilationResults results;
+		internal static CompilationResults Results => results;
+
+		public static int Main(string[] args) {
 			// Test case
 			#if DEBUG
 			if (System.Diagnostics.Debugger.IsAttached) {
@@ -38,7 +43,7 @@ namespace Chips {
 
 			if (args.Length == 0) {
 				Logging.Error("No input files were specified.");
-				return;
+				return -1;
 			}
 
 			if (args.Length == 1 && (args[0] == "/?" || args[0] == "--help")) {
@@ -47,17 +52,27 @@ namespace Chips {
 				Console.WriteLine("  -out <file>             Specify the output file.");
 				Console.WriteLine("  -include-source <bool>  Indicate whether CPDB files should be generated");
 				Console.WriteLine("  -no-entry <bool>        Indicate whether the built assembly should have an entry point");
-				return;
+				return 0;
 			}
+
+			results = new();
 
 			// If the first argument is a .chpproj file, initialize the project using that file
 			// Otherwise, initialize the project using the first argument as the file search specifier
 			bool directProject = Path.GetExtension(args[0]) == ".chpproj";
 			ChipsProject project = directProject ? ChipsProject.FromFile(args[0]) : ChipsProject.FromCommandline(args[0]);
 
-			if (!project.EnumerateSources().Any()) {
-				Logging.Error(directProject ? "No source files were specified in the project file." : "No source files were found.");
-				return;
+			if (!project.EnumerateSources().Any())
+				results.ProjectError(null, 0, directProject ? ProjectErrorID.NoSourceFilesFromProjectFile : ProjectErrorID.NoSourceFilesFromCommandLine);
+
+			if (results.HasErrors) {
+				Logging.Error("Errors occurred while initializing the project for compilation.");
+				Console.WriteLine();
+
+				foreach (CompilationMessage message in results)
+					message.Print();
+
+				return -1;
 			}
 
 			buildOptions = ParseArguments(args[1..]);
@@ -69,7 +84,21 @@ namespace Chips {
 				buildOptions.Add("out", $"bin/out.{extension}");
 			}
 
+			results = new();
+
 			Compile(project);
+
+			if (results.HasErrors) {
+				Logging.Error("Errors occurred during compilation.");
+				Console.WriteLine();
+
+				foreach (CompilationMessage message in results)
+					message.Print();
+
+				return -1;
+			}
+
+			return 0;
 		}
 
 		internal static AssemblyReference DotNetAssembly => KnownCorLibs.SystemPrivateCoreLib_v7_0_0_0;
